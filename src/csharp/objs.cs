@@ -46,6 +46,9 @@ namespace CellLang {
     public virtual Obj Lookup(Obj key)                                {throw new Exception();}
     public virtual Obj LookupField(int id)                            {throw new Exception();}
 
+    public virtual Obj Append(Obj obj)                                {throw new Exception();}
+    public virtual Obj Append(Obj[] objs)                             {throw new Exception();}
+
     public virtual bool IsEq(Obj o) {
       return Cmp(o) == 0;
     }
@@ -179,15 +182,13 @@ namespace CellLang {
   }
 
 
-  class SeqObj : Obj {
-    int length;
-    int used;
-    Obj[] items;
+  abstract class SeqObj : Obj {
+    internal Obj[] items;
+    internal int length;
 
-    SeqObj(Obj[] items, int length) {
-      this.length = length;
-      this.used = length;
+    protected SeqObj(Obj[] items, int length) {
       this.items = items;
+      this.length = length;
     }
 
     override public bool IsSeq() {
@@ -204,6 +205,44 @@ namespace CellLang {
 
     override public int GetSize() {
       return length;
+    }
+
+    override public Obj GetItem(long idx) {
+      if (idx < length)
+        return items[Offset()+idx];
+      else
+        throw new Exception();
+    }
+
+    override protected int TypeId() {
+      return 3;
+    }
+
+    override protected int InternalCmp(Obj other) {
+      return other.CmpSeq(items, Offset(), length);
+    }
+
+    override public int CmpSeq(Obj[] other_items, int other_offset, int other_length) {
+      int offset = Offset();
+      if (other_length != length)
+        return other_length < length ? 1 : -1;
+      for (int i=0 ; i < length ; i++) {
+        int res = other_items[other_offset+i].Cmp(items[offset+i]);
+        if (res != 0)
+          return res;
+      }
+      return 0;
+    }
+
+    protected abstract int Offset();
+  }
+
+
+  class MasterSeqObj : SeqObj {
+    internal int used;
+
+    public MasterSeqObj(Obj[] items, int length) : base(items, length) {
+      this.used = length;
     }
 
     override public Obj GetItem(long idx) {
@@ -213,78 +252,88 @@ namespace CellLang {
         throw new Exception();
     }
 
-    override protected int TypeId() {
-      return 3;
-    }
-
-    override protected int InternalCmp(Obj other) {
-      return other.CmpSeq(items, 0, length);
-    }
-
-    override public int CmpSeq(Obj[] other_items, int other_offset, int other_length) {
-      if (other_length != length)
-        return other_length < length ? 1 : -1;
-      for (int i=0 ; i < length ; i++) {
-        int res = other_items[other_offset+i].Cmp(items[i]);
-        if (res != 0)
-          return res;
+    override public Obj Append(Obj obj) {
+      if (used == length && length + 1 < items.Length) {
+        items[length] = obj;
+        return new SliceObj(this, 0, length+1);
       }
+      else {
+        Obj[] newItems = new Obj[length < 16 ? 32 : (3 * length) / 2];
+        for (int i=0 ; i < length ; i++)
+          newItems[i] = items[i];
+        newItems[length] = obj;
+        return new MasterSeqObj(newItems, length+1);
+      }
+    }
+
+    override public Obj Append(Obj[] objs) {
+      int newLen = length + objs.Length;
+      if (used == length && newLen < items.Length) {
+        for (int i=0; i < objs.Length ; i++)
+          items[length+i] = objs[i];
+        return new SliceObj(this, 0, newLen);
+      }
+      else {
+        Obj[] newItems = new Obj[newLen <= 16 ? 32 : (3 * newLen) / 2];
+        for (int i=0 ; i < length ; i++)
+          newItems[i] = items[i];
+        for (int i=0 ; i < objs.Length ; i++)
+          newItems[length+i] = objs[i];
+        return new MasterSeqObj(newItems, newLen);
+      }
+    }
+
+    override protected int Offset() {
       return 0;
     }
   }
 
 
-  class SliceObj : Obj {
+  class SliceObj : SeqObj {
+    MasterSeqObj master;
     int offset;
-    int length;
-    Obj[] items;
 
-    SliceObj(Obj[] items, int offset, int length) {
+    public SliceObj(MasterSeqObj master, int offset, int length) : base(master.items, length) {
+      this.master = master;
       this.offset = offset;
-      this.length = length;
-      this.items = items;
     }
 
-    override public bool IsSeq() {
-      return true;
-    }
-
-    override public bool IsEmptySeq() {
-      return length == 0;
-    }
-
-    override public bool IsNeSeq() {
-      return length != 0;
-    }
-
-    override public int GetSize() {
-      return length;
-    }
-
-    override public Obj GetItem(long idx) {
-      if (idx < length)
-        return items[offset+idx];
-      else
-        throw new Exception();
-    }
-
-    override protected int TypeId() {
-      return 3;
-    }
-
-    override protected int InternalCmp(Obj other) {
-      return other.CmpSeq(items, offset, length);
-    }
-
-    override public int CmpSeq(Obj[] other_items, int other_offset, int other_length) {
-      if (other_length != length)
-        return other_length < length ? 1 : -1;
-      for (int i=0 ; i < length ; i++) {
-        int res = other_items[other_offset+i].Cmp(items[offset+i]);
-        if (res != 0)
-          return res;
+    override public Obj Append(Obj obj) {
+      int used = offset + length;
+      if (master.used == used && used + 1 < master.items.Length) {
+        master.items[used] = obj;
+        return new SliceObj(master, offset, length+1);
       }
-      return 0;
+      else {
+        Obj[] newItems = new Obj[length < 16 ? 32 : (3 * length) / 2];
+        for (int i=0 ; i < length ; i++)
+          newItems[i] = items[i];
+        newItems[length] = obj;
+        return new MasterSeqObj(newItems, length+1);
+
+      }
+    }
+
+    override public Obj Append(Obj[] objs) {
+      int used = offset + length;
+      int newLen = used + objs.Length;
+      if (master.used == used && newLen <= master.items.Length) {
+        for (int i=0 ; i < objs.Length ; i++)
+          master.items[used+i] = objs[i];
+        return new SliceObj(master, offset, newLen);
+      }
+      else {
+        Obj[] newItems = new Obj[newLen <= 16 ? 32 : (3 * length) / 2];
+        for (int i=0 ; i < length ; i++)
+          newItems[i] = items[offset+i];
+        for (int i=0 ; i < objs.Length ; i++)
+          newItems[length+i] = objs[i];
+        return new MasterSeqObj(newItems, newLen);
+      }
+    }
+
+    override protected int Offset() {
+      return offset;
     }
   }
 
