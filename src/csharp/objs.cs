@@ -5,49 +5,53 @@ using System.Diagnostics;
 
 namespace CellLang {
   public abstract class Obj : IComparable<Obj> {
-    public virtual bool IsBlankObj()                                  {return false;}
-    public virtual bool IsNullObj()                                   {return false;}
-    public virtual bool IsSymb()                                      {return false;}
-    // public virtual bool IsBool()                                      {return false;}
-    public virtual bool IsInt()                                       {return false;}
-    public virtual bool IsFloat()                                     {return false;}
-    public virtual bool IsSeq()                                       {return false;}
-    public virtual bool IsEmptySeq()                                  {return false;}
-    public virtual bool IsNeSeq()                                     {return false;}
-    public virtual bool IsEmptyRel()                                  {return false;}
-    public virtual bool IsSet()                                       {return false;}
-    public virtual bool IsNeSet()                                     {return false;}
-    public virtual bool IsBinRel()                                    {return false;}
-    public virtual bool IsNeBinRel()                                  {return false;}
-    public virtual bool IsNeMap()                                     {return false;}
-    public virtual bool IsTernRel()                                   {return false;}
-    public virtual bool IsNeTernRel()                                 {return false;}
-    public virtual bool IsTagged()                                    {return false;}
+    public virtual bool IsBlankObj()                              {return false;}
+    public virtual bool IsNullObj()                               {return false;}
+    public virtual bool IsSymb()                                  {return false;}
+    // public virtual bool IsBool()                                  {return false;}
+    public virtual bool IsInt()                                   {return false;}
+    public virtual bool IsFloat()                                 {return false;}
+    public virtual bool IsSeq()                                   {return false;}
+    public virtual bool IsEmptySeq()                              {return false;}
+    public virtual bool IsNeSeq()                                 {return false;}
+    public virtual bool IsEmptyRel()                              {return false;}
+    public virtual bool IsSet()                                   {return false;}
+    public virtual bool IsNeSet()                                 {return false;}
+    public virtual bool IsBinRel()                                {return false;}
+    public virtual bool IsNeBinRel()                              {return false;}
+    public virtual bool IsNeMap()                                 {return false;}
+    public virtual bool IsTernRel()                               {return false;}
+    public virtual bool IsNeTernRel()                             {return false;}
+    public virtual bool IsTagged()                                {return false;}
 
-    public virtual bool IsSymb(int id)                                {return false;}
-    public virtual bool IsInt(long n)                                 {return false;}
-    public virtual bool IsFloat(double x)                             {return false;}
+    public virtual bool IsSymb(int id)                            {return false;}
+    public virtual bool IsInt(long n)                             {return false;}
+    public virtual bool IsFloat(double x)                         {return false;}
 
-    public virtual bool HasElem(Obj o)                                {throw new Exception();}
-    public virtual bool HasKey(Obj o)                                 {throw new Exception();}
-    public virtual bool HasField(int id)                              {throw new Exception();}
-    public virtual bool HasPair(Obj o1, Obj o2)                       {throw new Exception();}
-    public virtual bool HasTriple(Obj o1, Obj o2, Obj o3)             {throw new Exception();}
+    public virtual bool HasElem(Obj o)                            {throw new InvalidOperationException();}
+    public virtual bool HasKey(Obj o)                             {throw new InvalidOperationException();}
+    public virtual bool HasField(int id)                          {throw new InvalidOperationException();}
+    public virtual bool HasPair(Obj o1, Obj o2)                   {throw new InvalidOperationException();}
+    public virtual bool HasTriple(Obj o1, Obj o2, Obj o3)         {throw new InvalidOperationException();}
 
-    public virtual int    GetSymbId()                                 {throw new Exception();}
-    public virtual bool   GetBool()                                   {throw new Exception();}
-    public virtual long   GetInt()                                    {throw new Exception();}
-    public virtual double GetFloat()                                  {throw new Exception();}
-    public virtual int    GetSize()                                   {throw new Exception();}
-    public virtual Obj    GetItem(long i)                             {throw new Exception();}
-    public virtual int    GetTagId()                                  {throw new Exception();}
-    public virtual Obj    GetInnerObj()                               {throw new Exception();}
+    public virtual int    GetSymbId()                             {throw new InvalidOperationException();}
+    public virtual bool   GetBool()                               {throw new InvalidOperationException();}
+    public virtual long   GetInt()                                {throw new InvalidOperationException();}
+    public virtual double GetFloat()                              {throw new InvalidOperationException();}
+    public virtual int    GetSize()                               {throw new InvalidOperationException();}
+    public virtual Obj    GetItem(long i)                         {throw new InvalidOperationException();}
+    public virtual int    GetTagId()                              {throw new InvalidOperationException();}
+    public virtual Obj    GetInnerObj()                           {throw new InvalidOperationException();}
 
-    public virtual Obj Lookup(Obj key)                                {throw new Exception();}
-    public virtual Obj LookupField(int id)                            {throw new Exception();}
+    public virtual SeqOrSetIter GetSeqOrSetIter()                 {throw new InvalidOperationException();}
+    public virtual BinRelIter   GetBinRelIter()                   {throw new InvalidOperationException();}
+    public virtual TernRelIter  GetTernRelIter()                  {throw new InvalidOperationException();}
 
-    public virtual Obj Append(Obj obj)                                {throw new Exception();}
-    public virtual Obj Append(Obj[] objs)                             {throw new Exception();}
+    public virtual Obj Lookup(Obj key)                            {throw new InvalidOperationException();}
+    public virtual Obj LookupField(int id)                        {throw new InvalidOperationException();}
+
+    public virtual Obj Append(Obj obj)                            {throw new InvalidOperationException();}
+    public virtual Obj Append(Obj[] objs)                         {throw new InvalidOperationException();}
 
     public virtual bool IsEq(Obj o) {
       return Cmp(o) == 0;
@@ -65,11 +69,11 @@ namespace CellLang {
       return id1 < id2 ? 1 : -1;
     }
 
-    public virtual int CmpSeq(Obj[] es, int o, int l)              {throw new Exception();}
-    public virtual int CmpNeSet(Obj[] es)                          {throw new Exception();}
-    public virtual int CmpNeBinRel(Obj[] c1, Obj[] c2)             {throw new Exception();}
-    public virtual int CmpNeTernRel(Obj[] c1, Obj[] c2, Obj[] c3)  {throw new Exception();}
-    public virtual int CmpTaggedObj(int tag, Obj obj)              {throw new Exception();}
+    public virtual int CmpSeq(Obj[] es, int o, int l)             {throw new InvalidOperationException();}
+    public virtual int CmpNeSet(Obj[] es)                         {throw new InvalidOperationException();}
+    public virtual int CmpNeBinRel(Obj[] c1, Obj[] c2)            {throw new InvalidOperationException();}
+    public virtual int CmpNeTernRel(Obj[] c1, Obj[] c2, Obj[] c3) {throw new InvalidOperationException();}
+    public virtual int CmpTaggedObj(int tag, Obj obj)             {throw new InvalidOperationException();}
 
     protected abstract int TypeId();
     protected abstract int InternalCmp(Obj o);
@@ -100,7 +104,7 @@ namespace CellLang {
         return false;
       if (id == 1)
         return true;
-      throw new Exception();
+      throw new InvalidOperationException();
     }
 
     override public bool IsEq(Obj obj) {
@@ -260,6 +264,10 @@ namespace CellLang {
         throw new Exception();
     }
 
+    override public SeqOrSetIter GetSeqOrSetIter() {
+      return new SeqOrSetIter(items, 0, length-1);
+    }
+
     override public Obj Append(Obj obj) {
       if (used == length && length + 1 < items.Length) {
         items[length] = obj;
@@ -304,6 +312,10 @@ namespace CellLang {
     public SliceObj(MasterSeqObj master, int offset, int length) : base(master.items, length) {
       this.master = master;
       this.offset = offset;
+    }
+
+    override public SeqOrSetIter GetSeqOrSetIter() {
+      return new SeqOrSetIter(items, offset, offset+length-1);
     }
 
     override public Obj Append(Obj obj) {
@@ -395,6 +407,18 @@ namespace CellLang {
       return 0;
     }
 
+    override public SeqOrSetIter GetSeqOrSetIter() {
+      return iter1;
+    }
+
+    override public BinRelIter GetBinRelIter() {
+      return iter2;
+    }
+
+    override public TernRelIter GetTernRelIter() {
+      return iter3;
+    }
+
     override protected int TypeId() {
       return 4;
     }
@@ -402,6 +426,10 @@ namespace CellLang {
     override protected int InternalCmp(Obj other) {
       return 0;
     }
+
+    static SeqOrSetIter iter1 = new SeqOrSetIter(new Obj[0], 0, 0);
+    static BinRelIter   iter2 = new BinRelIter(new Obj[0], new Obj[0]);
+    static TernRelIter  iter3 = new TernRelIter(new Obj[0], new Obj[0], new Obj[0]);
 
     static EmptyRelObj singleton = new EmptyRelObj();
 
@@ -433,6 +461,10 @@ namespace CellLang {
 
     override public int GetSize() {
       return elts.Length;
+    }
+
+    override public SeqOrSetIter GetSeqOrSetIter() {
+      return new SeqOrSetIter(elts, 0, elts.Length-1);
     }
 
     override protected int TypeId() {
@@ -514,6 +546,10 @@ namespace CellLang {
 
     override public int GetSize() {
       return col1.Length;
+    }
+
+    override public BinRelIter GetBinRelIter() {
+      return new BinRelIter(col1, col2);
     }
 
     override public Obj Lookup(Obj key) {
@@ -602,6 +638,10 @@ namespace CellLang {
 
     override public int GetSize() {
       return col1.Length;
+    }
+
+    override public TernRelIter GetTernRelIter() {
+      return new TernRelIter(col1, col2, col3);
     }
 
     override protected int TypeId() {
@@ -805,7 +845,7 @@ namespace CellLang {
         symbMap.Add(str, idx);
         return idx;
       }
-      throw new Exception();
+      throw new InvalidOperationException();
     }
 
     public static string IdxToStr(int idx) {
