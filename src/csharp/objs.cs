@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 
 namespace CellLang {
-  public abstract class Obj {
+  public abstract class Obj : IComparable<Obj> {
     public virtual bool IsBlankObj()                                  {return false;}
     public virtual bool IsNullObj()                                   {return false;}
     public virtual bool IsSymb()                                      {return false;}
@@ -53,6 +53,10 @@ namespace CellLang {
       return Cmp(o) == 0;
     }
 
+    public int CompareTo(Obj other) {
+      return Cmp(other);
+    }
+
     public int Cmp(Obj o) {
       int id1 = TypeId();
       int id2 = o.TypeId();
@@ -75,7 +79,7 @@ namespace CellLang {
   class SymbObj : Obj {
     int id;
 
-    SymbObj(int id) {
+    public SymbObj(int id) {
       this.id = id;
     }
 
@@ -117,7 +121,7 @@ namespace CellLang {
   class IntObj : Obj {
     long value;
 
-    IntObj(long value) {
+    public IntObj(long value) {
       this.value = value;
     }
 
@@ -151,7 +155,7 @@ namespace CellLang {
   class FloatObj : Obj {
     double value;
 
-    FloatObj(double value) {
+    public FloatObj(double value) {
       this.value = value;
     }
 
@@ -243,6 +247,10 @@ namespace CellLang {
 
     public MasterSeqObj(Obj[] items, int length) : base(items, length) {
       this.used = length;
+    }
+
+    public MasterSeqObj(Obj[] items) : this(items, items.Length) {
+
     }
 
     override public Obj GetItem(long idx) {
@@ -338,8 +346,8 @@ namespace CellLang {
   }
 
 
-  class EmptyRel : Obj {
-    EmptyRel() {
+  class EmptyRelObj : Obj {
+    EmptyRelObj() {
 
     }
 
@@ -394,13 +402,19 @@ namespace CellLang {
     override protected int InternalCmp(Obj other) {
       return 0;
     }
+
+    static EmptyRelObj singleton = new EmptyRelObj();
+
+    public static EmptyRelObj Singleton() {
+      return singleton;
+    }
   }
 
 
   class NeSetObj : Obj {
     Obj[] elts;
 
-    NeSetObj(Obj[] elts) {
+    public NeSetObj(Obj[] elts) {
       Debug.Assert(elts == null || elts.Length > 0);
       this.elts = elts;
     }
@@ -449,7 +463,7 @@ namespace CellLang {
     Obj[] col2;
     bool isMap;
 
-    NeBinRelObj(Obj[] col1, Obj[] col2, bool isMap) {
+    public NeBinRelObj(Obj[] col1, Obj[] col2, bool isMap) {
       Debug.Assert(col1 != null && col2 != null);
       Debug.Assert(col1.Length > 0);
       Debug.Assert(col1.Length == col2.Length);
@@ -554,7 +568,7 @@ namespace CellLang {
     Obj[] col2;
     Obj[] col3;
 
-    NeTernRelObj(Obj[] col1, Obj[] col2, Obj[] col3) {
+    public NeTernRelObj(Obj[] col1, Obj[] col2, Obj[] col3) {
       Debug.Assert(col1 != null && col2 != null && col3 != null);
       Debug.Assert(col1.Length == col2.Length && col1.Length == col3.Length);
       Debug.Assert(col1.Length > 0);
@@ -627,7 +641,7 @@ namespace CellLang {
     int tag;
     Obj obj;
 
-    TaggedObj(int tag, Obj obj) {
+    public TaggedObj(int tag, Obj obj) {
       this.tag = tag;
       this.obj = obj;
     }
