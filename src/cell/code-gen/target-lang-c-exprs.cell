@@ -12,6 +12,7 @@ String to_c_expr(NatObjOp expr) =
   at()                = to_c_expr(expr.seq)    & ".GetItem("     & to_c_expr(expr.idx) & ")",
   lookup()            = to_c_expr(expr.rel)    & ".Lookup("      & to_c_expr(expr.key) & ")",
   lookup_field()      = to_c_expr(expr.record) & ".LookupField(" & symb_idx_name(expr.field) & ")",
+  get_tag(e?)         = to_c_expr(e)           & ".GetTagId()",
   get_inner_obj(e?)   = to_c_expr(e)           & ".GetInnerObj()",
   obj_neg(e?)         = to_c_expr(e)           & ".Negate()",
   get_curr_obj(v?)    = to_c_var_ref_name(v)   & ".Get()",

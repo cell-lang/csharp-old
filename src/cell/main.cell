@@ -10,5 +10,41 @@ implicit typedefs : [TypeName -> NeType] {
 
 
 Main(String* args) {
-  Print("Hello world!");
+  if args == []:
+    Print("Usage: codegen-dbg <input file>\n");
+    return;
+  ;
+
+  res = ReadValueFromFile(args(0));
+  return if res == nothing;
+  prg = value(res);
+  if not prg :: CompiledPrg:
+    Print("Invalid input!\n");
+    return;
+  ;
+
+  cs_code  = compile_to_cs(prg, false);
+
+  text = append(cs_code.body, "\n");
+  ok = FileWrite("generated.cs", chars(text));
+  fail if not ok;
+}
+
+
+Maybe[Any] ReadValueFromFile(String fname) {
+  read_res = FileRead(fname);
+  if read_res == nothing:
+    Print("Cannot read file " & fname & "\n");
+    return nothing;
+  ;
+
+  parse_res = _parse_(string(value(read_res)));
+  if failed(parse_res):
+    Print("File " & fname & " does not contain a valid Cell value\n");
+    print string(value(read_res));
+    print parse_res;
+    return nothing;
+  ;
+
+  return just(result(parse_res));
 }

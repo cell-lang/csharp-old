@@ -1,5 +1,7 @@
 tmp/
+debug/
 src/csharp/main.cs
 src/csharp/main.exe
 codegen-dbg
-generated.cpp
+generated.cs
+test-input.txt
