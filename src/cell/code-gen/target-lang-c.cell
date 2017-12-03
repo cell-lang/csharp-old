@@ -420,20 +420,6 @@ implicit {
   String* compile_to_c(Instr* instrs, Maybe[Nat] block_id) = join((compile_to_c(instr, block_id) : instr <- instrs));
 
 
-// type AnyVar         = ObjVar, VecVar, BoolVar, IntVar, ItVar, StreamVar;
-
-  String* native_method_call(<AnyVar, ObjExpr, WriteObjVar> target, String method_name, AnyTypeExpr* args) = undefined;
-  String* native_method_call(AnyVar res, AnyVar target, String method_name, AnyTypeExpr* args) = undefined;
-
-// to_c_var_name(instr.stream) & ".Add(" & to_c_expr(instr.obj) & ");",
-  // String to_c_arg(FnCallParam arg) {
-  //   by_ref = arg :: <TableItVar, AnyRelVar>;
-  //   return {if by_ref then "&" else ""} & to_c_expr(arg);
-  // }
-
-  // String mk_gen_call(String fn_name, String* leading_params, FnCallParam* params, String* trailing_params) =
-  //   fn_name & "(" & append(leading_params & (to_c_arg(p) : p <- params) & trailing_params, ", ") & ");";
-
   String block_end_label(Int id) = "Block" & printed(id) & "End";
 
   String* compile_to_c(Instr instr, Maybe[Nat] block_id) =
@@ -444,7 +430,7 @@ implicit {
     get_set_iter()        = native_method_call(instr.var, "GetSeqOrSetIter", (instr.src)),
     get_bin_rel_iter()    = compile_get_bin_rel_iter_to_c(instr.var, instr.src, instr.args),
     get_tern_rel_iter()   = compile_get_tern_rel_iter_to_c(instr.var, instr.src, instr.args),
-    move_forward(v?)      = compile_move_forward_to_c(v),
+    move_forward(v?)      = native_method_call(v, "Next", ()),
     set_var()             = compile_set_var_to_c(instr.var, instr.value),
     set_bvar()            |
     set_ivar()            = mk_assignment(instr.var, instr.value),
@@ -464,7 +450,7 @@ implicit {
                               body_code = compile_to_c(body, just(new_block_id));
                               return body_code & (block_end_label(new_block_id) & ":;");
                             },
-    try_block()           = compile_try_block_to_c(instr.var, instr.body, block_id),
+    // try_block()           = compile_try_block_to_c(instr.var, instr.body, block_id),
     exit_block            = ("goto " & block_end_label(value_unsafe(block_id)) & ";"),
     switch_on_nat()       = compile_switch_on_nat_to_c(instr.value, instr.cases, block_id),
     symb_switch()         = compile_symb_switch_to_c(instr.value, instr.cases, instr.else, block_id),
@@ -478,210 +464,195 @@ implicit {
     //                         },
     // pop_call_info         = mk_call("pop_call_info", ()),
     runtime_check()       = compile_runtime_check_to_c(instr.cond, instr.file, instr.line, instr.text, instr.vars),
-    branch()              = compile_branch_to_c(instr.cond, instr.when_true, instr.when_false, block_id),
+    branch()              = compile_branch_to_c(instr.cond, instr.when_true, instr.when_false, block_id);
 
     ## TO DO
-    queue_update()        = compile_queue_update_to_c(instr.type, instr.id, instr.args),
-    insert_timer()        = (insert_timer_method_name(instr.type) & "(self, " & to_c_expr(instr.idx) & ", " & to_c_expr(instr.time) & ");"),
-    clear_timer()         = (clear_timer_method_name(instr.type) & "(self, " & to_c_expr(instr.idx) & ");"),
-    auto_pre_init()       = (pre_init_method_name(instr.type) & "(&" & to_c_var_ref_name(instr.var) & ", env);"),
-    auto_cleanup()        = (cleanup_method_name(instr.type) & "(&" & to_c_var_ref_name(instr.var) & ");"),
-    set_input()           = { value_str = to_c_expr(instr.value);
-                              method_name = input_set_method_name(instr.type, instr.input);
-                              return (method_name & "(&" & to_c_var_ref_name(instr.var) & ", " & value_str & ");");
-                            },
-    clear_input()         = { method_name = input_set_method_name(instr.type, instr.input);
-                              target = if instr.var? then "&" & to_c_var_ref_name(instr.var) else "self";
-                              return (method_name & "(" & target & ", make_null_obj());");
-                            },
-    auto_update_node()    = compile_auto_update_node_to_c(instr.type, instr.node, if instr.time_var? then just(instr.time_var) else nothing),
-    auto_apply()          = compile_auto_apply_to_c(if instr.var? then just(instr.var) else nothing, instr.type),
-    set_persistent_state()= compile_set_persistent_state_to_c(instr.auto_var, instr.state, instr.type),
-    init_db()             = (compile_init_db_to_c(instr.db_var, instr.links, instr.type)),
-    cleanup_db()          = (compile_cleanup_db_to_c(instr.db_var, instr.type)),
-    send_msg()            = (compile_send_msg_to_c(instr.db_var, instr.type, instr.msg, instr.is_root, if instr.res_var? then just(instr.res_var) else nothing)),
-    try_update()          = (compile_try_update_to_c(instr.type, instr.update_id, instr.args)),
-    set_state()           = (compile_set_state_to_c(instr.state, instr.db_var, instr.type, if instr.res_var? then just(instr.res_var) else nothing)),
-    invoke_auto_method()  = (compile_invoke_method_to_c(instr.res_var, if instr.auto_var? then just(instr.auto_var) else nothing, instr.type, instr.method_id, instr.args)),
-    invoke_db_method()    = (compile_invoke_method_to_c(instr.res_var, if instr.db_var? then just(instr.db_var) else nothing, instr.type, instr.method_id, instr.args)),
-    init_value_store()    = mk_call("value_store_init", (instr.store)),
-    cleanup_value_store() = mk_call("value_store_cleanup", (instr.store)),
-    init_table()          = compile_init_table_to_c(instr.rel_var, instr.table),
-    cleanup_table()       = compile_cleanup_table_to_c(instr.rel_var, instr.table),
-    set_table()           = compile_set_table_to_c(instr.relvar, instr.table, instr.state, instr.perm),
-    get_table_iter()      = compile_get_table_iter_to_c(instr.it_var, instr.table, instr.args),
-    queue_deletes()       = compile_queue_deletes_to_c(instr.rel_var, instr.args),
-    queue_insert_value()  = (mk_gen_call(instr.res_var, "value_store_insert", (to_c_expr(instr.store), aux_struct_var_ref_name(instr.store)), (instr.value), ())),
-    queue_insert_tuple()  = compile_queue_insert_tuple_to_c(instr.rel_var, instr.tuple);
+    // queue_update()        = compile_queue_update_to_c(instr.type, instr.id, instr.args),
+    // insert_timer()        = (insert_timer_method_name(instr.type) & "(self, " & to_c_expr(instr.idx) & ", " & to_c_expr(instr.time) & ");"),
+    // clear_timer()         = (clear_timer_method_name(instr.type) & "(self, " & to_c_expr(instr.idx) & ");"),
+    // auto_pre_init()       = (pre_init_method_name(instr.type) & "(&" & to_c_var_ref_name(instr.var) & ", env);"),
+    // auto_cleanup()        = (cleanup_method_name(instr.type) & "(&" & to_c_var_ref_name(instr.var) & ");"),
+    // set_input()           = { value_str = to_c_expr(instr.value);
+    //                           method_name = input_set_method_name(instr.type, instr.input);
+    //                           return (method_name & "(&" & to_c_var_ref_name(instr.var) & ", " & value_str & ");");
+    //                         },
+    // clear_input()         = { method_name = input_set_method_name(instr.type, instr.input);
+    //                           target = if instr.var? then "&" & to_c_var_ref_name(instr.var) else "self";
+    //                           return (method_name & "(" & target & ", make_null_obj());");
+    //                         },
+    // auto_update_node()    = compile_auto_update_node_to_c(instr.type, instr.node, if instr.time_var? then just(instr.time_var) else nothing),
+    // auto_apply()          = compile_auto_apply_to_c(if instr.var? then just(instr.var) else nothing, instr.type),
+    // set_persistent_state()= compile_set_persistent_state_to_c(instr.auto_var, instr.state, instr.type),
+    // init_db()             = (compile_init_db_to_c(instr.db_var, instr.links, instr.type)),
+    // cleanup_db()          = (compile_cleanup_db_to_c(instr.db_var, instr.type)),
+    // send_msg()            = (compile_send_msg_to_c(instr.db_var, instr.type, instr.msg, instr.is_root, if instr.res_var? then just(instr.res_var) else nothing)),
+    // try_update()          = (compile_try_update_to_c(instr.type, instr.update_id, instr.args)),
+    // set_state()           = (compile_set_state_to_c(instr.state, instr.db_var, instr.type, if instr.res_var? then just(instr.res_var) else nothing)),
+    // invoke_auto_method()  = (compile_invoke_method_to_c(instr.res_var, if instr.auto_var? then just(instr.auto_var) else nothing, instr.type, instr.method_id, instr.args)),
+    // invoke_db_method()    = (compile_invoke_method_to_c(instr.res_var, if instr.db_var? then just(instr.db_var) else nothing, instr.type, instr.method_id, instr.args)),
+    // init_value_store()    = mk_call("value_store_init", (instr.store)),
+    // cleanup_value_store() = mk_call("value_store_cleanup", (instr.store)),
+    // init_table()          = compile_init_table_to_c(instr.rel_var, instr.table),
+    // cleanup_table()       = compile_cleanup_table_to_c(instr.rel_var, instr.table),
+    // set_table()           = compile_set_table_to_c(instr.relvar, instr.table, instr.state, instr.perm),
+    // get_table_iter()      = compile_get_table_iter_to_c(instr.it_var, instr.table, instr.args),
+    // queue_deletes()       = compile_queue_deletes_to_c(instr.rel_var, instr.args),
+    // queue_insert_value()  = (mk_gen_call(instr.res_var, "value_store_insert", (to_c_expr(instr.store), aux_struct_var_ref_name(instr.store)), (instr.value), ())),
+    // queue_insert_tuple()  = compile_queue_insert_tuple_to_c(instr.rel_var, instr.tuple);
 
 
-  String* compile_set_persistent_state_to_c(AnyAutoVar auto_var, AtomicExpr state, AutoSymbol type) {
-    proc_name = set_state_proc_name(type);
-    return (proc_name & "(&" & to_c_var_ref_name(auto_var) & ", " & to_c_expr(state) & ");");
-  }
+  // String* compile_set_persistent_state_to_c(AnyAutoVar auto_var, AtomicExpr state, AutoSymbol type) {
+  //   proc_name = set_state_proc_name(type);
+  //   return (proc_name & "(&" & to_c_var_ref_name(auto_var) & ", " & to_c_expr(state) & ");");
+  // }
 
 
-  String* compile_queue_update_to_c(AutoSymbol type, BlockNodeId node_id, Nat* args) {
-    method_name = queue_update_method_name(type, node_id);
-    args_str = append((", " & printed(a) : a <- args));
-    return (method_name & "(self" & args_str & ");");
-  }
+  // String* compile_queue_update_to_c(AutoSymbol type, BlockNodeId node_id, Nat* args) {
+  //   method_name = queue_update_method_name(type, node_id);
+  //   args_str = append((", " & printed(a) : a <- args));
+  //   return (method_name & "(self" & args_str & ");");
+  // }
 
 
-  String* compile_set_table_to_c(RelVar relvar, Table table, AtomicExpr state, Nat+ perm) {
-    fn_name = fn_names[arity(table)];
-    perm_args = match (perm)
-      (_)       = (),
-      (0, 1)    = (false),
-      (1, 0)    = (true),
-      (_, _, _) = perm;
-    str_args = ("&" & to_c_var_ref_name(relvar), "&" & pending_updates_var_ref_name(relvar)) &
-               (to_c_var_ref_name(vs) : vs <- table.value_stores) &
-               (aux_struct_var_ref_name(vs) : vs <- table.value_stores);
-    return (mk_gen_call(fn_name, str_args, (state) & perm_args, ()));
+  // String* compile_set_table_to_c(RelVar relvar, Table table, AtomicExpr state, Nat+ perm) {
+  //   fn_name = fn_names[arity(table)];
+  //   perm_args = match (perm)
+  //     (_)       = (),
+  //     (0, 1)    = (false),
+  //     (1, 0)    = (true),
+  //     (_, _, _) = perm;
+  //   str_args = ("&" & to_c_var_ref_name(relvar), "&" & pending_updates_var_ref_name(relvar)) &
+  //              (to_c_var_ref_name(vs) : vs <- table.value_stores) &
+  //              (aux_struct_var_ref_name(vs) : vs <- table.value_stores);
+  //   return (mk_gen_call(fn_name, str_args, (state) & perm_args, ()));
 
-    [NzNat -> String] fn_names = [
-      1 -> "set_unary_table",
-      2 -> "set_binary_table",
-      3 -> "set_ternary_table"
-    ];
-  }
+  //   [NzNat -> String] fn_names = [
+  //     1 -> "set_unary_table",
+  //     2 -> "set_binary_table",
+  //     3 -> "set_ternary_table"
+  //   ];
+  // }
 
 
   String* compile_get_bin_rel_iter_to_c(BinRelItVar var, AtomicExpr src, (Maybe[AtomicExpr], Maybe[AtomicExpr]) args) =
     match (args)
-      (nothing,   nothing)    = mk_call("get_bin_rel_iter",   (var, src)),
-      (just(a0?), nothing)    = mk_call("get_bin_rel_iter_0", (var, src, a0)),
-      (nothing,   just(a1?))  = mk_call("get_bin_rel_iter_1", (var, src, a1));
+      (nothing,   nothing)    = native_method_call(var, src, "GetBinRelIter", ()),
+      (just(a0?), nothing)    = native_method_call(var, src, "GetBinRelIter0", (a0)),
+      (nothing,   just(a1?))  = native_method_call(var, src, "GetBinRelIter1", (a1));
 
 
   String* compile_get_tern_rel_iter_to_c(TernRelItVar var, AtomicExpr src, (Maybe[AtomicExpr], Maybe[AtomicExpr], Maybe[AtomicExpr]) args) =
     match (args)
-      (nothing,   nothing,   nothing)     = mk_call("get_tern_rel_iter",    (var, src)),
-      (just(a0?), nothing,   nothing)     = mk_call("get_tern_rel_iter_by", (var, src, 0, a0)),
-      (nothing,   just(a1?), nothing)     = mk_call("get_tern_rel_iter_by", (var, src, 1, a1)),
-      (nothing,   nothing,   just(a2?))   = mk_call("get_tern_rel_iter_by", (var, src, 2, a2)),
-      (just(a0?), just(a1?), nothing)     = mk_call("get_tern_rel_iter_by", (var, src, 0, a0, a1)),
-      (just(a0?), nothing,   just(a2?))   = mk_call("get_tern_rel_iter_by", (var, src, 2, a2, a0)),
-      (nothing,   just(a1?), just(a2?))   = mk_call("get_tern_rel_iter_by", (var, src, 1, a1, a2));
+      (nothing,   nothing,   nothing)     = native_method_call(var, src, "GetTernRelIter", ()),
+      (just(a0?), nothing,   nothing)     = native_method_call(var, src, "GetTernRelIter", (0, a0)),
+      (nothing,   just(a1?), nothing)     = native_method_call(var, src, "GetTernRelIter", (1, a1)),
+      (nothing,   nothing,   just(a2?))   = native_method_call(var, src, "GetTernRelIter", (2, a2)),
+      (just(a0?), just(a1?), nothing)     = native_method_call(var, src, "GetTernRelIter", (0, a0, a1)),
+      (just(a0?), nothing,   just(a2?))   = native_method_call(var, src, "GetTernRelIter", (2, a2, a0)),
+      (nothing,   just(a1?), just(a2?))   = native_method_call(var, src, "GetTernRelIter", (1, a1, a2));
 
 
-  String* compile_try_block_to_c(LocVar var, Instr+ body, Maybe[Nat] block_id) {
-    var_name = to_c_var_ref_name(var);
-    body_code = compile_to_c(body, block_id);
+  // String* compile_try_block_to_c(LocVar var, Instr+ body, Maybe[Nat] block_id) {
+  //   var_name = to_c_var_ref_name(var);
+  //   body_code = compile_to_c(body, block_id);
 
-    return (
-      "int depth = get_call_stack_depth();",
-      "enter_try_state();",
-      "try {"
-      ) & indent_lines(body_code) & (
-      "  enter_copy_state();",
-      "  " & var_name & " = copy_obj(" & var_name & ");",
-      "  return_to_normal_state();",
-      "}",
-      "catch (...) {",
-      "  pop_try_mode_call_info(depth);",
-      "  abort_try_state();",
-      "  " & var_name & " = make_null_obj();",
-      "}"
-    );
-  }
-
-  String* compile_init_table_to_c(RelVar rel_var, Table table) {
-    fn_name = fn_names_by_arity[arity(table)];
-    return mk_call(fn_name, (rel_var));
-
-    [NzNat -> String] fn_names_by_arity = [
-      1 -> "unary_table_init",
-      2 -> "binary_table_init",
-      3 -> "ternary_table_init"
-    ];
-  }
+  //   return (
+  //     "int depth = get_call_stack_depth();",
+  //     "enter_try_state();",
+  //     "try {"
+  //     ) & indent_lines(body_code) & (
+  //     "  enter_copy_state();",
+  //     "  " & var_name & " = copy_obj(" & var_name & ");",
+  //     "  return_to_normal_state();",
+  //     "}",
+  //     "catch (...) {",
+  //     "  pop_try_mode_call_info(depth);",
+  //     "  abort_try_state();",
+  //     "  " & var_name & " = make_null_obj();",
+  //     "}"
+  //   );
+  // }
 
 
-  String* compile_cleanup_table_to_c(RelVar rel_var, Table table) {
-    fn_name = fn_names_by_arity[arity(table)];
-    return mk_call(fn_name, (rel_var));
+  // String* compile_init_table_to_c(RelVar rel_var, Table table) {
+  //   fn_name = fn_names_by_arity[arity(table)];
+  //   return mk_call(fn_name, (rel_var));
 
-    [NzNat -> String] fn_names_by_arity = [
-      1 -> "unary_table_cleanup",
-      2 -> "binary_table_cleanup",
-      3 -> "ternary_table_cleanup"
-    ];
-  }
-
-
-  String* compile_move_forward_to_c(<SeqItVar, SetItVar, BinRelItVar, TernRelItVar> it_var) =
-    mk_call("move_forward", (it_var));
+  //   [NzNat -> String] fn_names_by_arity = [
+  //     1 -> "unary_table_init",
+  //     2 -> "binary_table_init",
+  //     3 -> "ternary_table_init"
+  //   ];
+  // }
 
 
-  String* compile_move_forward_to_c(TableItVar var) {
-    fn_name = fn_names_by_arity[var.arity];
-    return mk_call(fn_name, (var));
+  // String* compile_cleanup_table_to_c(RelVar rel_var, Table table) {
+  //   fn_name = fn_names_by_arity[arity(table)];
+  //   return mk_call(fn_name, (rel_var));
 
-    [NzNat -> String] fn_names_by_arity = [
-      1 -> "unary_table_iter_next",
-      2 -> "binary_table_iter_next",
-      3 -> "ternary_table_iter_next"
-    ];
-  }
-
-
-  String* compile_queue_deletes_to_c(RelVar rel_var, Maybe[IntVar]+ args) {
-    fn_name = fn_names_by_args[(a != nothing : a <- args)];
-    table_arg_str = "&" & to_c_var_ref_name(rel_var);
-    updates_arg_str = "&" & pending_updates_var_ref_name(rel_var);
-    return (mk_gen_call(fn_name, (table_arg_str, updates_arg_str), (value(a) : a <- args, a != nothing), ()));
-
-    [Bool+ -> String] fn_names_by_args = [
-      (true)                  -> "unary_table_delete",
-      (false)                 -> "unary_table_clear",
-      (true,  true)           -> "binary_table_delete",
-      (true,  false)          -> "binary_table_delete_by_col_0",
-      (false, true)           -> "binary_table_delete_by_col_1",
-      (false, false)          -> "binary_table_clear",
-      (true,  true,  true)    -> "ternary_table_delete",
-      (true,  true,  false)   -> "ternary_table_delete_by_cols_01",
-      (true,  false, true)    -> "ternary_table_delete_by_cols_02",
-      (false, true,  true)    -> "ternary_table_delete_by_cols_12",
-      (true,  false, false)   -> "ternary_table_delete_by_col_0",
-      (false, true,  false)   -> "ternary_table_delete_by_col_1",
-      (false, false, true)    -> "ternary_table_delete_by_col_2",
-      (false, false, false)   -> "ternary_table_clear"
-    ];
-  }
+  //   [NzNat -> String] fn_names_by_arity = [
+  //     1 -> "unary_table_cleanup",
+  //     2 -> "binary_table_cleanup",
+  //     3 -> "ternary_table_cleanup"
+  //   ];
+  // }
 
 
-  String* compile_queue_insert_tuple_to_c(RelVar rel_var, IntVar+ tuple) {
-    fn_name = fn_names_by_arity[|tuple|];
-    return (mk_gen_call(fn_name, ("&" & pending_updates_var_ref_name(rel_var)), tuple, ()));
+  // String* compile_queue_deletes_to_c(RelVar rel_var, Maybe[IntVar]+ args) {
+  //   fn_name = fn_names_by_args[(a != nothing : a <- args)];
+  //   table_arg_str = "&" & to_c_var_ref_name(rel_var);
+  //   updates_arg_str = "&" & pending_updates_var_ref_name(rel_var);
+  //   return (mk_gen_call(fn_name, (table_arg_str, updates_arg_str), (value(a) : a <- args, a != nothing), ()));
 
-    [NzNat -> String] fn_names_by_arity = [
-      1 -> "unary_table_insert",
-      2 -> "binary_table_insert",
-      3 -> "ternary_table_insert"
-    ];
-  }
+  //   [Bool+ -> String] fn_names_by_args = [
+  //     (true)                  -> "unary_table_delete",
+  //     (false)                 -> "unary_table_clear",
+  //     (true,  true)           -> "binary_table_delete",
+  //     (true,  false)          -> "binary_table_delete_by_col_0",
+  //     (false, true)           -> "binary_table_delete_by_col_1",
+  //     (false, false)          -> "binary_table_clear",
+  //     (true,  true,  true)    -> "ternary_table_delete",
+  //     (true,  true,  false)   -> "ternary_table_delete_by_cols_01",
+  //     (true,  false, true)    -> "ternary_table_delete_by_cols_02",
+  //     (false, true,  true)    -> "ternary_table_delete_by_cols_12",
+  //     (true,  false, false)   -> "ternary_table_delete_by_col_0",
+  //     (false, true,  false)   -> "ternary_table_delete_by_col_1",
+  //     (false, false, true)    -> "ternary_table_delete_by_col_2",
+  //     (false, false, false)   -> "ternary_table_clear"
+  //   ];
+  // }
 
 
-  String* compile_get_table_iter_to_c(TableItVar it_var, AnyRelVar table, Maybe[IntVar]+ args) {
-    fn_name = fn_names_by_args[(a != nothing : a <- args)];
-    return mk_call(fn_name, (table, it_var) & (value(a) : a <- args, a != nothing));
+  // String* compile_queue_insert_tuple_to_c(RelVar rel_var, IntVar+ tuple) {
+  //   fn_name = fn_names_by_arity[|tuple|];
+  //   return (mk_gen_call(fn_name, ("&" & pending_updates_var_ref_name(rel_var)), tuple, ()));
 
-    [Bool+ -> String] fn_names_by_args = [
-      (false)                 -> "unary_table_get_iter",
-      (true,  false)          -> "binary_table_get_iter_by_col_0",
-      (false, true)           -> "binary_table_get_iter_by_col_1",
-      (false, false)          -> "binary_table_get_iter",
-      (true,  true,  false)   -> "ternary_table_get_iter_by_cols_01",
-      (true,  false, true)    -> "ternary_table_get_iter_by_cols_02",
-      (false, true,  true)    -> "ternary_table_get_iter_by_cols_12",
-      (true,  false, false)   -> "ternary_table_get_iter_by_col_0",
-      (false, true,  false)   -> "ternary_table_get_iter_by_col_1",
-      (false, false, true)    -> "ternary_table_get_iter_by_col_2",
-      (false, false, false)   -> "ternary_table_get_iter"
-    ];
-  }
+  //   [NzNat -> String] fn_names_by_arity = [
+  //     1 -> "unary_table_insert",
+  //     2 -> "binary_table_insert",
+  //     3 -> "ternary_table_insert"
+  //   ];
+  // }
+
+
+  // String* compile_get_table_iter_to_c(TableItVar it_var, AnyRelVar table, Maybe[IntVar]+ args) {
+  //   fn_name = fn_names_by_args[(a != nothing : a <- args)];
+  //   return mk_call(fn_name, (table, it_var) & (value(a) : a <- args, a != nothing));
+
+  //   [Bool+ -> String] fn_names_by_args = [
+  //     (false)                 -> "unary_table_get_iter",
+  //     (true,  false)          -> "binary_table_get_iter_by_col_0",
+  //     (false, true)           -> "binary_table_get_iter_by_col_1",
+  //     (false, false)          -> "binary_table_get_iter",
+  //     (true,  true,  false)   -> "ternary_table_get_iter_by_cols_01",
+  //     (true,  false, true)    -> "ternary_table_get_iter_by_cols_02",
+  //     (false, true,  true)    -> "ternary_table_get_iter_by_cols_12",
+  //     (true,  false, false)   -> "ternary_table_get_iter_by_col_0",
+  //     (false, true,  false)   -> "ternary_table_get_iter_by_col_1",
+  //     (false, false, true)    -> "ternary_table_get_iter_by_col_2",
+  //     (false, false, false)   -> "ternary_table_get_iter"
+  //   ];
+  // }
 
 
   String* compile_repeat_to_c(Instr+ body, Maybe[Nat] block_id) {
@@ -697,66 +668,66 @@ implicit {
   }
 
 
-  String compile_init_db_to_c(AnyDBVar db_var, LocDBVar* links, DBSymbol type) {
-    links_args = ("&" & to_c_var_ref_name(l) : l <- links);
-    return mk_gen_call(init_method_name(type), ("&" & to_c_var_ref_name(db_var)) & links_args & ("env"));
-  }
+  // String compile_init_db_to_c(AnyDBVar db_var, LocDBVar* links, DBSymbol type) {
+  //   links_args = ("&" & to_c_var_ref_name(l) : l <- links);
+  //   return mk_gen_call(init_method_name(type), ("&" & to_c_var_ref_name(db_var)) & links_args & ("env"));
+  // }
 
 
-  String compile_cleanup_db_to_c(AnyDBVar db_var, DBSymbol type) =
-    mk_gen_call(cleanup_method_name(type), ("&" & to_c_var_ref_name(db_var)));
+  // String compile_cleanup_db_to_c(AnyDBVar db_var, DBSymbol type) =
+  //   mk_gen_call(cleanup_method_name(type), ("&" & to_c_var_ref_name(db_var)));
 
 
-  String compile_send_msg_to_c(AnyDBVar db_var, DBSymbol type, AtomicExpr msg, Bool is_root, Maybe[BoolVar] maybe_res_var) {
-    if is_root:
-      name_str = update_entry_point_name(type);
-      db_var_str = "&" & to_c_var_ref_name(db_var);
-      return if maybe_res_var == nothing
-        then mk_gen_call(name_str, (db_var_str), (msg), ("env"))
-        else mk_gen_call(value(maybe_res_var), name_str, (db_var_str), (msg), ("env"));
-    else
-      assert db_var :: NestedDBVar;
-      fail if not db_var :: NestedDBVar;
-      name_str = update_name(type, main_handler);
-      db_var_str = "&" & to_c_var_ref_name(db_var);
-      aux_db_var_str = aux_struct_var_ref_name(db_var);
-      return mk_gen_call(name_str, (db_var_str, aux_db_var_str), (msg), ("env")) & " /" & "/ HEREHEREHERE";
+  // String compile_send_msg_to_c(AnyDBVar db_var, DBSymbol type, AtomicExpr msg, Bool is_root, Maybe[BoolVar] maybe_res_var) {
+  //   if is_root:
+  //     name_str = update_entry_point_name(type);
+  //     db_var_str = "&" & to_c_var_ref_name(db_var);
+  //     return if maybe_res_var == nothing
+  //       then mk_gen_call(name_str, (db_var_str), (msg), ("env"))
+  //       else mk_gen_call(value(maybe_res_var), name_str, (db_var_str), (msg), ("env"));
+  //   else
+  //     assert db_var :: NestedDBVar;
+  //     fail if not db_var :: NestedDBVar;
+  //     name_str = update_name(type, main_handler);
+  //     db_var_str = "&" & to_c_var_ref_name(db_var);
+  //     aux_db_var_str = aux_struct_var_ref_name(db_var);
+  //     return mk_gen_call(name_str, (db_var_str, aux_db_var_str), (msg), ("env")) & " /" & "/ HEREHEREHERE";
 
-    ;
-  }
-
-
-  String compile_try_update_to_c(DBSymbol type, UpdateId id, AtomicExpr* args) =
-    mk_gen_call(update_name(type, id), ("self, self_aux"), args, ("env"));
+  //   ;
+  // }
 
 
-  String compile_set_state_to_c(AtomicExpr state, AnyDBVar db_var, DBSymbol type, Maybe[BoolVar] maybe_res_var) {
-    if maybe_res_var != nothing:
-      proc_name_str = set_state_entry_point_name(type);
-      db_var_str = "&" & to_c_var_ref_name(db_var);
-      return mk_gen_call(value(maybe_res_var), proc_name_str, (db_var_str), (state), ());
-    else
-      fail if not db_var :: NestedDBVar; ## BAD BAD BAD: CHANGE THE DEFINITION OF set_state()
-      proc_name_str = set_state_proc_name(type);
-      self_and_aux_vars = ("&" & to_c_var_ref_name(db_var), aux_struct_var_ref_name(db_var));
-      return mk_gen_call(proc_name_str, self_and_aux_vars, (state), ());
-    ;
-  }
+  // String compile_try_update_to_c(DBSymbol type, UpdateId id, AtomicExpr* args) =
+  //   mk_gen_call(update_name(type, id), ("self, self_aux"), args, ("env"));
 
 
-  String compile_invoke_method_to_c(WriteObjVar res_var, Maybe[<AnyAutoVar, AnyDBVar>] maybe_target_var,
-    <AutoSymbol, DBSymbol> type, MethodId id, AtomicExpr* args) {
-    name_str = user_def_method_name(type, id);
-    target_var_str = if maybe_target_var != nothing then "&" & to_c_var_ref_name(value(maybe_target_var)) else "self";
-    return mk_gen_call(res_var, name_str, (target_var_str), args, ("env"));
-  }
+  // String compile_set_state_to_c(AtomicExpr state, AnyDBVar db_var, DBSymbol type, Maybe[BoolVar] maybe_res_var) {
+  //   if maybe_res_var != nothing:
+  //     proc_name_str = set_state_entry_point_name(type);
+  //     db_var_str = "&" & to_c_var_ref_name(db_var);
+  //     return mk_gen_call(value(maybe_res_var), proc_name_str, (db_var_str), (state), ());
+  //   else
+  //     fail if not db_var :: NestedDBVar; ## BAD BAD BAD: CHANGE THE DEFINITION OF set_state()
+  //     proc_name_str = set_state_proc_name(type);
+  //     self_and_aux_vars = ("&" & to_c_var_ref_name(db_var), aux_struct_var_ref_name(db_var));
+  //     return mk_gen_call(proc_name_str, self_and_aux_vars, (state), ());
+  //   ;
+  // }
+
+
+  // String compile_invoke_method_to_c(WriteObjVar res_var, Maybe[<AnyAutoVar, AnyDBVar>] maybe_target_var,
+  //   <AutoSymbol, DBSymbol> type, MethodId id, AtomicExpr* args) {
+  //   name_str = user_def_method_name(type, id);
+  //   target_var_str = if maybe_target_var != nothing then "&" & to_c_var_ref_name(value(maybe_target_var)) else "self";
+  //   return mk_gen_call(res_var, name_str, (target_var_str), args, ("env"));
+  // }
 
 
   String* gen_cache_clearing_code(ImplArg arg) {
     code = ();
     for fn_id <- rand_sort(lookup(cached_semi_consts_by_impl_arg, arg, [])):
       cache_var_name = to_c_memo_var_name(fn_id);
-      code = (code | "release(env." & cache_var_name & ");", "env." & cache_var_name & " = make_blank_obj();");
+      code = (code | "env." & cache_var_name & " = BlankObj.Singleton();");
     ;
     return code;
   }
@@ -768,10 +739,10 @@ implicit {
     mk_assignment(var, value) & gen_cache_clearing_code(var);
 
 
-  String* compile_auto_update_node_to_c(AutoSymbol type, BlockNodeId node, Maybe[IntVar] maybe_time_var) {
-    time_arg = if maybe_time_var != nothing then ", " & to_c_var_ref_name(value(maybe_time_var)) else "";
-    return (node_update_method_name(type, node) & "(self" & time_arg & ", self_aux, env);");
-  }
+  // String* compile_auto_update_node_to_c(AutoSymbol type, BlockNodeId node, Maybe[IntVar] maybe_time_var) {
+  //   time_arg = if maybe_time_var != nothing then ", " & to_c_var_ref_name(value(maybe_time_var)) else "";
+  //   return (node_update_method_name(type, node) & "(self" & time_arg & ", self_aux, env);");
+  // }
 
 
   ## BUG BUG BUG: IF THERE IS INSIDE ONE OF THE CASES A BREAK STATEMENT MEANT TO
@@ -789,8 +760,8 @@ implicit {
   ## TERMIMATE AN OUTER LOOP, THAT BREAK WILL TERMINATE THE SWITCH/CASE INSTEAD.
   String* compile_symb_switch_to_c(ObjExpr value, [+([+SymbObj], Instr+)] cases, Instr* else, Maybe[Nat] block_id) {
     value_str = match (value)
-      get_tag(tag_obj?)   = "get_tag_idx(" & to_c_expr(tag_obj) & ")",
-      _                   = "get_symb_idx(" & to_c_expr(value) & ")";
+      get_tag(tag_obj?)   = to_c_expr(tag_obj) & ".GetTagId()",
+      _                   = to_c_expr(value) & ".GetSymbId())";
 
     body_code = (
       ("" if i > 0) &
@@ -804,77 +775,77 @@ implicit {
   }
 
 
-  String* compile_auto_apply_to_c(Maybe[AnyAutoVar] var, AutoSymbol type) {
-    var_str = if var != nothing then "&" & to_c_var_ref_name(value(var)) else "self";
-    name_str = apply_method_name(type);
-    return (mk_gen_call(name_str, (var_str), (), ("env")));
-  }
+  // String* compile_auto_apply_to_c(Maybe[AnyAutoVar] var, AutoSymbol type) {
+  //   var_str = if var != nothing then "&" & to_c_var_ref_name(value(var)) else "self";
+  //   name_str = apply_method_name(type);
+  //   return (mk_gen_call(name_str, (var_str), (), ("env")));
+  // }
 
 
   String* compile_to_c(RefObjExpr expr, WriteObjVar var) =
-    mk_set_from_stream()        = mk_call(var, "build_set",           (expr.stream)),
-    mk_set()                    = mk_call(var, "build_set",           (expr.elems, expr.size)),
-    mk_seq_from_stream()        = mk_call(var, "build_seq",           (expr.stream)),
-    mk_seq()                    = mk_call(var, "build_seq",           (expr.elems, expr.size)),
+    mk_set_from_stream()        = native_static_call(var, "build_set",           (expr.stream)),
+    mk_set()                    = native_static_call(var, "build_set",           (expr.elems, expr.size)),
+    mk_seq_from_stream()        = native_static_call(var, "build_seq",           (expr.stream)),
+    mk_seq()                    = native_static_call(var, "build_seq",           (expr.elems, expr.size)),
     build_const_int_seq()       = compile_build_const_int_seq_to_c(expr.seq_id, var),
-    mk_map_from_streams()       = mk_call(var, "build_map",           (expr.key_stream, expr.value_stream)),
-    mk_map()                    = mk_call(var, "build_map",           (expr.keys, expr.values, expr.size)),
-    mk_bin_rel_from_streams()   = mk_call(var, "build_bin_rel",       expr.streams),
-    mk_bin_rel()                = mk_call(var, "build_bin_rel",       (expr.cols | expr.size)),
-    mk_tern_rel_from_streams()  = mk_call(var, "build_tern_rel",      expr.streams),
-    mk_tern_rel()               = mk_call(var, "build_tern_rel",      (expr.cols | expr.size)),
-    mk_tagged_obj()             = mk_call(var, "build_tagged_obj",    (expr.tag, expr.obj)),
-    mk_array()                  = mk_call(var, "blank_array",         (expr.size)),
-    get_seq_slice()             = mk_call(var, "get_seq_slice",       (expr.seq, expr.idx_first, expr.len)),
-    append_to_seq()             = mk_call(var, "append_to_seq",       (expr.seq, expr.new_elem)),
-    update_seq_at()             = mk_call(var, "update_seq_at",       (expr.seq, expr.idx, expr.value)),
-    join_seqs()                 = mk_call(var, "join_seqs",           (expr.left, expr.right)),
-    rev_seq()                   = mk_call(var, "rev_seq",             (expr.seq)),
-    internal_sort()             = mk_call(var, "internal_sort",       (expr.set)),
-    symb_to_str(e?)             = mk_call(var, "to_str",              (e)),
-    parse_value()               = mk_call(var, "parse_value",         (expr.value)),
-    print_value()               = mk_call(var, "print_value",         (expr.value)),
+    mk_map_from_streams()       = native_static_call(var, "build_map",           (expr.key_stream, expr.value_stream)),
+    mk_map()                    = native_static_call(var, "build_map",           (expr.keys, expr.values, expr.size)),
+    mk_bin_rel_from_streams()   = native_static_call(var, "build_bin_rel",       expr.streams),
+    mk_bin_rel()                = native_static_call(var, "build_bin_rel",       (expr.cols | expr.size)),
+    mk_tern_rel_from_streams()  = native_static_call(var, "build_tern_rel",      expr.streams),
+    mk_tern_rel()               = native_static_call(var, "build_tern_rel",      (expr.cols | expr.size)),
+    mk_tagged_obj()             = native_static_call(var, "build_tagged_obj",    (expr.tag, expr.obj)),
+    mk_array()                  = native_static_call(var, "blank_array",         (expr.size)),
+    get_seq_slice()             = native_static_call(var, "get_seq_slice",       (expr.seq, expr.idx_first, expr.len)),
+    append_to_seq()             = native_static_call(var, "append_to_seq",       (expr.seq, expr.new_elem)),
+    update_seq_at()             = native_static_call(var, "update_seq_at",       (expr.seq, expr.idx, expr.value)),
+    join_seqs()                 = native_static_call(var, "join_seqs",           (expr.left, expr.right)),
+    rev_seq()                   = native_static_call(var, "rev_seq",             (expr.seq)),
+    internal_sort()             = native_static_call(var, "internal_sort",       (expr.set)),
+    symb_to_str(e?)             = native_static_call(var, "to_str",              (e)),
+    parse_value()               = native_static_call(var, "parse_value",         (expr.value)),
+    print_value()               = native_static_call(var, "print_value",         (expr.value));
 
-    copy_state()                = (compile_copy_state_to_c(var, expr.var, expr.type)),
-    copy_table()                = compile_copy_table_to_c(var, expr.relvar, expr.table, expr.perm),
+    // copy_state()                = (compile_copy_state_to_c(var, expr.var, expr.type)),
+    // copy_table()                = compile_copy_table_to_c(var, expr.relvar, expr.table, expr.perm),
 
-    copy_persistent_state()     = (compile_copy_persistent_state_to_c(var, expr.var, expr.type)),
+    // copy_persistent_state()     = (compile_copy_persistent_state_to_c(var, expr.var, expr.type)),
 
-    lookup_surrogate()          = mk_call(var, "lookup_surrogate",    (expr.store, expr.surrogate)),
-    read_pending_var(v?)        = (to_c_var_ref_name(var) & " = " & to_c_var_ref_name(v) & ";");
+    // lookup_surrogate()          = mk_call(var, "lookup_surrogate",    (expr.store, expr.surrogate)),
+    // read_pending_var(v?)        = (to_c_var_ref_name(var) & " = " & to_c_var_ref_name(v) & ";");
 
 
-  String compile_copy_state_to_c(WriteObjVar res_var, AnyDBVar db_var, DBSymbol type) {
-    proc_name_str = copy_state_proc_name(type);
-    db_var_str = "&" & to_c_var_ref_name(db_var);
-    return mk_gen_call(res_var, proc_name_str, (db_var_str), (), ());
-  }
+  // String compile_copy_state_to_c(WriteObjVar res_var, AnyDBVar db_var, DBSymbol type) {
+  //   proc_name_str = copy_state_proc_name(type);
+  //   db_var_str = "&" & to_c_var_ref_name(db_var);
+  //   return mk_gen_call(res_var, proc_name_str, (db_var_str), (), ());
+  // }
 
 
   ## BAD: IT'S EXACTLY THE SAME AS THE ABOVE FUNCTIONS, BUT THE TYPECHECKER...
-  String compile_copy_persistent_state_to_c(WriteObjVar res_var, AnyAutoVar auto_var, AutoSymbol type) {
-    proc_name_str = copy_state_proc_name(type);
-    auto_var_str = "&" & to_c_var_ref_name(auto_var);
-    return mk_gen_call(res_var, proc_name_str, (auto_var_str), (), ());
-  }
+  // String compile_copy_persistent_state_to_c(WriteObjVar res_var, AnyAutoVar auto_var, AutoSymbol type) {
+  //   proc_name_str = copy_state_proc_name(type);
+  //   auto_var_str = "&" & to_c_var_ref_name(auto_var);
+  //   return mk_gen_call(res_var, proc_name_str, (auto_var_str), (), ());
+  // }
 
 
-  String* compile_copy_table_to_c(WriteObjVar res_var, RelVar relvar, Table table, Nat+ perm) {
-    fn_name = fn_names[arity(table)];
-    perm_args = match (perm)
-      (_)       = (),
-      (0, 1)    = (false),
-      (1, 0)    = (true),
-      (_, _, _) = perm;
-    args = (relvar) & table.value_stores & perm_args;
-    return mk_call(res_var, fn_name, args);
+  // String* compile_copy_table_to_c(WriteObjVar res_var, RelVar relvar, Table table, Nat+ perm) {
+  //   fn_name = fn_names[arity(table)];
+  //   perm_args = match (perm)
+  //     (_)       = (),
+  //     (0, 1)    = (false),
+  //     (1, 0)    = (true),
+  //     (_, _, _) = perm;
+  //   args = (relvar) & table.value_stores & perm_args;
+  //   return mk_call(res_var, fn_name, args);
 
-    [NzNat -> String] fn_names = [
-      1 -> "copy_unary_table",
-      2 -> "copy_binary_table",
-      3 -> "copy_ternary_table"
-    ];
-  }
+  //   [NzNat -> String] fn_names = [
+  //     1 -> "copy_unary_table",
+  //     2 -> "copy_binary_table",
+  //     3 -> "copy_ternary_table"
+  //   ];
+  // }
 
 
   String* compile_build_const_int_seq_to_c(Nat seq_id, ObjVar var) {
@@ -999,8 +970,8 @@ implicit {
 
   String mk_gen_call(String fn_name, String* params) = mk_gen_call(fn_name, params, (), ());
 
-  String* mk_call(String fn_name, FnCallParam* params)             = (mk_gen_call(fn_name, (), params, ()));
-  String* mk_call(AnyVar var, String fn_name, FnCallParam* params) = (mk_gen_call(var, fn_name, (), params, ()));
+  // String* mk_call(String fn_name, FnCallParam* params)             = (mk_gen_call(fn_name, (), params, ()));
+  // String* mk_call(AnyVar var, String fn_name, FnCallParam* params) = (mk_gen_call(var, fn_name, (), params, ()));
 
   String* mk_fn_call(String fn_name, FnCallParam* params)             = (mk_gen_call(fn_name, (), params, ("env")));
   String* mk_fn_call(AnyVar var, String fn_name, FnCallParam* params) = (mk_gen_call(var, fn_name, (), params, ("env")));
@@ -1018,60 +989,49 @@ implicit {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+String* native_method_call(FnCallParam target, String method_name, FnCallParam* args) = undefined;
+String* native_method_call(AnyVar res, FnCallParam target, String method_name, FnCallParam* args) = undefined;
+
+String* native_static_call(String static_name, FnCallParam* args) = undefined;
+String* native_static_call(AnyVar res, String static_name, FnCallParam* args) = undefined;
+
+## // type AnyVar         = ObjVar, VecVar, BoolVar, IntVar, ItVar, StreamVar;
+##
+## // to_c_var_name(instr.stream) & ".Add(" & to_c_expr(instr.obj) & ");",
+##   // String to_c_arg(FnCallParam arg) {
+##   //   by_ref = arg :: <TableItVar, AnyRelVar>;
+##   //   return {if by_ref then "&" else ""} & to_c_expr(arg);
+##   // }
+##
+##   // String mk_gen_call(String fn_name, String* leading_params, FnCallParam* params, String* trailing_params) =
+##   //   fn_name & "(" & append(leading_params & (to_c_arg(p) : p <- params) & trailing_params, ", ") & ");";
+
+////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-String* runtime_callbacks(Nat symbs_count) = (
-  "",
-  "const char *symb_repr(uint16 idx) {",
-  "  return generated::map_symb_to_str[idx];",
-  "}",
-  "",
-  "uint32 embedded_symbs_count() {",
-  "  return " & printed(symbs_count) & ";",
-  "}"
-);
+String* runtime_callbacks(Nat symbs_count) = ();
+// String* runtime_callbacks(Nat symbs_count) = (
+//   "",
+//   "const char *symb_repr(uint16 idx) {",
+//   "  return generated::map_symb_to_str[idx];",
+//   "}",
+//   "",
+//   "uint32 embedded_symbs_count() {",
+//   "  return " & printed(symbs_count) & ";",
+//   "}"
+// );
 
 
 String* c_main_fn = (
   "",
-  "#include <stdio.h>",
   "",
-  "",
-  "int main(int argc, char **argv) {",
-  "  OBJ args = make_empty_seq();",
-  "  if (argc > 1) {",
-  "    OBJ *arg_buff = new OBJ[argc-1];",
-  "    for (int i=0 ; i < argc-1 ; i++)",
-  "      arg_buff[i] = str_to_obj(argv[i+1]);",
-  "    args = build_seq(arg_buff, argc-1);",
-  "  }",
-  "",
-  "  generated::ENV env;",
-  "  memset(&env, 0, sizeof(generated::ENV));",
-  "",
-  "  OBJ res = Main_P(args, env);",
-  "",
-  "  release(args);",
-  "  release(res);",
-  "",
-  "  release_all_cached_objs();",
-  "",
-  "#ifndef NDEBUG",
-  "  if (get_live_objs_count() != 0) {",
-  "    fprintf(stderr, \"\\nMEMORY LEAK DETECTED!\\n\");",
-  "",
-  "    fprintf(stderr, \"\\nNumber of live objects: %d\\n\", get_live_objs_count());",
-  "    fprintf(stderr, \"Max number of live objects: %d\\n\", get_max_live_objs_count());",
-  "    fprintf(stderr, \"Total number of allocated objects: %d\\n\", get_total_objs_count());",
-  "",
-  "    // fprintf(stderr, \"\\nLive memory usage: %d\\n\", get_live_mem_usage());",
-  "    // fprintf(stderr, \"Max live memory usage: %d\\n\", get_max_live_mem_usage());",
-  "    // fprintf(stderr, \"Total memory requested: %d\\n\", get_total_mem_requested());",
-  "",
-  "    // print_all_live_objs();",
-  "  }",
-  "#endif",
-  "",
-  "  return is_int(res) ? get_int_val(res) : 0;",
-  "}"
+  "  static int Main(string[] args) {",
+  "    Obj cell_args = new Obj[args.Length];",
+  "    for (int i=0 ; i < args.Length ; i++)",
+  "      cell_args[i] = Utils.StrToObj(args[i]);",
+  "    Env env = new Env();",
+  "    Obj res = Main_P(cell_args, env);",
+  "    return res.IsInt() ? res.GetInt() : 0;",
+  "  }"
 );
