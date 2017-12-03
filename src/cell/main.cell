@@ -1,0 +1,14 @@
+type EnvVar       = StdVar, FnArg, ImplArg, SignalVar;
+type Context      = Function, Procedure, Automaton, Database;
+
+
+implicit typedefs : [TypeName -> NeType] {
+  Bool are_ptype_disjoint(Type t1, Type t2) =
+    t1 == empty_type or t2 == empty_type or
+    are_disjoint(pseudotype(t1, typedefs), pseudotype(t2, typedefs));
+}
+
+
+Main(String* args) {
+  Print("Hello world!");
+}
