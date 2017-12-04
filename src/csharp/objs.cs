@@ -41,11 +41,26 @@ namespace CellLang {
     public virtual int    GetSize()                               {throw new InvalidOperationException();}
     public virtual Obj    GetItem(long i)                         {throw new InvalidOperationException();}
     public virtual int    GetTagId()                              {throw new InvalidOperationException();}
+    public virtual Obj    GetTag()                                {throw new InvalidOperationException();}
     public virtual Obj    GetInnerObj()                           {throw new InvalidOperationException();}
 
     public virtual SeqOrSetIter GetSeqOrSetIter()                 {throw new InvalidOperationException();}
     public virtual BinRelIter   GetBinRelIter()                   {throw new InvalidOperationException();}
     public virtual TernRelIter  GetTernRelIter()                  {throw new InvalidOperationException();}
+
+    //## IMPLEMENT
+    // Copy-on-write update
+    public virtual Obj SetItem(long i, Obj v)                     {throw new InvalidOperationException();}
+
+    public virtual Obj Negate()                                   {throw new InvalidOperationException();}
+    public virtual Obj InternalSort()                             {throw new InvalidOperationException();}
+    public virtual Obj GetSlice(long first, long len)             {throw new InvalidOperationException();}
+    public virtual Obj Reverse()                                  {throw new InvalidOperationException();}
+    public virtual Obj TextRepr()                                 {throw new InvalidOperationException();}
+
+    public virtual BinRelIter GetBinRelIter0(Obj obj)             {throw new InvalidOperationException();}
+    public virtual BinRelIter GetBinRelIter1(Obj obj)             {throw new InvalidOperationException();}
+
 
     public virtual Obj Lookup(Obj key)                            {throw new InvalidOperationException();}
     public virtual Obj LookupField(int id)                        {throw new InvalidOperationException();}
@@ -78,6 +93,15 @@ namespace CellLang {
     protected abstract int TypeId();
     protected abstract int InternalCmp(Obj o);
   }
+
+
+//  class NullObj : Obj {
+//    static NullObj singleton = new NullObj();
+//
+//    public static NullObj Singleton() {
+//      return singleton;
+//    }
+//  }
 
 
   class SymbObj : Obj {
@@ -243,6 +267,12 @@ namespace CellLang {
     }
 
     protected abstract int Offset();
+
+    static Obj emptySeq = new MasterSeqObj(new Obj[] {});
+
+    public static Obj Empty() {
+      return emptySeq;
+    }
   }
 
 
@@ -254,6 +284,10 @@ namespace CellLang {
     }
 
     public MasterSeqObj(Obj[] items) : this(items, items.Length) {
+
+    }
+
+    public MasterSeqObj(long length) : base(new Obj[length], (int)length) {
 
     }
 
@@ -686,12 +720,21 @@ namespace CellLang {
       this.obj = obj;
     }
 
+    public TaggedObj(Obj tag, Obj obj) {
+      this.tag = tag.GetSymbId();
+      this.obj = obj;
+    }
+
     override public bool IsTagged() {
       return true;
     }
 
     override public int GetTagId() {
       return tag;
+    }
+
+    override public Obj GetTag() {
+      return new SymbObj(tag);
     }
 
     override public Obj GetInnerObj() {

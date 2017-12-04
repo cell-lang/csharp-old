@@ -12,30 +12,32 @@ String to_c_expr(NatObjOp expr) =
   at()                = to_c_expr(expr.seq)    & ".GetItem("     & to_c_expr(expr.idx) & ")",
   lookup()            = to_c_expr(expr.rel)    & ".Lookup("      & to_c_expr(expr.key) & ")",
   lookup_field()      = to_c_expr(expr.record) & ".LookupField(" & symb_idx_name(expr.field) & ")",
-  get_tag(e?)         = to_c_expr(e)           & ".GetTagId()",
+  get_tag(e?)         = to_c_expr(e)           & ".GetTag()",
   get_inner_obj(e?)   = to_c_expr(e)           & ".GetInnerObj()",
   obj_neg(e?)         = to_c_expr(e)           & ".Negate()",
   get_curr_obj(v?)    = to_c_var_ref_name(v)   & ".Get()",
   rand_elem(e?)       = to_c_expr(e)           & ".RandElem()",
-  bool_obj(e?)        = "new SymbObj(" & to_c_expr(e) & ")",
+  bool_obj(e?)        = "new SymbObj(" & to_c_expr(e, true) & " ? " & symb_idx_name(true) & " : " & symb_idx_name(false) & ")",
   int_obj(e?)         = "new IntObj("  & to_c_expr(e) & ")",
-  to_symb(e?)         = "new SymbObj(" & to_c_expr(e) & ")",
+  to_symb(e?)         = "Static.ParseSymb(" & to_c_expr(e) & ")",
   get_curr_arg()      = get_curr_arg_to_c_expr(expr.var, expr.arg);
 
+
+String unboxed_float(AtomicExpr e) = to_c_expr(e, true) & ".GetFloat()";
 
 String to_c_expr(FloatExpr expr) =
   float_lit()           = to_c_float_literal(expr),
   mk_float()            = "new FloatObj(" & printed(expr.mantissa) & "e" & printed(expr.dec_exp) & ")",
-  int_to_float(e?)      = "new FloatObj(" & to_c_expr(e) & ")",
-  neg_float(e?)         = to_c_expr(e) & ".Negate()",
-  add_floats(e1?, e2?)  = to_c_expr(e1) & ".Add(" & to_c_expr(e2) & ")",
-  sub_floats(e1?, e2?)  = to_c_expr(e1) & ".Subtract(" & to_c_expr(e2) & ")",
-  mult_floats(e1?, e2?) = to_c_expr(e1) & ".Multiply(" & to_c_expr(e2) & ")",
-  div_floats(e1?, e2?)  = to_c_expr(e1) & ".Divide(" & to_c_expr(e2) & ")",
-  exp_floats(e1?, e2?)  = to_c_expr(e1) & ".Exp(" & to_c_expr(e2) & ")",
-  square_root(e?)       = to_c_expr(e) & ".Sqrt()",
-  floor_op(e?)          = to_c_expr(e) & ".Floor()",
-  ceiling_op(e?)        = to_c_expr(e) & ".Celing()";
+  int_to_float(e?)      = "new FloatObj(" & to_c_expr(e, true) & ".GetInt())",
+  neg_float(e?)         = "new FloatObj(-" & unboxed_float(e) & ")",
+  add_floats(e1?, e2?)  = "new FloatObj(" & unboxed_float(e1) & " + " & unboxed_float(e2) & ")",
+  sub_floats(e1?, e2?)  = "new FloatObj(" & unboxed_float(e1) & " - " & unboxed_float(e2) & ")",
+  mult_floats(e1?, e2?) = "new FloatObj(" & unboxed_float(e1) & " * " & unboxed_float(e2) & ")",
+  div_floats(e1?, e2?)  = "new FloatObj(" & unboxed_float(e1) & " / " & unboxed_float(e2) & ")",
+  exp_floats(e1?, e2?)  = "new FloatObj(Math.Pow(" & unboxed_float(e1) & ", " & unboxed_float(e2) & "))",
+  square_root(e?)       = "new FloatObj(Math.Sqrt(" & unboxed_float(e) & "))",
+  floor_op(e?)          = undefined,
+  ceiling_op(e?)        = undefined;
 
 
 String to_c_float_literal(FloatLit literal) {
@@ -82,7 +84,7 @@ String to_c_expr(BoolExpr expr, Bool parentesised) {
     is_eq_bool()          = to_nary_op(" == ", (expr.expr1, expr.expr2), parentesised),
     is_eq_int()           = to_nary_op(" == ", (expr.expr1, expr.expr2), parentesised),
 
-    is_eq()               = to_c_expr(expr.expr1) & ".IsEq" & to_c_expr(expr.expr2) & ")",
+    is_eq()               = to_c_expr(expr.expr1) & ".IsEq(" & to_c_expr(expr.expr2) & ")",
 
     // is_gt()               = to_nary_op(" > ",  (expr.expr1, expr.expr2), parentesised),
     // is_ge()               = to_nary_op(" >= ", (expr.expr1, expr.expr2), parentesised),
@@ -177,13 +179,13 @@ String to_c_expr(NatIntOp expr, Bool parentesised) =
   float_bits(e?)        = to_c_expr(e) & ".FloatBits()",
   mantissa(e?)          = to_c_expr(e) & ".Mantissa()",
   dec_exp(e?)           = to_c_expr(e) & ".DecExp()",
-  rand_nat(e?)          = "Utils.RandNat(" & to_c_expr(e) & ")",
+  rand_nat(e?)          = "Static.RandNat(" & to_c_expr(e) & ")",
   // lookup_value()        = "lookup_value(" & to_c_expr(expr.store) & ", " & to_c_expr(expr.value) & ")",
   // lookup_value_ex()     = "lookup_value_ex(" & to_c_expr(expr.store) & ", " &
   //                           aux_struct_var_ref_name(expr.store) & ", " & to_c_expr(expr.value) & ")",
   // get_tuple_field()     = get_tuple_field_to_c_expr(expr.iter, expr.field),
-  unique_nat            = "Utils.UniqueNat()",
-  ticks                 = "Utils.GetTickCount()";
+  unique_nat            = "Static.UniqueNat()",
+  ticks                 = "Static.GetTickCount()";
 
 
 String get_tuple_field_to_c_expr(TableItVar var, Nat field) {

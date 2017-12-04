@@ -1,5 +1,106 @@
 using System;
 using System.Collections.Generic;
+
+
+namespace CellLang {
+  public static class Static {
+    public static void Fail() {
+      throw new InvalidOperationException();
+    }
+
+    public static Obj CreateSet(List<Obj> os) {
+      return null;
+    }
+
+    public static Obj CreateSet(Obj[] os, long n) {
+      return null;
+    }
+
+    public static Obj CreateSeq(List<Obj> os) {
+      return null;
+    }
+
+    public static Obj CreateSeq(Obj[] os, long n) {
+      return null;
+    }
+
+    public static Obj CreateMap(List<Obj> ks, List<Obj> vs) {
+      return null;
+    }
+
+    public static Obj CreateMap(Obj[] ks, Obj[] vs, int n) {
+      return null;
+    }
+
+    public static Obj CreateBinRel(List<Obj> c1, List<Obj> c2) {
+      return null;
+    }
+
+    public static Obj CreateBinRel(Obj[] c1, Obj[] c2, int n) {
+      return null;
+    }
+
+    public static Obj CreateTernRel(List<Obj> c1, List<Obj> c2, List<Obj> c3) {
+      return null;
+    }
+
+    public static Obj CreateTernRel(Obj[] c1, Obj[] c2, Obj[] c3) {
+      return null;
+    }
+
+    public static Obj Parse(Obj text) {
+      return null;
+    }
+
+    public static Obj BuildConstIntSeq(byte[] vals) {
+      return null;
+    }
+
+    public static Obj BuildConstIntSeq(ushort[] vals) {
+      return null;
+    }
+
+    public static Obj BuildConstIntSeq(uint[] vals) {
+      return null;
+    }
+
+    public static Obj BuildConstIntSeq(sbyte[] vals) {
+      return null;
+    }
+
+    public static Obj BuildConstIntSeq(short[] vals) {
+      return null;
+    }
+
+    public static Obj BuildConstIntSeq(int[] vals) {
+      return null;
+    }
+
+    public static Obj StrToObj(string str) {
+      return null;
+    }
+
+    public static Obj ParseSymb(Obj obj) {
+      return null;
+    }
+
+
+
+
+
+  // [ProcSymbol -> (NeType*, Maybe[NeType])] builtin_procedures_signatures = [
+  //   proc_symbol(:file_read)    -> ((type_string), just(type_maybe(type_seq(type_byte)))),
+  //   proc_symbol(:file_write)   -> ((type_string, type_seq(type_nat)), just(type_bool)),
+  //   proc_symbol(:print)        -> ((type_string), nothing),
+  //   proc_symbol(:get_char)     -> ((), just(type_maybe(type_nat)))
+  // ];
+
+  }
+}
+
+/*
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 
@@ -197,3 +298,4 @@ Next:
     }
   }
 }
+*/
