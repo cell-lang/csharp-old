@@ -5,7 +5,7 @@ using System.Diagnostics;
 
 namespace CellLang {
   public abstract class Obj : IComparable<Obj> {
-    public virtual bool IsBlankObj()                              {return false;}
+    // public virtual bool IsBlankObj()                              {return false;}
     public virtual bool IsNullObj()                               {return false;}
     public virtual bool IsSymb()                                  {return false;}
     // public virtual bool IsBool()                                  {return false;}
@@ -490,7 +490,7 @@ namespace CellLang {
     }
 
     override public bool HasElem(Obj obj) {
-      return ObjUtils.BinSearch(elts, obj) != -1;
+      return Algs.BinSearch(elts, obj) != -1;
     }
 
     override public int GetSize() {
@@ -552,7 +552,7 @@ namespace CellLang {
 
     override public bool HasKey(Obj obj) {
       Debug.Assert(isMap);
-      return ObjUtils.BinSearch(col1, obj) != -1;
+      return Algs.BinSearch(col1, obj) != -1;
     }
 
     override public bool HasField(int symb_id) {
@@ -565,15 +565,15 @@ namespace CellLang {
 
     override public bool HasPair(Obj obj1, Obj obj2) {
       if (isMap) {
-        int idx = ObjUtils.BinSearch(col1, obj1);
+        int idx = Algs.BinSearch(col1, obj1);
         return idx != -1 && col2[idx].IsEq(obj2);
       }
       else {
         int first;
-        int count = ObjUtils.BinSearchRange(col1, 0, col1.Length, obj1, out first);
+        int count = Algs.BinSearchRange(col1, 0, col1.Length, obj1, out first);
         if (count == 0)
           return false;
-        int idx = ObjUtils.BinSearch(col2, first, count, obj2);
+        int idx = Algs.BinSearch(col2, first, count, obj2);
         return idx != -1;
       }
     }
@@ -587,7 +587,7 @@ namespace CellLang {
     }
 
     override public Obj Lookup(Obj key) {
-      int idx = ObjUtils.BinSearch(col1, key);
+      int idx = Algs.BinSearch(col1, key);
       if (idx == -1)
         throw new Exception();
       if (!isMap)
@@ -658,15 +658,15 @@ namespace CellLang {
     override public bool HasTriple(Obj obj1, Obj obj2, Obj obj3) {
       int first;
 
-      int count = ObjUtils.BinSearchRange(col1, 0, col1.Length, obj1, out first);
+      int count = Algs.BinSearchRange(col1, 0, col1.Length, obj1, out first);
       if (count == 0)
         return false;
 
-      count = ObjUtils.BinSearchRange(col2, first, count, obj2, out first);
+      count = Algs.BinSearchRange(col2, first, count, obj2, out first);
       if (count == 0)
         return false;
 
-      int idx = ObjUtils.BinSearch(col3, first, count, obj3);
+      int idx = Algs.BinSearch(col3, first, count, obj3);
       return idx != -1;
     }
 
@@ -754,145 +754,6 @@ namespace CellLang {
         return other_tag < tag ? 1 : -1;
       else
         return other_obj.Cmp(obj);
-    }
-  }
-
-
-  static class ObjUtils {
-    public static int BinSearch(Obj[] objs, Obj obj) {
-      return BinSearch(objs, 0, objs.Length, obj);
-    }
-
-    public static int BinSearch(Obj[] objs, int first, int count, Obj obj) {
-      int low = first;
-      int high = first + count - 1;
-
-      while (low <= high) {
-        int mid = (int) (((long) low + (long) high) / 2);
-        switch (objs[mid].Cmp(obj)) {
-          case -1:
-            // objs[mid] > obj
-            high = mid - 1;
-            break;
-
-          case 0:
-            return mid;
-
-          case 1:
-            // objs[mid] < obj
-            low = mid + 1;
-            break;
-        }
-      }
-
-      return -1;
-    }
-
-    public static int BinSearchRange(Obj[] objs, int offset, int length, Obj obj, out int first) {
-      int low = offset;
-      int high = offset + length - 1;
-      int lower_bound = low;
-      int upper_bound = high;
-
-      while (low <= high) {
-        int mid = (int) (((long) low + (long) high) / 2);
-        switch (objs[mid].Cmp(obj)) {
-          case -1:
-            // objs[mid] > obj
-            upper_bound = high = mid - 1;
-            break;
-
-          case 0:
-            if (mid == offset || !objs[mid-1].IsEq(obj)) {
-              first = mid;
-              low = lower_bound;
-              high = upper_bound;
-              goto Next;
-            }
-            else
-              high = mid - 1;
-            break;
-
-          case 1:
-            // objs[mid] < obj
-            lower_bound = low = mid + 1;
-            break;
-        }
-      }
-
-      first = -1; //## IS THIS NECESSARY?
-      return 0;
-
-    Next:
-      while (low <= high) {
-        int mid = (int) (((long) low + (long) high) / 2);
-        switch (objs[mid].Cmp(obj)) {
-          case -1:
-            // objs[mid] > obj
-            high = mid - 1;
-            break;
-
-          case 0:
-            if (mid == upper_bound || !objs[mid+1].IsEq(obj)) {
-              return mid - first + 1;
-            }
-            else
-              low = mid + 1;
-            break;
-
-          case 1:
-            // objs[mid] < obj
-            low = mid + 1;
-            break;
-        }
-      }
-
-      // We're not supposed to ever get here.
-      throw new InvalidOperationException();
-    }
-  }
-
-
-  public static class SymbTable {
-    static string[] defaultSymbols = {
-      "false",
-      "true",
-      "void",
-      "string",
-      "nothing",
-      "just",
-      "success",
-      "failure"
-    };
-
-    static List<String> symbTable = new List<String>();
-    static Dictionary<String, int> symbMap = new Dictionary<String, int>();
-
-    static SymbTable() {
-      int len = defaultSymbols.Length;
-      for (int i=0 ; i < len ; i++) {
-        string str = defaultSymbols[i];
-        symbTable.Add(str);
-        symbMap.Add(str, i);
-      }
-    }
-
-    public static int StrToIdx(string str) {
-      int idx;
-      if (symbMap.TryGetValue(str, out idx))
-        return idx;
-      int count = symbTable.Count;
-      if (count < 65535) {
-        idx = count;
-        symbTable.Add(str);
-        symbMap.Add(str, idx);
-        return idx;
-      }
-      throw new InvalidOperationException();
-    }
-
-    public static string IdxToStr(int idx) {
-      return symbTable[idx];
     }
   }
 }

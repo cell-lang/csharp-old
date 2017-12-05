@@ -465,7 +465,7 @@ implicit {
     init_memb_var()       = (to_c_var_ref_name(instr.var) & " = " & to_c_const(instr.new_state) & ";"),
     reset_memb_var()      = (to_c_var_ref_name(instr.var) & " = " & to_c_const(instr.new_state) & ";"),
     clear_loc_var(v?)     = (to_c_var_ref_name(v) & " = NullObj.Singleton();"),
-    terminate             = ("Static.Fail();", "throw new Exception();"),
+    terminate             = ("Miscellanea.Fail();", "throw new Exception();"),
     add_ref(v?)           = (),
     release(v?)           = (),
     print_obj()           = (native_method_call(instr.obj, "Print", ())),
@@ -607,19 +607,19 @@ implicit {
 
 
   String compile_to_c(RefObjExpr expr, WriteObjVar var) =
-    mk_set_from_stream()        = native_static_call(var, "CreateSet",                (expr.stream)),
-    mk_set()                    = native_static_call(var, "CreateSet",                (expr.elems, expr.size)),
-    mk_seq_from_stream()        = native_static_call(var, "CreateSeq",                (expr.stream)),
-    mk_seq()                    = native_static_call(var, "CreateSeq",                (expr.elems, expr.size)),
+    mk_set_from_stream()        = native_static_call(var, "Builder.CreateSet",        (expr.stream)),
+    mk_set()                    = native_static_call(var, "Builder.CreateSet",        (expr.elems, expr.size)),
+    mk_seq_from_stream()        = native_static_call(var, "Builder.CreateSeq",        (expr.stream)),
+    mk_seq()                    = native_static_call(var, "Builder.CreateSeq",        (expr.elems, expr.size)),
     build_const_int_seq()       = compile_build_const_int_seq_to_c(expr.seq_id, var),
-    mk_map_from_streams()       = native_static_call(var, "CreateMap",                (expr.key_stream, expr.value_stream)),
-    mk_map()                    = native_static_call(var, "CreateMap",                (expr.keys, expr.values, expr.size)),
-    mk_bin_rel_from_streams()   = native_static_call(var, "CreateBinRel",             expr.streams),
-    mk_bin_rel()                = native_static_call(var, "CreateBinRel",             (expr.cols | expr.size)),
-    mk_tern_rel_from_streams()  = native_static_call(var, "CreateTernRel",            expr.streams),
-    mk_tern_rel()               = native_static_call(var, "CreateTernRel",            (expr.cols | expr.size)),
-    mk_tagged_obj()             = native_new_call(var, "TaggedObj",            (expr.tag, expr.obj)),
-    mk_array()                  = native_new_call(var, "MasterSeqObj",         (expr.size)),
+    mk_map_from_streams()       = native_static_call(var, "Builder.CreateMap",        (expr.key_stream, expr.value_stream)),
+    mk_map()                    = native_static_call(var, "Builder.CreateMap",        (expr.keys, expr.values, expr.size)),
+    mk_bin_rel_from_streams()   = native_static_call(var, "Builder.CreateBinRel",     expr.streams),
+    mk_bin_rel()                = native_static_call(var, "Builder.CreateBinRel",     (expr.cols | expr.size)),
+    mk_tern_rel_from_streams()  = native_static_call(var, "Builder.CreateTernRel",    expr.streams),
+    mk_tern_rel()               = native_static_call(var, "Builder.CreateTernRel",    (expr.cols | expr.size)),
+    mk_tagged_obj()             = native_new_call(var, "TaggedObj",                   (expr.tag, expr.obj)),
+    mk_array()                  = native_new_call(var, "MasterSeqObj",                (expr.size)),
     get_seq_slice()             = native_method_call(var, expr.seq,  "GetSlice",      (expr.idx_first, expr.len)),
     append_to_seq()             = native_method_call(var, expr.seq,  "Append",        (expr.new_elem)),
     update_seq_at()             = native_method_call(var, expr.seq,  "SetItem",       (expr.idx, expr.value)),
@@ -627,7 +627,7 @@ implicit {
     rev_seq()                   = native_method_call(var, expr.seq,  "Reverse",       ()),
     internal_sort()             = native_method_call(var, expr.set,  "InternalSort",  ()),
     symb_to_str(e?)             = native_method_call(var, e,         "TextRepr",      ()),
-    parse_value()               = native_static_call(var, "Parse",                    (expr.value)),
+    parse_value()               = native_static_call(var, "Parser.Parse",             (expr.value)),
     print_value()               = native_method_call(var, expr.value, "TextRepr",     ());
 
     // copy_state()                = (compile_copy_state_to_c(var, expr.var, expr.type)),
@@ -642,7 +642,7 @@ implicit {
   String compile_build_const_int_seq_to_c(Nat seq_id, ObjVar var) {
     type, len = int_seqs_types_and_lengths(seq_id);
     seq_name = const_int_seq_c_name(seq_id);
-    return to_c_var_ref_name(var) & " = Static.BuildConstIntSeq(" & seq_name & ");";
+    return to_c_var_ref_name(var) & " = Builder.BuildConstIntSeq(" & seq_name & ");";
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -755,7 +755,7 @@ String native_method_call(AnyVar res, FnCallParam target, String method_name, Fn
   to_c_expr(res) & " = " & native_method_call(target, method_name, args);
 
 String native_static_call(String static_name, FnCallParam* args) =
-  "Static." & static_name & "(" & append((to_c_expr(a) : a <- args), ", ") & ");";
+  static_name & "(" & append((to_c_expr(a) : a <- args), ", ") & ");";
 
 String native_static_call(AnyVar res, String static_name, FnCallParam* args) =
   to_c_expr(res) & " = " & native_static_call(static_name, args);
@@ -785,7 +785,7 @@ String* c_main_fn = (
   "static int Main(string[] args) {",
   "  Obj[] cell_args = new Obj[args.Length];",
   "  for (int i=0 ; i < args.Length ; i++)",
-  "    cell_args[i] = Static.StrToObj(args[i]);",
+  "    cell_args[i] = Miscellanea.StrToObj(args[i]);",
   "  Env env = new Env();",
   "  Obj res = Main_P(new MasterSeqObj(cell_args), env);",
   "  return res.IsInt() ? (int) res.GetInt() : 0;",
