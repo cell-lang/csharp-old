@@ -18,6 +18,10 @@ namespace CellLang {
       return new TaggedObj(SymbTable.StringSymbId, new MasterSeqObj(chars, count));
     }
 
+    public static string ObjToStr(Obj str) {
+      return null;
+    }
+
     public static void Fail() {
       throw new InvalidOperationException();
     }

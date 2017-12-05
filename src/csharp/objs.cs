@@ -52,6 +52,9 @@ namespace CellLang {
     // Copy-on-write update
     public virtual Obj SetItem(long i, Obj v)                     {throw new InvalidOperationException();}
 
+    public virtual byte[] GetByteArray()                          {throw new InvalidOperationException();}
+    public virtual string GetString()                             {throw new InvalidOperationException();}
+
     public virtual Obj Negate()                                   {throw new InvalidOperationException();}
     public virtual Obj InternalSort()                             {throw new InvalidOperationException();}
     public virtual Obj GetSlice(long first, long len)             {throw new InvalidOperationException();}
