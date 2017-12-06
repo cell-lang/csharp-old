@@ -15,12 +15,12 @@ namespace CellLang {
     }
 
     public Obj Get() {
-      Debug.Assert(next <= last);
+      Miscellanea.Assert(next <= last);
       return objs[next];
     }
 
     public void Next() {
-      Debug.Assert(next <= last);
+      Miscellanea.Assert(next <= last);
       next++;
     }
 
@@ -50,7 +50,7 @@ namespace CellLang {
     }
 
     public void Next() {
-      Debug.Assert(next < col1.Length);
+      Miscellanea.Assert(next < col1.Length);
       next++;
     }
 
@@ -86,7 +86,7 @@ namespace CellLang {
     }
 
     public void Next() {
-      Debug.Assert(next < col1.Length);
+      Miscellanea.Assert(next < col1.Length);
       next++;
     }
 

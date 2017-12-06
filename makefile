@@ -10,7 +10,10 @@ codegen-dbg: $(SRC-FILES)
 
 test-dbg: codegen-dbg $(RUNTIME-FILES)
 	./codegen-dbg test-input.txt
-	mcs generated.cs $(RUNTIME-FILES) -out:test-dbg
+	mcs -debug -d:DEBUG generated.cs $(RUNTIME-FILES) -out:test-dbg
+
+recompile-generated:
+	mcs -debug -d:DEBUG generated.cs $(RUNTIME-FILES) -out:test-dbg
 
 clean:
 	@rm -rf tmp/ codegen-dbg test-dbg

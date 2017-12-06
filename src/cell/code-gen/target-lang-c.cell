@@ -7,7 +7,7 @@ CCodeOutput compile_to_cs(CompiledPrg prg, Bool include_runtime) {
   c_code = ("const ushort " & symb_idx_name(s) & " = " & printed(i) & ";" : s @ i <- symbs) & 4 * ("");
 
   symb_strs  = ("  \"" & _str_(bare_obj(s)) & "\"," : s <- symbs);
-  c_code     = c_code & ("static string[] map_symb_to_str = {") & symb_strs & ("};") & 4 * ("");
+  c_code     = c_code & ("static string[] EmbeddedSymbols = {") & symb_strs & ("};") & 4 * ("");
 
   cls_defs = cls_defs(prg);
 
@@ -72,6 +72,7 @@ CCodeOutput compile_to_cs(CompiledPrg prg, Bool include_runtime) {
   body = join((
     ( "using System;",
       "using System.Collections.Generic;",
+      "using System.Diagnostics;", ## REMOVE ONCE DONE
       ""
     ),
 
@@ -452,7 +453,7 @@ implicit {
   String* compile_to_c(Instr instr, Maybe[Nat] block_id) =
     init_stream(v?)       = (native_new_call(v, "List<Obj>", ())),
     append()              = (native_method_call(instr.stream, "Add", (instr.obj))),
-    set_at()              = (native_method_call(instr.var, "SetItem", (instr.idx, instr.value))),
+    set_at()              = (native_method_call(instr.var, "InitAt", (instr.idx, instr.value))),
     get_seq_iter()        |
     get_set_iter()        = (native_method_call(instr.var, instr.src, "GetSeqOrSetIter", ())),
     get_bin_rel_iter()    = (compile_get_bin_rel_iter_to_c(instr.var, instr.src, instr.args)),
@@ -622,13 +623,13 @@ implicit {
     mk_array()                  = native_new_call(var, "MasterSeqObj",                (expr.size)),
     get_seq_slice()             = native_method_call(var, expr.seq,  "GetSlice",      (expr.idx_first, expr.len)),
     append_to_seq()             = native_method_call(var, expr.seq,  "Append",        (expr.new_elem)),
-    update_seq_at()             = native_method_call(var, expr.seq,  "SetItem",       (expr.idx, expr.value)),
-    join_seqs()                 = native_method_call(var, expr.left, "Append",        (expr.right)),
+    update_seq_at()             = native_method_call(var, expr.seq,  "UpdateAt",      (expr.idx, expr.value)),
+    join_seqs()                 = native_method_call(var, expr.left, "Concat",        (expr.right)),
     rev_seq()                   = native_method_call(var, expr.seq,  "Reverse",       ()),
     internal_sort()             = native_method_call(var, expr.set,  "InternalSort",  ()),
-    symb_to_str(e?)             = native_method_call(var, e,         "TextRepr",      ()),
+    symb_to_str(e?)             = native_method_call(var, e,         "Printed",       ()),
     parse_value()               = native_static_call(var, "Parser.Parse",             (expr.value)),
-    print_value()               = native_method_call(var, expr.value, "TextRepr",     ());
+    print_value()               = native_method_call(var, expr.value,"Printed",       ());
 
     // copy_state()                = (compile_copy_state_to_c(var, expr.var, expr.type)),
     // copy_table()                = compile_copy_table_to_c(var, expr.relvar, expr.table, expr.perm),
@@ -783,11 +784,15 @@ String* c_main_fn = (
   "",
   "",
   "static int Main(string[] args) {",
+  "  for (int i=0 ; i < EmbeddedSymbols.Length ; i++) {",
+  "    int idx = SymbTable.StrToIdx(EmbeddedSymbols[i]);",
+  "    Miscellanea.Assert(idx == i);", //## REMOVE ONCE DONE
+  "  }",
   "  Obj[] cell_args = new Obj[args.Length];",
   "  for (int i=0 ; i < args.Length ; i++)",
   "    cell_args[i] = Miscellanea.StrToObj(args[i]);",
   "  Env env = new Env();",
   "  Obj res = Main_P(new MasterSeqObj(cell_args), env);",
-  "  return res.IsInt() ? (int) res.GetInt() : 0;",
+  "  return res.IsInt() ? (int) res.GetLong() : 0;",
   "}"
 );

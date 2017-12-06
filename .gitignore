@@ -5,3 +5,7 @@ test-dbg
 generated.cs
 test-input.txt
 main.cs
+cpp/
+mine-pump.svg
+*.mdb
+*.html

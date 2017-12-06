@@ -37,5 +37,19 @@ namespace CellLang {
     public static Obj GetTickCount() {
       return null;
     }
+
+    public static void Assert(bool cond) {
+      if (!cond) {
+        Console.WriteLine("Assertion failed");
+        throw new Exception();
+      }
+    }
+
+    public static void Assert(bool cond, string message) {
+      if (!cond) {
+        Console.WriteLine("Assertion failed: " + message);
+        throw new Exception();
+      }
+    }
   }
 }

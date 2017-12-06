@@ -4,6 +4,19 @@ using System.Collections.Generic;
 
 namespace CellLang {
   public static class Algs {
+    static void CheckIsOrdered(Obj[] objs) {
+      for (int i=1 ; i < objs.Length ; i++) {
+        int cmp = objs[i-1].Cmp(objs[i]); 
+        if (cmp != 1) {
+          Console.WriteLine("*****************************************");
+          Console.WriteLine(objs[i-1].ToString());
+          Console.WriteLine(objs[i].ToString());
+          Console.WriteLine(cmp.ToString());
+          throw new Exception();
+        }
+      }
+    }
+
     public static int BinSearch(Obj[] objs, Obj obj) {
       return BinSearch(objs, 0, objs.Length, obj);
     }
@@ -130,19 +143,22 @@ namespace CellLang {
       int unique_count = count;
       for (int i=1 ; i < count ; i++) {
         int j = idxs[i];
-        if (col1[j].IsEq(col1[j-1]) && col2[j].IsEq(col2[j-1])) {
+        int k = idxs[i-1];
+        if (col1[j].IsEq(col1[k]) && col2[j].IsEq(col2[k])) {
           int n = i;
-          for (int k=i+1 ; k < count ; k++) {
-            j = idxs[k];
-            if (!col1[j].IsEq(col1[j-1]) || !col2[j].IsEq(col2[j-1]))
-              idxs[n++] = k;
+          for (int l=i+1 ; l < count ; l++) {
+            j = idxs[l];
+            k = idxs[l-1];
+            if (!col1[j].IsEq(col1[k]) || !col2[j].IsEq(col2[k]))
+              idxs[n++] = l;
           }
           unique_count = n;
           goto Next;
         }
       }
 
-Next:
+
+    Next:
       norm_col_1 = new Obj[unique_count];
       norm_col_2 = new Obj[unique_count];
 
@@ -186,7 +202,7 @@ Next:
         }
       }
 
-Next:
+    Next:
       norm_col_1 = new Obj[unique_count];
       norm_col_2 = new Obj[unique_count];
       norm_col_3 = new Obj[unique_count];

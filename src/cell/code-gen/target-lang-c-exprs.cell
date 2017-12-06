@@ -28,7 +28,7 @@ String unboxed_float(AtomicExpr e) = to_c_expr(e, true) & ".GetFloat()";
 String to_c_expr(FloatExpr expr) =
   float_lit()           = to_c_float_literal(expr),
   mk_float()            = "new FloatObj(" & printed(expr.mantissa) & "e" & printed(expr.dec_exp) & ")",
-  int_to_float(e?)      = "new FloatObj(" & to_c_expr(e, true) & ".GetInt())",
+  int_to_float(e?)      = "new FloatObj(" & to_c_expr(e, true) & ".GetLong())",
   neg_float(e?)         = "new FloatObj(-" & unboxed_float(e) & ")",
   add_floats(e1?, e2?)  = "new FloatObj(" & unboxed_float(e1) & " + " & unboxed_float(e2) & ")",
   sub_floats(e1?, e2?)  = "new FloatObj(" & unboxed_float(e1) & " - " & unboxed_float(e2) & ")",
@@ -165,7 +165,7 @@ String to_c_expr(IntConst expr, Bool parentesised) =
 String to_c_expr(IntVar expr, Bool parentesised) = to_c_var_ref_name(expr);
 
 String to_c_expr(NatIntOp expr, Bool parentesised) =
-  get_int_val(e?)       = to_c_expr(e) & ".GetInt()",
+  get_int_val(e?)       = to_c_expr(e) & ".GetLong()",
   get_size(e?)          = to_c_expr(e) & ".GetSize()",
   minus(e?)             = "-" & to_c_expr(e, true),
   add()                 = to_nary_op(" + ", (expr.val1, expr.val2), parentesised),

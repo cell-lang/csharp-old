@@ -28,55 +28,67 @@ namespace CellLang {
     public virtual bool IsInt(long n)                             {return false;}
     public virtual bool IsFloat(double x)                         {return false;}
 
-    public virtual bool HasElem(Obj o)                            {throw new InvalidOperationException();}
-    public virtual bool HasKey(Obj o)                             {throw new InvalidOperationException();}
-    public virtual bool HasField(int id)                          {throw new InvalidOperationException();}
-    public virtual bool HasPair(Obj o1, Obj o2)                   {throw new InvalidOperationException();}
-    public virtual bool HasTriple(Obj o1, Obj o2, Obj o3)         {throw new InvalidOperationException();}
+    public virtual bool HasElem(Obj o)                            {throw new NotImplementedException();}
+    public virtual bool HasKey(Obj o)                             {throw new NotImplementedException();}
+    public virtual bool HasField(int id)                          {throw new NotImplementedException();}
+    public virtual bool HasPair(Obj o1, Obj o2)                   {throw new NotImplementedException();}
+    public virtual bool HasTriple(Obj o1, Obj o2, Obj o3)         {throw new NotImplementedException();}
 
-    public virtual int    GetSymbId()                             {throw new InvalidOperationException();}
-    public virtual bool   GetBool()                               {throw new InvalidOperationException();}
-    public virtual long   GetInt()                                {throw new InvalidOperationException();}
-    public virtual double GetFloat()                              {throw new InvalidOperationException();}
-    public virtual int    GetSize()                               {throw new InvalidOperationException();}
-    public virtual Obj    GetItem(long i)                         {throw new InvalidOperationException();}
-    public virtual int    GetTagId()                              {throw new InvalidOperationException();}
-    public virtual Obj    GetTag()                                {throw new InvalidOperationException();}
-    public virtual Obj    GetInnerObj()                           {throw new InvalidOperationException();}
+    public virtual int    GetSymbId()                             {throw new NotImplementedException();}
+    public virtual bool   GetBool()                               {throw new NotImplementedException();}
+    //public virtual long   GetLong()                               {throw new NotImplementedException();}
+    public virtual double GetFloat()                              {throw new NotImplementedException();}
+    public virtual int    GetSize()                               {throw new NotImplementedException();}
+    public virtual Obj    GetItem(long i)                         {throw new NotImplementedException();}
+    public virtual int    GetTagId()                              {throw new NotImplementedException();}
+    public virtual Obj    GetTag()                                {throw new NotImplementedException();}
+    public virtual Obj    GetInnerObj()                           {throw new NotImplementedException();}
 
-    public virtual SeqOrSetIter GetSeqOrSetIter()                 {throw new InvalidOperationException();}
-    public virtual BinRelIter   GetBinRelIter()                   {throw new InvalidOperationException();}
-    public virtual TernRelIter  GetTernRelIter()                  {throw new InvalidOperationException();}
+    public virtual SeqOrSetIter GetSeqOrSetIter()                 {throw new NotImplementedException();}
+    public virtual BinRelIter   GetBinRelIter()                   {throw new NotImplementedException();}
+    public virtual TernRelIter  GetTernRelIter()                  {throw new NotImplementedException();}
+
+    // public virtual string ToString()                              {throw new NotImplementedException();}
+
+    public void Print() {
+      Console.WriteLine(ToString());
+    }
+
+    public Obj Printed() {
+      return Miscellanea.StrToObj(ToString());
+    }
 
     //## IMPLEMENT
     // Copy-on-write update
-    public virtual Obj SetItem(long i, Obj v)                     {throw new InvalidOperationException();}
+    public virtual Obj UpdateAt(long i, Obj v)                    {throw new NotImplementedException();}
 
-    public virtual byte[] GetByteArray()                          {throw new InvalidOperationException();}
-    public virtual string GetString()                             {throw new InvalidOperationException();}
-
-    public virtual Obj Negate()                                   {throw new InvalidOperationException();}
-    public virtual Obj InternalSort()                             {throw new InvalidOperationException();}
-    public virtual Obj GetSlice(long first, long len)             {throw new InvalidOperationException();}
-    public virtual Obj Reverse()                                  {throw new InvalidOperationException();}
-    public virtual Obj TextRepr()                                 {throw new InvalidOperationException();}
-
-    public virtual BinRelIter GetBinRelIter0(Obj obj)             {throw new InvalidOperationException();}
-    public virtual BinRelIter GetBinRelIter1(Obj obj)             {throw new InvalidOperationException();}
+    public virtual BinRelIter GetBinRelIter0(Obj obj)             {throw new NotImplementedException();}
+    public virtual BinRelIter GetBinRelIter1(Obj obj)             {throw new NotImplementedException();}
 
 
-    public virtual Obj Lookup(Obj key)                            {throw new InvalidOperationException();}
-    public virtual Obj LookupField(int id)                        {throw new InvalidOperationException();}
+    public virtual Obj Negate()                                   {throw new NotImplementedException();}
+    public virtual Obj Reverse()                                  {throw new NotImplementedException();}
+    public virtual void InitAt(long i, Obj v)                     {throw new NotImplementedException();}
 
-    public virtual Obj Append(Obj obj)                            {throw new InvalidOperationException();}
-    public virtual Obj Append(Obj[] objs)                         {throw new InvalidOperationException();}
+    public virtual Obj InternalSort()                             {throw new NotImplementedException();}
+    public virtual Obj GetSlice(long first, long len)             {throw new NotImplementedException();}
+
+    public virtual long[] GetLongArray()                          {throw new NotImplementedException();}
+    public virtual byte[] GetByteArray()                          {throw new NotImplementedException();}
+    public virtual string GetString()                             {throw new NotImplementedException();}
+
+    public virtual Obj Lookup(Obj key)                            {throw new NotImplementedException();}
+    public virtual Obj LookupField(int id)                        {throw new NotImplementedException();}
+
+    public virtual Obj Append(Obj obj)                            {throw new NotImplementedException();}
+    public virtual Obj Concat(Obj seq)                            {throw new NotImplementedException();}
 
     public virtual bool IsEq(Obj o) {
       return Cmp(o) == 0;
     }
 
     public int CompareTo(Obj other) {
-      return Cmp(other);
+      return -Cmp(other);
     }
 
     public int Cmp(Obj o) {
@@ -87,14 +99,22 @@ namespace CellLang {
       return id1 < id2 ? 1 : -1;
     }
 
-    public virtual int CmpSeq(Obj[] es, int o, int l)             {throw new InvalidOperationException();}
-    public virtual int CmpNeSet(Obj[] es)                         {throw new InvalidOperationException();}
-    public virtual int CmpNeBinRel(Obj[] c1, Obj[] c2)            {throw new InvalidOperationException();}
-    public virtual int CmpNeTernRel(Obj[] c1, Obj[] c2, Obj[] c3) {throw new InvalidOperationException();}
-    public virtual int CmpTaggedObj(int tag, Obj obj)             {throw new InvalidOperationException();}
+    public virtual int CmpSeq(Obj[] es, int o, int l)             {throw new NotImplementedException();}
+    public virtual int CmpNeSet(Obj[] es)                         {throw new NotImplementedException();}
+    public virtual int CmpNeBinRel(Obj[] c1, Obj[] c2)            {throw new NotImplementedException();}
+    public virtual int CmpNeTernRel(Obj[] c1, Obj[] c2, Obj[] c3) {throw new NotImplementedException();}
+    public virtual int CmpTaggedObj(int tag, Obj obj)             {throw new NotImplementedException();}
 
     protected abstract int TypeId();
     protected abstract int InternalCmp(Obj o);
+
+
+
+    public virtual long GetLong() {
+      Console.WriteLine(ToString());
+      throw new NotImplementedException();
+    }
+
   }
 
 
@@ -127,15 +147,27 @@ namespace CellLang {
     }
 
     override public bool GetBool() {
-      if (id == 0)
+      if (id == SymbTable.FalseSymbId)
         return false;
-      if (id == 1)
+      if (id == SymbTable.TrueSymbId)
         return true;
-      throw new InvalidOperationException();
+      throw new NotImplementedException();
     }
 
     override public bool IsEq(Obj obj) {
       return obj.IsSymb(id);
+    }
+
+    override public Obj Negate() {
+      if (id == SymbTable.FalseSymbId)
+        return new SymbObj(SymbTable.TrueSymbId);
+      if (id == SymbTable.TrueSymbId)
+        return new SymbObj(SymbTable.FalseSymbId);
+      throw new NotImplementedException();
+    }
+
+    override public string ToString() {
+      return SymbTable.IdxToStr(id);
     }
 
     override protected int TypeId() {
@@ -164,7 +196,7 @@ namespace CellLang {
       return this.value == value;
     }
 
-    override public long GetInt() {
+    override public long GetLong() {
       return value;
     }
 
@@ -172,12 +204,16 @@ namespace CellLang {
       return obj.IsInt(value);
     }
 
+    override public string ToString() {
+      return value.ToString();
+    }
+
     override protected int TypeId() {
       return 1;
     }
 
     override protected int InternalCmp(Obj obj) {
-      long other_value = obj.GetInt();
+      long other_value = obj.GetLong();
       return value == other_value ? 0 : (value < other_value ? 1 : -1);
     }
   }
@@ -206,6 +242,10 @@ namespace CellLang {
       return obj.IsFloat(value);
     }
 
+    override public string ToString() {
+      return value.ToString();
+    }
+
     override protected int TypeId() {
       return 2;
     }
@@ -222,6 +262,7 @@ namespace CellLang {
     internal int length;
 
     protected SeqObj(Obj[] items, int length) {
+      Miscellanea.Assert(items != null && length >= 0 && length <= items.Length);
       this.items = items;
       this.length = length;
     }
@@ -247,6 +288,43 @@ namespace CellLang {
         return items[Offset()+idx];
       else
         throw new Exception();
+    }
+
+    override public Obj Reverse() {
+      int offset = Offset();
+      int last = offset + length - 1;
+      Obj[] revItems = new Obj[length];
+      for (int i=0 ; i < length ; i++)
+        revItems[i] = items[last-i];
+      return new MasterSeqObj(revItems);
+    }
+
+    override public long[] GetLongArray() {
+      long[] longs = new long[length];
+      int offset = Offset();
+      for (int i=0 ; i < length ; i++)
+        longs[i] = items[offset+i].GetLong();
+      return longs;
+    }
+
+    override public byte[] GetByteArray() {
+      byte[] bytes = new byte[length];
+      int offset = Offset();
+      for (int i=0 ; i < length ; i++) {
+        long val = items[offset+i].GetLong();
+        if (val < 0 | val > 255)
+          throw new NotImplementedException();
+        bytes[i] = (byte) val;
+      }
+      return bytes;
+    }
+
+    override public string ToString() {
+      int offset = Offset();
+      string[] reprs = new string[length];
+      for (int i=0 ; i < length ; i++)
+        reprs[i] = items[offset+i].ToString();
+      return "(" + string.Join(", ", reprs) + ")";
     }
 
     override protected int TypeId() {
@@ -283,6 +361,8 @@ namespace CellLang {
     internal int used;
 
     public MasterSeqObj(Obj[] items, int length) : base(items, length) {
+      for (int i=0 ; i < length ; i++)
+        Miscellanea.Assert(items[i] != null);
       this.used = length;
     }
 
@@ -305,6 +385,18 @@ namespace CellLang {
       return new SeqOrSetIter(items, 0, length-1);
     }
 
+    override public void InitAt(long idx, Obj value) {
+      Miscellanea.Assert(idx >= 0 & idx < length);
+      Miscellanea.Assert(items[idx] == null);
+      items[idx] = value;
+    }
+
+    override public Obj GetSlice(long first, long len) {
+      if (first + len > length)
+        throw new Exception(); //## FIND BETTER EXCEPTION
+      return new SliceObj(this, (int) first, (int) len);
+    }
+
     override public Obj Append(Obj obj) {
       if (used == length && length + 1 < items.Length) {
         items[length] = obj;
@@ -319,19 +411,22 @@ namespace CellLang {
       }
     }
 
-    override public Obj Append(Obj[] objs) {
-      int newLen = length + objs.Length;
+    override public Obj Concat(Obj seq) {
+      Miscellanea.Assert(seq != null);
+
+      int seqLen = seq.GetSize();
+      int newLen = length + seqLen;
       if (used == length && newLen < items.Length) {
-        for (int i=0; i < objs.Length ; i++)
-          items[length+i] = objs[i];
+        for (int i=0; i < seqLen ; i++)
+          items[length+i] = seq.GetItem(i);
         return new SliceObj(this, 0, newLen);
       }
       else {
         Obj[] newItems = new Obj[newLen <= 16 ? 32 : (3 * newLen) / 2];
         for (int i=0 ; i < length ; i++)
           newItems[i] = items[i];
-        for (int i=0 ; i < objs.Length ; i++)
-          newItems[length+i] = objs[i];
+        for (int i=0 ; i < seqLen ; i++)
+          newItems[length+i] = seq.GetItem(i);
         return new MasterSeqObj(newItems, newLen);
       }
     }
@@ -347,12 +442,20 @@ namespace CellLang {
     int offset;
 
     public SliceObj(MasterSeqObj master, int offset, int length) : base(master.items, length) {
+      for (int i=0 ; i < offset+length ; i++)
+        Miscellanea.Assert(master.items[i] != null);
       this.master = master;
       this.offset = offset;
     }
 
     override public SeqOrSetIter GetSeqOrSetIter() {
       return new SeqOrSetIter(items, offset, offset+length-1);
+    }
+
+    override public Obj GetSlice(long first, long len) {
+      if (first + len > length)
+        throw new Exception(); //## FIND BETTER EXCEPTION
+      return new SliceObj(master, offset + (int) first, (int) len);
     }
 
     override public Obj Append(Obj obj) {
@@ -371,20 +474,23 @@ namespace CellLang {
       }
     }
 
-    override public Obj Append(Obj[] objs) {
+    override public Obj Concat(Obj seq) {
+      int seqLen = seq.GetSize();
       int used = offset + length;
-      int newLen = used + objs.Length;
+      int newLen = used + seqLen;
+
       if (master.used == used && newLen <= master.items.Length) {
-        for (int i=0 ; i < objs.Length ; i++)
-          master.items[used+i] = objs[i];
+        for (int i=0 ; i < seqLen ; i++)
+          master.items[used+i] = seq.GetItem(i);
         return new SliceObj(master, offset, newLen);
       }
       else {
-        Obj[] newItems = new Obj[newLen <= 16 ? 32 : (3 * length) / 2];
+        newLen = length + seqLen;
+        Obj[] newItems = new Obj[newLen <= 16 ? 32 : (3 * newLen) / 2];
         for (int i=0 ; i < length ; i++)
           newItems[i] = items[offset+i];
-        for (int i=0 ; i < objs.Length ; i++)
-          newItems[length+i] = objs[i];
+        for (int i=0 ; i < seqLen ; i++)
+          newItems[length+i] = seq.GetItem(i);
         return new MasterSeqObj(newItems, newLen);
       }
     }
@@ -418,6 +524,10 @@ namespace CellLang {
 
     override public bool IsEq(Obj obj) {
       return obj.IsEmptyRel();
+    }
+
+    override public string ToString() {
+      return "[]";
     }
 
     override public bool HasElem(Obj obj) {
@@ -456,6 +566,10 @@ namespace CellLang {
       return iter3;
     }
 
+    override public Obj InternalSort() {
+      return SeqObj.Empty();
+    }
+
     override protected int TypeId() {
       return 4;
     }
@@ -464,7 +578,7 @@ namespace CellLang {
       return 0;
     }
 
-    static SeqOrSetIter iter1 = new SeqOrSetIter(new Obj[0], 0, 0);
+    static SeqOrSetIter iter1 = new SeqOrSetIter(new Obj[0], 0, -1);
     static BinRelIter   iter2 = new BinRelIter(new Obj[0], new Obj[0]);
     static TernRelIter  iter3 = new TernRelIter(new Obj[0], new Obj[0], new Obj[0]);
 
@@ -480,7 +594,7 @@ namespace CellLang {
     Obj[] elts;
 
     public NeSetObj(Obj[] elts) {
-      Debug.Assert(elts == null || elts.Length > 0);
+      Miscellanea.Assert(elts == null || elts.Length > 0);
       this.elts = elts;
     }
 
@@ -500,8 +614,19 @@ namespace CellLang {
       return elts.Length;
     }
 
+    override public string ToString() {
+      string[] reprs = new string[elts.Length];
+      for (int i=0 ; i < elts.Length ; i++)
+        reprs[i] = elts[i].ToString();
+      return "[" + string.Join(", ", reprs) + "]";
+    }
+
     override public SeqOrSetIter GetSeqOrSetIter() {
       return new SeqOrSetIter(elts, 0, elts.Length-1);
+    }
+
+    override public Obj InternalSort() {
+      return new MasterSeqObj(elts);
     }
 
     override protected int TypeId() {
@@ -533,9 +658,9 @@ namespace CellLang {
     bool isMap;
 
     public NeBinRelObj(Obj[] col1, Obj[] col2, bool isMap) {
-      Debug.Assert(col1 != null && col2 != null);
-      Debug.Assert(col1.Length > 0);
-      Debug.Assert(col1.Length == col2.Length);
+      Miscellanea.Assert(col1 != null && col2 != null);
+      Miscellanea.Assert(col1.Length > 0);
+      Miscellanea.Assert(col1.Length == col2.Length);
       this.col1 = col1;
       this.col2 = col2;
       this.isMap = isMap;
@@ -554,7 +679,7 @@ namespace CellLang {
     }
 
     override public bool HasKey(Obj obj) {
-      Debug.Assert(isMap);
+      Miscellanea.Assert(isMap);
       return Algs.BinSearch(col1, obj) != -1;
     }
 
@@ -583,6 +708,14 @@ namespace CellLang {
 
     override public int GetSize() {
       return col1.Length;
+    }
+
+    override public string ToString() {
+      string sep = isMap ? " -> " : ", ";
+      string[] reprs = new string[col1.Length];
+      for (int i=0 ; i < col1.Length ; i++)
+        reprs[i] = col1[i].ToString() + sep + col2[i].ToString();
+      return "[" + string.Join(isMap ? ", " : "; ", reprs) + (col1.Length == 1 ? ";]" : "]");
     }
 
     override public BinRelIter GetBinRelIter() {
@@ -642,9 +775,9 @@ namespace CellLang {
     Obj[] col3;
 
     public NeTernRelObj(Obj[] col1, Obj[] col2, Obj[] col3) {
-      Debug.Assert(col1 != null && col2 != null && col3 != null);
-      Debug.Assert(col1.Length == col2.Length && col1.Length == col3.Length);
-      Debug.Assert(col1.Length > 0);
+      Miscellanea.Assert(col1 != null && col2 != null && col3 != null);
+      Miscellanea.Assert(col1.Length == col2.Length && col1.Length == col3.Length);
+      Miscellanea.Assert(col1.Length > 0);
       this.col1 = col1;
       this.col2 = col2;
       this.col3 = col3;
@@ -675,6 +808,13 @@ namespace CellLang {
 
     override public int GetSize() {
       return col1.Length;
+    }
+
+    override public string ToString() {
+      string[] reprs = new string[col1.Length];
+      for (int i=0 ; i < col1.Length ; i++)
+        reprs[i] = col1[i].ToString() + ", " + col2[i].ToString() + ", " + col3[i].ToString();
+      return "[" + string.Join("; ", reprs) + (col1.Length == 1 ? ";]" : "]");
     }
 
     override public TernRelIter GetTernRelIter() {
@@ -719,13 +859,27 @@ namespace CellLang {
     Obj obj;
 
     public TaggedObj(int tag, Obj obj) {
+      if (tag == SymbTable.StringSymbId) {
+        if (!obj.IsSeq()) {
+          Console.WriteLine("NOT A SEQUENCE!");
+          throw new Exception();
+        }
+        for (int i=0 ; i < obj.GetSize() ; i++) {
+          Obj item = obj.GetItem(i);
+          if (!item.IsInt()) {
+            Console.WriteLine("NOT A CHARACTER!");
+            Console.WriteLine(item.ToString());
+            Console.WriteLine(obj.ToString());
+            throw new Exception();
+          }
+        }
+      }
       this.tag = tag;
       this.obj = obj;
     }
 
-    public TaggedObj(Obj tag, Obj obj) {
-      this.tag = tag.GetSymbId();
-      this.obj = obj;
+    public TaggedObj(Obj tag, Obj obj) : this(tag.GetSymbId(), obj) {
+
     }
 
     override public bool IsTagged() {
@@ -742,6 +896,43 @@ namespace CellLang {
 
     override public Obj GetInnerObj() {
       return obj;
+    }
+
+    override public string ToString() {
+      if (IsString())
+        return "\"" + GetString() + "\"";
+      else
+        return SymbTable.IdxToStr(tag) + "(" + obj.ToString() + ")";
+    }
+
+    bool IsString() {
+      if (tag != SymbTable.StringSymbId | !obj.IsSeq())
+        return false;
+      int len = obj.GetSize();
+      for (int i=0 ; i < len ; i++) {
+        Obj item = obj.GetItem(i);
+        if (!item.IsInt())
+          return false;
+        long value = item.GetLong();
+        if (value < 0 | value > 65535)
+          return false;
+      }
+      return true;
+    }
+
+    override public string GetString() {
+      if (tag != SymbTable.StringSymbId)
+        throw new NotImplementedException();
+      long[] codes = obj.GetLongArray();
+      char[] chars = new char[codes.Length];
+      for (int i=0 ; i < codes.Length ; i++) {
+        long code = codes[i];
+        if (code < 0 | code > 65535)
+          // Char.ConvertFromUtf32
+          throw new NotImplementedException();
+        chars[i] = (char) code;
+      }
+      return new string(chars);
     }
 
     override protected int TypeId() {
