@@ -426,7 +426,7 @@ implicit {
       "    this.captured_cls = captured_cls;",
       "  }",
       "",
-      "  override public Obj Invoke(Obj a0, Obj a1, Env env) {"
+      "  override public Obj Invoke(" & append(("Obj a" & printed(i) & ", " : i < cd.arity)) & "Env env) {"
     ) & indent_lines(indent_lines(full_body)) &
     ( "  }",
       "}"
