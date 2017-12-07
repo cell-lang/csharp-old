@@ -78,7 +78,7 @@ namespace CellLang {
     public virtual string GetString()                             {throw new NotImplementedException();}
 
     public virtual Obj Lookup(Obj key)                            {throw new NotImplementedException();}
-    public virtual Obj LookupField(int id)                        {throw new NotImplementedException();}
+    // public virtual Obj LookupField(int id)                        {throw new NotImplementedException();}
 
     public virtual Obj Append(Obj obj)                            {throw new NotImplementedException();}
     public virtual Obj Concat(Obj seq)                            {throw new NotImplementedException();}
@@ -112,6 +112,11 @@ namespace CellLang {
 
     public virtual long GetLong() {
       Console.WriteLine(ToString());
+      throw new NotImplementedException();
+    }
+
+    public virtual Obj LookupField(int id) {
+      Console.WriteLine(this);
       throw new NotImplementedException();
     }
 
@@ -562,6 +567,14 @@ namespace CellLang {
       return iter2;
     }
 
+    override public BinRelIter GetBinRelIter0(Obj obj) {
+      return iter2;
+    }
+
+    override public BinRelIter GetBinRelIter1(Obj obj) {
+      return iter2;
+    }
+
     override public TernRelIter GetTernRelIter() {
       return iter3;
     }
@@ -722,6 +735,16 @@ namespace CellLang {
       return new BinRelIter(col1, col2);
     }
 
+    override public BinRelIter GetBinRelIter0(Obj obj) {
+      int first;
+      int count = Algs.BinSearchRange(col1, 0, col1.Length, obj, out first);
+      return new BinRelIter(col1, col2, first, first+count-1);
+    }
+
+    // override public BinRelIter GetBinRelIter1(Obj obj) {
+    //
+    // }
+
     override public Obj Lookup(Obj key) {
       int idx = Algs.BinSearch(col1, key);
       if (idx == -1)
@@ -859,6 +882,7 @@ namespace CellLang {
     Obj obj;
 
     public TaggedObj(int tag, Obj obj) {
+      Miscellanea.Assert(obj != null);
       if (tag == SymbTable.StringSymbId) {
         if (!obj.IsSeq()) {
           Console.WriteLine("NOT A SEQUENCE!");
@@ -896,6 +920,10 @@ namespace CellLang {
 
     override public Obj GetInnerObj() {
       return obj;
+    }
+
+    override public Obj LookupField(int id) {
+      return obj.LookupField(id);
     }
 
     override public string ToString() {

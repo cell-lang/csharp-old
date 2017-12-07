@@ -51,5 +51,11 @@ namespace CellLang {
         throw new Exception();
       }
     }
+
+    public static void Trace(bool cond, string message) {
+      if (!cond) {
+        Console.WriteLine("*** TRACE: " + message);
+      }
+    }
   }
 }

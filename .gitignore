@@ -1,9 +1,9 @@
 tmp/
 debug/
 codegen-dbg
-test-dbg
+gen-html-dbg
 generated.cs
-test-input.txt
+gen-html.txt
 main.cs
 cpp/
 mine-pump.svg

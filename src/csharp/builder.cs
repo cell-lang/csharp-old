@@ -24,10 +24,10 @@ namespace CellLang {
       return CreateSet(objs.ToArray(), objs.Count);
     }
 
-    public static Obj CreateSet(Obj[] objs, long count) {
+    public static Obj CreateSet(Obj[] objs, int count) {
       Miscellanea.Assert(objs.Length == count);
       if (count != 0) {
-        Obj[] norm_objs = Algs.SortUnique(objs);
+        Obj[] norm_objs = Algs.SortUnique(objs, count);
         return new NeSetObj(norm_objs);
       }
       else
@@ -40,10 +40,16 @@ namespace CellLang {
     }
 
     public static Obj CreateMap(Obj[] keys, Obj[] vals, int count) {
-      Miscellanea.Assert(keys.Length == count && vals.Length == count);
       Obj binRel = CreateBinRel(keys, vals, count);
-      if (!binRel.IsEmptyRel() && !binRel.IsNeMap())
+      if (!binRel.IsEmptyRel() && !binRel.IsNeMap()) {
+        BinRelIter iter = binRel.GetBinRelIter();
+        //## REMOVE WHEN DONE
+        while (!iter.Done()) {
+          Console.WriteLine(iter.Get1().ToString());
+          iter.Next();
+        }
         throw new Exception();
+      }
       return binRel;
     }
 
@@ -53,11 +59,11 @@ namespace CellLang {
     }
 
     public static Obj CreateBinRel(Obj[] col1, Obj[] col2, int count) {
-      Miscellanea.Assert(col1.Length == col2.Length && col1.Length == count);
+      Miscellanea.Assert(count <= col1.Length & count <= col2.Length);
       if (count != 0) {
         Obj[] norm_col_1, norm_col_2;
-        Algs.SortUnique(col1, col2, out norm_col_1, out norm_col_2);
-        return new NeBinRelObj(norm_col_1, norm_col_2, Algs.SortedArrayHasDuplicates(norm_col_1));
+        Algs.SortUnique(col1, col2, count, out norm_col_1, out norm_col_2);
+        return new NeBinRelObj(norm_col_1, norm_col_2, !Algs.SortedArrayHasDuplicates(norm_col_1));
       }
       else
         return EmptyRelObj.Singleton();
@@ -65,14 +71,14 @@ namespace CellLang {
 
     public static Obj CreateTernRel(List<Obj> col1, List<Obj> col2, List<Obj> col3) {
       Miscellanea.Assert(col1.Count == col2.Count && col1.Count == col3.Count);
-      return CreateTernRel(col1.ToArray(), col2.ToArray(), col3.ToArray());
+      return CreateTernRel(col1.ToArray(), col2.ToArray(), col3.ToArray(), col1.Count);
     }
 
-    public static Obj CreateTernRel(Obj[] col1, Obj[] col2, Obj[] col3) {
-      Miscellanea.Assert(col1.Length == col2.Length && col1.Length == col3.Length);
+    public static Obj CreateTernRel(Obj[] col1, Obj[] col2, Obj[] col3, int count) {
+      Miscellanea.Assert(count <= col1.Length && count <= col2.Length && count <= col3.Length);
       if (col1.Length != 0) {
         Obj[] norm_col_1, norm_col_2, norm_col_3;
-        Algs.SortUnique(col1, col2, col3, out norm_col_1, out norm_col_2, out norm_col_3);
+        Algs.SortUnique(col1, col2, col3, count, out norm_col_1, out norm_col_2, out norm_col_3);
         return new NeTernRelObj(norm_col_1, norm_col_2, norm_col_3);
       }
       else {
