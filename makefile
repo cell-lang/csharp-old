@@ -15,6 +15,13 @@ gen-html-dbg: codegen-dbg $(RUNTIME-FILES)
 recompile-generated:
 	mcs -debug -d:DEBUG generated.cs $(RUNTIME-FILES) -out:gen-html-dbg
 
+codegen.cs: codegen-dbg codegen.txt
+	./codegen-dbg codegen.txt
+	mv generated.cs codegen.cs
+
+codegen.exe: codegen.cs $(RUNTIME-FILES)
+	mcs codegen.cs $(RUNTIME-FILES) -out:codegen.exe
+
 check:
 	./gen-html-dbg ../docs/commands.txt        html/commands.html
 	./gen-html-dbg ../docs/data.txt            html/data.html

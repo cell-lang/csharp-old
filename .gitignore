@@ -9,3 +9,7 @@ cpp/
 mine-pump.svg
 *.mdb
 *.html
+generated.cpp
+codegen.txt
+codegen.cs
+codegen.exe

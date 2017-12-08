@@ -22,20 +22,20 @@ namespace CellLang {
       return null;
     }
 
-    public static void Fail() {
+    public static Obj Fail() {
       throw new InvalidOperationException();
     }
 
-    public static Obj RandNat(Obj max) {
-      return null;
+    public static long RandNat(Obj max) {
+      return 0;
     }
 
-    public static Obj UniqueNat() {
-      return null;
+    public static long UniqueNat() {
+      return 0;
     }
 
-    public static Obj GetTickCount() {
-      return null;
+    public static long GetTickCount() {
+      return 0;
     }
 
     public static void Assert(bool cond) {

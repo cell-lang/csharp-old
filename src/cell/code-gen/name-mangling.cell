@@ -81,7 +81,7 @@ String to_c_var_name(<ObjVar, PendingInputVar> var, Bool add_prefix) {
     var(<+> a?)                   = _str_(a) & "_V",
     fn_arg(<*..*> n?)             = "a" & printed(n),
     impl_arg(<+> a?)              = prefix & _str_(a) & "_V",
-    capt_var(<*..*> n?)           = "captured["  & printed(n) & "]",
+    capt_var(<*..*> n?)           = "captured_vars["  & printed(n) & "]",
     memb_var(<+> a?)              = prefix & _str_(a) & "_M",
     signal_var(a?)                = prefix & _str_(a) & "_S",
     qual_signal_var()             = to_c_var_name(var.auto_var, true) & "." & to_c_var_name(var.memb_var, false),

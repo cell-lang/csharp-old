@@ -24,10 +24,10 @@ namespace CellLang {
       return CreateSet(objs.ToArray(), objs.Count);
     }
 
-    public static Obj CreateSet(Obj[] objs, int count) {
+    public static Obj CreateSet(Obj[] objs, long count) {
       Miscellanea.Assert(objs.Length == count);
       if (count != 0) {
-        Obj[] norm_objs = Algs.SortUnique(objs, count);
+        Obj[] norm_objs = Algs.SortUnique(objs, (int) count);
         return new NeSetObj(norm_objs);
       }
       else
@@ -39,7 +39,7 @@ namespace CellLang {
       return CreateMap(keys.ToArray(), vals.ToArray(), keys.Count);
     }
 
-    public static Obj CreateMap(Obj[] keys, Obj[] vals, int count) {
+    public static Obj CreateMap(Obj[] keys, Obj[] vals, long count) {
       Obj binRel = CreateBinRel(keys, vals, count);
       if (!binRel.IsEmptyRel() && !binRel.IsNeMap()) {
         BinRelIter iter = binRel.GetBinRelIter();
@@ -58,11 +58,11 @@ namespace CellLang {
       return CreateBinRel(col1.ToArray(), col2.ToArray(), col1.Count);
     }
 
-    public static Obj CreateBinRel(Obj[] col1, Obj[] col2, int count) {
+    public static Obj CreateBinRel(Obj[] col1, Obj[] col2, long count) {
       Miscellanea.Assert(count <= col1.Length & count <= col2.Length);
       if (count != 0) {
         Obj[] norm_col_1, norm_col_2;
-        Algs.SortUnique(col1, col2, count, out norm_col_1, out norm_col_2);
+        Algs.SortUnique(col1, col2, (int) count, out norm_col_1, out norm_col_2);
         return new NeBinRelObj(norm_col_1, norm_col_2, !Algs.SortedArrayHasDuplicates(norm_col_1));
       }
       else
@@ -74,11 +74,11 @@ namespace CellLang {
       return CreateTernRel(col1.ToArray(), col2.ToArray(), col3.ToArray(), col1.Count);
     }
 
-    public static Obj CreateTernRel(Obj[] col1, Obj[] col2, Obj[] col3, int count) {
+    public static Obj CreateTernRel(Obj[] col1, Obj[] col2, Obj[] col3, long count) {
       Miscellanea.Assert(count <= col1.Length && count <= col2.Length && count <= col3.Length);
       if (col1.Length != 0) {
         Obj[] norm_col_1, norm_col_2, norm_col_3;
-        Algs.SortUnique(col1, col2, col3, count, out norm_col_1, out norm_col_2, out norm_col_3);
+        Algs.SortUnique(col1, col2, col3, (int) count, out norm_col_1, out norm_col_2, out norm_col_3);
         return new NeTernRelObj(norm_col_1, norm_col_2, norm_col_3);
       }
       else {

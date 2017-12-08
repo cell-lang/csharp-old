@@ -466,7 +466,7 @@ implicit {
     init_memb_var()       = (to_c_var_ref_name(instr.var) & " = " & to_c_const(instr.new_state) & ";"),
     reset_memb_var()      = (to_c_var_ref_name(instr.var) & " = " & to_c_const(instr.new_state) & ";"),
     clear_loc_var(v?)     = (to_c_var_ref_name(v) & " = NullObj.Singleton();"),
-    terminate             = ("Miscellanea.Fail();", "throw new Exception();"),
+    terminate             = ("return Miscellanea.Fail();"),
     add_ref(v?)           = (),
     release(v?)           = (),
     print_obj()           = (native_method_call(instr.obj, "Print", ())),
@@ -565,7 +565,7 @@ implicit {
     code = ();
     for fn_id <- rand_sort(lookup(cached_semi_consts_by_impl_arg, arg, [])):
       cache_var_name = to_c_memo_var_name(fn_id);
-      code = (code | "env." & cache_var_name & " = BlankObj.Singleton();");
+      code = (code | "env." & cache_var_name & " = null;");
     ;
     return code;
   }
@@ -593,7 +593,7 @@ implicit {
   String* compile_symb_switch_to_c(ObjExpr value, [+([+SymbObj], Instr+)] cases, Instr* else, Maybe[Nat] block_id) {
     value_str = match (value)
       get_tag(tag_obj?)   = to_c_expr(tag_obj) & ".GetTagId()",
-      _                   = to_c_expr(value) & ".GetSymbId())";
+      _                   = to_c_expr(value) & ".GetSymbId()";
 
     body_code = (
       ("" if i > 0) &
