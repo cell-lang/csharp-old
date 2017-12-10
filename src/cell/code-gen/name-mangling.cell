@@ -203,7 +203,7 @@ String aux_struct_var_ref_name(ValueStoreId vs) = "&self_aux->" & aux_struct_var
 
 ////////////////////////////////////////////////////////////////////////////////
 
-String var_decl(ObjVar v)       = "Obj "          & to_c_var_decl_name(v) & ";";
+String var_decl(ObjVar v)       = "Obj "          & to_c_var_decl_name(v) & " = null;"; ## CHANGE THIS
 String var_decl(BoolVar v)      = "bool "         & to_c_var_decl_name(v) & ";";
 String var_decl(IntVar v)       = "long "         & to_c_var_decl_name(v) & ";";
 String var_decl(SeqItVar v)     = "SeqOrSetIter " & to_c_var_decl_name(v) & ";";

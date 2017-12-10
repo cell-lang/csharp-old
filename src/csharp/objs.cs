@@ -658,7 +658,7 @@ namespace CellLang {
       int other_len = other_elts.Length;
       if (other_len != len)
         return other_len < len ? 1 : -1;
-      for (int i=0 ; i < 0 ; i++) {
+      for (int i=0 ; i < len ; i++) {
         int res = other_elts[i].Cmp(elts[i]);
         if (res != 0)
           return res;
@@ -780,12 +780,12 @@ namespace CellLang {
       int other_len = other_col_1.Length;
       if (other_len != len)
         return other_len < len ? 1 : -1;
-      for (int i=0 ; i < 0 ; i++) {
+      for (int i=0 ; i < len ; i++) {
         int res = other_col_1[i].Cmp(col1[i]);
         if (res != 0)
           return res;
       }
-      for (int i=0 ; i < 0 ; i++) {
+      for (int i=0 ; i < len ; i++) {
         int res = other_col_2[i].Cmp(col2[i]);
         if (res != 0)
           return res;
@@ -860,17 +860,17 @@ namespace CellLang {
       int other_len = other_col_1.Length;
       if (other_len != len)
         return other_len < len ? 1 : -1;
-      for (int i=0 ; i < 0 ; i++) {
+      for (int i=0 ; i < len ; i++) {
         int res = other_col_1[i].Cmp(col1[i]);
         if (res != 0)
           return res;
       }
-      for (int i=0 ; i < 0 ; i++) {
+      for (int i=0 ; i < len ; i++) {
         int res = other_col_2[i].Cmp(col2[i]);
         if (res != 0)
           return res;
       }
-      for (int i=0 ; i < 0 ; i++) {
+      for (int i=0 ; i < len ; i++) {
         int res = other_col_3[i].Cmp(col3[i]);
         if (res != 0)
           return res;

@@ -18,12 +18,13 @@ Main(String* args) {
   res = ReadValueFromFile(args(0));
   return if res == nothing;
   prg = value(res);
+
   if not prg :: CompiledPrg:
     Print("Invalid input!\n");
     return;
   ;
 
-  cs_code  = compile_to_cs(prg, false);
+  cs_code = compile_to_cs(prg, false);
 
   text = append(cs_code.body, "\n");
   ok = FileWrite("generated.cs", chars(text));

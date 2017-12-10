@@ -69,6 +69,14 @@ namespace CellLang {
         return EmptyRelObj.Singleton();
     }
 
+    public static Obj CreateBinRel(Obj obj1, Obj obj2) {
+      Obj[] col1 = new Obj[1];
+      Obj[] col2 = new Obj[1];
+      col1[0] = obj1;
+      col2[0] = obj2;
+      return new NeBinRelObj(col1, col2, true);
+    }
+
     public static Obj CreateTernRel(List<Obj> col1, List<Obj> col2, List<Obj> col3) {
       Miscellanea.Assert(col1.Count == col2.Count && col1.Count == col3.Count);
       return CreateTernRel(col1.ToArray(), col2.ToArray(), col3.ToArray(), col1.Count);
@@ -84,6 +92,16 @@ namespace CellLang {
       else {
         return EmptyRelObj.Singleton();
       }
+    }
+
+    public static Obj CreateTernRel(Obj obj1, Obj obj2, Obj obj3) {
+      Obj[] col1 = new Obj[1];
+      Obj[] col2 = new Obj[1];
+      Obj[] col3 = new Obj[1];
+      col1[0] = obj1;
+      col2[0] = obj2;
+      col3[0] = obj3;
+      return new NeTernRelObj(col1, col2, col3);
     }
 
     public static Obj BuildConstIntSeq(byte[] vals) {

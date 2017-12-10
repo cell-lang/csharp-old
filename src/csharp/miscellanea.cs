@@ -57,5 +57,10 @@ namespace CellLang {
         Console.WriteLine("*** TRACE: " + message);
       }
     }
+
+    public static bool IsHexDigit(byte b) {
+      char ch = (char) b;
+      return ('0' <= ch & ch <= '9') | ('a' <= ch & ch <= 'f') | ('A' <= ch & ch <= 'F');
+    }
   }
 }

@@ -1,26 +1,28 @@
 SRC-FILES=$(shell ls src/cell/*.cell src/cell/code-gen/*.cell)
 RUNTIME-FILES=$(shell ls src/csharp/*)
 
-codegen-dbg: $(SRC-FILES)
+codegen-dbg codegen.txt: $(SRC-FILES)
 	rm -rf tmp/
 	mkdir tmp
-	cellc project.txt
+	cellc -p project.txt
+	mv dump-opt-code.txt codegen.txt
+	rm dump-*.txt
 	mv generated.* tmp/
 	g++ -O1 tmp/generated.cpp -o codegen-dbg
 
-gen-html-dbg: codegen-dbg $(RUNTIME-FILES)
-	./codegen-dbg gen-html.txt
-	mcs -debug -d:DEBUG generated.cs $(RUNTIME-FILES) -out:gen-html-dbg
+# gen-html-dbg: codegen-dbg $(RUNTIME-FILES)
+# 	./codegen-dbg gen-html.txt
+# 	mcs -debug -d:DEBUG generated.cs $(RUNTIME-FILES) -out:gen-html-dbg
 
-recompile-generated:
-	mcs -debug -d:DEBUG generated.cs $(RUNTIME-FILES) -out:gen-html-dbg
+# recompile-generated:
+# 	mcs -debug -d:DEBUG generated.cs $(RUNTIME-FILES) -out:gen-html-dbg
 
 codegen.cs: codegen-dbg codegen.txt
 	./codegen-dbg codegen.txt
 	mv generated.cs codegen.cs
 
 codegen.exe: codegen.cs $(RUNTIME-FILES)
-	mcs codegen.cs $(RUNTIME-FILES) -out:codegen.exe
+	mcs -nowarn:162,168,219,414 codegen.cs $(RUNTIME-FILES) -out:codegen.exe
 
 check:
 	./gen-html-dbg ../docs/commands.txt        html/commands.html
