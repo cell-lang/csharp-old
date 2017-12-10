@@ -25,7 +25,7 @@ namespace CellLang {
     }
 
     public static Obj CreateSet(Obj[] objs, long count) {
-      Miscellanea.Assert(objs.Length == count);
+      Miscellanea.Assert(objs.Length >= count);
       if (count != 0) {
         Obj[] norm_objs = Algs.SortUnique(objs, (int) count);
         return new NeSetObj(norm_objs);

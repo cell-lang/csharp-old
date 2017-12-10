@@ -24,6 +24,16 @@ codegen.cs: codegen-dbg codegen.txt
 codegen.exe: codegen.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 codegen.cs $(RUNTIME-FILES) -out:codegen.exe
 
+test.txt: test.cell
+	cellc -p test-project.txt
+	mv dump-opt-code.txt test.txt
+	rm generated.cpp dump-*.txt
+
+test.exe: test.txt $(RUNTIME-FILES)
+	./codegen-dbg test.txt
+	mv generated.cs test.cs
+	mcs test.cs $(RUNTIME-FILES) -out:test.exe
+
 check:
 	./gen-html-dbg ../docs/commands.txt        html/commands.html
 	./gen-html-dbg ../docs/data.txt            html/data.html

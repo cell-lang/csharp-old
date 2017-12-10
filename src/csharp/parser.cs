@@ -203,7 +203,7 @@ namespace CellLang {
           if (token != null) {
             char[] chars = new char[str_len];
             for (int j=0 ; j < str_len ; j++)
-              chars[j] = (char) text[offset+j];
+              chars[j] = (char) text[offset+j+1];
 
             token.offset = offset;
             token.length = i + 1 - offset;
