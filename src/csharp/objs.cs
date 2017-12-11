@@ -335,6 +335,36 @@ namespace CellLang {
       return "(" + string.Join(", ", reprs) + ")";
     }
 
+    protected Obj CopyOnWriteConcat(Obj seq) {
+      int offset = Offset();
+      int seqLen = seq.GetSize();
+      int minLen = length + seqLen;
+      Obj[] newItems = new Obj[Math.Max(4 * minLen, 32)];
+      Array.Copy(items, offset, newItems, 0, length);
+      SeqObj seqObj = (SeqObj) seq;
+      Array.Copy(seqObj.items, seqObj.Offset(), newItems, length, seqObj.length);
+//      for (int i=0 ; i < length ; i++)
+//        newItems[i] = items[i+offset];
+//      for (int i=0 ; i < seqLen ; i++)
+//        newItems[i+length] = seq.GetItem(i);
+      return new MasterSeqObj(newItems, minLen);
+
+      // Obj[] newItems = new Obj[newLen <= 16 ? 32 : (3 * newLen) / 2];
+      // for (int i=0 ; i < length ; i++)
+      //   newItems[i] = items[i];
+      // for (int i=0 ; i < seqLen ; i++)
+      //   newItems[length+i] = seq.GetItem(i);
+      // return new MasterSeqObj(newItems, newLen);
+
+      // newLen = length + seqLen;
+      // Obj[] newItems = new Obj[newLen <= 16 ? 32 : (3 * newLen) / 2];
+      // for (int i=0 ; i < length ; i++)
+      //   newItems[i] = items[offset+i];
+      // for (int i=0 ; i < seqLen ; i++)
+      //   newItems[length+i] = seq.GetItem(i);
+      // return new MasterSeqObj(newItems, newLen);
+    }
+
     override protected int TypeId() {
       return 3;
     }
@@ -424,19 +454,16 @@ namespace CellLang {
 
       int seqLen = seq.GetSize();
       int newLen = length + seqLen;
+
       if (used == length && newLen < items.Length) {
+//        SeqObj seqObj = (SeqObj) seq;
+//        Array.Copy(seqObj.items, seqObj.Offset(), items, length, seqObj.length);
         for (int i=0; i < seqLen ; i++)
           items[length+i] = seq.GetItem(i);
         return new SliceObj(this, 0, newLen);
       }
-      else {
-        Obj[] newItems = new Obj[newLen <= 16 ? 32 : (3 * newLen) / 2];
-        for (int i=0 ; i < length ; i++)
-          newItems[i] = items[i];
-        for (int i=0 ; i < seqLen ; i++)
-          newItems[length+i] = seq.GetItem(i);
-        return new MasterSeqObj(newItems, newLen);
-      }
+
+      return CopyOnWriteConcat(seq);
     }
 
     override protected int Offset() {
@@ -492,15 +519,8 @@ namespace CellLang {
           master.items[used+i] = seq.GetItem(i);
         return new SliceObj(master, offset, newLen);
       }
-      else {
-        newLen = length + seqLen;
-        Obj[] newItems = new Obj[newLen <= 16 ? 32 : (3 * newLen) / 2];
-        for (int i=0 ; i < length ; i++)
-          newItems[i] = items[offset+i];
-        for (int i=0 ; i < seqLen ; i++)
-          newItems[length+i] = seq.GetItem(i);
-        return new MasterSeqObj(newItems, newLen);
-      }
+
+      return CopyOnWriteConcat(seq);
     }
 
     override protected int Offset() {
