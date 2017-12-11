@@ -24,6 +24,12 @@ codegen.cs: codegen-dbg codegen.txt
 codegen.exe: codegen.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 codegen.cs $(RUNTIME-FILES) -out:codegen.exe
 
+codegen-rel.exe: codegen.cs $(RUNTIME-FILES)
+	mcs -optimize -nowarn:162,168,219,414 codegen.cs $(RUNTIME-FILES) -out:codegen-rel.exe
+
+codegen-2.exe: $(RUNTIME-FILES)
+	mcs -nowarn:162,168,219,414 codegen-2.cs $(RUNTIME-FILES) -out:codegen-2.exe
+
 test.txt: test.cell
 	cellc -p test-project.txt
 	mv dump-opt-code.txt test.txt

@@ -913,6 +913,10 @@ namespace CellLang {
       return true;
     }
 
+    override public bool HasField(int id) {
+      return obj.HasField(id);
+    }
+
     override public int GetTagId() {
       return tag;
     }

@@ -13,4 +13,4 @@ generated.cpp
 codegen.txt
 codegen.cs
 codegen.exe
-test/
+tests/

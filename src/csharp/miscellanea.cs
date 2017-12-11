@@ -30,8 +30,9 @@ namespace CellLang {
       return 0;
     }
 
+    static int nextUniqueNat = 0;
     public static long UniqueNat() {
-      return 0;
+      return nextUniqueNat++;
     }
 
     public static long GetTickCount() {
