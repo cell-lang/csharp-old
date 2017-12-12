@@ -625,6 +625,7 @@ implicit {
     append_to_seq()             = native_method_call(var, expr.seq,  "Append",        (expr.new_elem)),
     update_seq_at()             = native_method_call(var, expr.seq,  "UpdateAt",      (expr.idx, expr.value)),
     join_seqs()                 = native_method_call(var, expr.left, "Concat",        (expr.right)),
+    // join_mult_seqs()            = native_method_call(var, expr.seqs, "ConcatMany",    ()),
     rev_seq()                   = native_method_call(var, expr.seq,  "Reverse",       ()),
     internal_sort()             = native_method_call(var, expr.set,  "InternalSort",  ()),
     symb_to_str(e?)             = native_method_call(var, e,         "Printed",       ()),

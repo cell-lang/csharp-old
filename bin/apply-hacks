@@ -1,0 +1,6 @@
+sed 's/static Obj join_F1(/static Obj join_F1(Obj seqs, Env env) {\
+      return seqs.ConcatMany();\
+    }\
+\
+\
+    static Obj join_F1_(/'

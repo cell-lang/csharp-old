@@ -19,7 +19,7 @@ codegen-dbg codegen.txt: $(SRC-FILES)
 
 codegen.cs: codegen-dbg codegen.txt
 	./codegen-dbg codegen.txt
-	mv generated.cs codegen.cs
+	bin/apply-hacks < generated.cs > codegen.cs
 
 codegen.exe: codegen.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 codegen.cs $(RUNTIME-FILES) -out:codegen.exe
@@ -27,7 +27,10 @@ codegen.exe: codegen.cs $(RUNTIME-FILES)
 codegen-rel.exe: codegen.cs $(RUNTIME-FILES)
 	mcs -optimize -nowarn:162,168,219,414 codegen.cs $(RUNTIME-FILES) -out:codegen-rel.exe
 
-codegen-2.exe: $(RUNTIME-FILES)
+codegen-2.cs: generated-2.cs
+	bin/apply-hacks < generated-2.cs > codegen-2.cs
+
+codegen-2.exe: codegen-2.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 codegen-2.cs $(RUNTIME-FILES) -out:codegen-2.exe
 
 test.txt: test.cell
