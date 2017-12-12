@@ -65,6 +65,9 @@ namespace CellLang {
     public virtual BinRelIter GetBinRelIter0(Obj obj)             {throw new NotImplementedException();}
     public virtual BinRelIter GetBinRelIter1(Obj obj)             {throw new NotImplementedException();}
 
+    public virtual TernRelIter GetTernRelIter(int col, Obj val)   {throw new NotImplementedException();}
+    public virtual TernRelIter GetTernRelIter(int col, Obj val1, Obj val2) {throw new NotImplementedException();}
+
     public virtual long Mantissa()                                {throw new NotImplementedException();}
     public virtual long DecExp()                                  {throw new NotImplementedException();}
 

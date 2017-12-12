@@ -207,5 +207,48 @@ namespace CellLang {
           return true;
       return false;
     }
+
+    public static int[] SortedIndexes(Obj[] major, Obj[] minor) {
+      Miscellanea.Assert(major.Length == minor.Length);
+
+      int count = major.Length;
+
+      int[] idxs = new int[count];
+      for (int i=0 ; i < count ; i++)
+        idxs[i] = i;
+
+      Comparison<int> cmp = delegate(int i, int j) {
+        int res = major[i].CompareTo(major[j]);
+        if (res != 0)
+          return res;
+        return minor[i].CompareTo(minor[j]);
+      };
+
+      Array.Sort(idxs, cmp);
+      return idxs;
+    }
+
+    public static int[] SortedIndexes(Obj[] col1, Obj[] col2, Obj[] col3) {
+      Miscellanea.Assert(col1.Length == col2.Length && col1.Length == col3.Length);
+
+      int count = col1.Length;
+
+      int[] idxs = new int[count];
+      for (int i=0 ; i < count ; i++)
+        idxs[i] = i;
+
+      Comparison<int> cmp = delegate(int i, int j) {
+        int res = col1[i].CompareTo(col1[j]);
+        if (res != 0)
+          return res;
+        res = col2[i].CompareTo(col2[j]);
+        if (res != 0)
+          return res;
+        return col3[i].CompareTo(col3[j]);
+      };
+
+      Array.Sort(idxs, cmp);
+      return idxs;
+    }
   }
 }

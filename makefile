@@ -33,6 +33,9 @@ codegen-2.cs: generated-2.cs
 codegen-2.exe: codegen-2.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 codegen-2.cs $(RUNTIME-FILES) -out:codegen-2.exe
 
+cellc-cs.exe: compiler.cs $(RUNTIME-FILES)
+	mcs -nowarn:162,168,219,414 compiler.cs $(RUNTIME-FILES) -out:cellc-cs.exe
+
 test.txt: test.cell
 	cellc -p test-project.txt
 	mv dump-opt-code.txt test.txt
