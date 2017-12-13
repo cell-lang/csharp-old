@@ -8,6 +8,11 @@ namespace CellLang {
     internal Obj[] items;
     internal int length;
 
+    protected SeqObj(int length) {
+      this.items = new Obj[length];
+      this.length = length;
+    }
+
     protected SeqObj(Obj[] items, int length) {
       Miscellanea.Assert(items != null && length >= 0 && length <= items.Length);
       this.items = items;
@@ -163,7 +168,7 @@ namespace CellLang {
 
     }
 
-    public MasterSeqObj(long length) : base(new Obj[length], (int)length) {
+    public MasterSeqObj(long length) : base(length > 0 ? (int) length : 0) {
 
     }
 

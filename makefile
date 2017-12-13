@@ -1,7 +1,7 @@
 SRC-FILES=$(shell ls src/cell/*.cell src/cell/code-gen/*.cell)
 RUNTIME-FILES=$(shell ls src/csharp/*)
 
-codegen-dbg codegen.txt: $(SRC-FILES)
+codegen-dbg codegen.txt tmp/generated.cpp: $(SRC-FILES)
 	rm -rf tmp/
 	mkdir tmp
 	cellc -p project.txt
@@ -9,6 +9,12 @@ codegen-dbg codegen.txt: $(SRC-FILES)
 	rm dump-*.txt
 	mv generated.* tmp/
 	g++ -O1 tmp/generated.cpp -o codegen-dbg
+
+codegen-rel: tmp/generated.cpp
+	g++ -O1 -DNDEBUG tmp/generated.cpp -o codegen-rel
+
+codegen-opt: tmp/generated.cpp
+	g++ -O3 -DNDEBUG tmp/generated.cpp -o codegen-opt
 
 # gen-html-dbg: codegen-dbg $(RUNTIME-FILES)
 # 	./codegen-dbg gen-html.txt
@@ -34,6 +40,11 @@ codegen-2.cs: codegen.exe codegen.txt
 
 codegen-2.exe: codegen-2.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 codegen-2.cs $(RUNTIME-FILES) -out:codegen-2.exe
+
+compiler.cs:
+	./codegen.exe tests/compiler.txt
+	bin/apply-hacks < generated.cs > compiler.cs
+	mv generated.cs tmp/
 
 cellc-cs.exe: compiler.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 compiler.cs $(RUNTIME-FILES) -out:cellc-cs.exe
