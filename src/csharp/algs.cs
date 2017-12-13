@@ -110,6 +110,87 @@ namespace CellLang {
       throw new InvalidOperationException();
     }
 
+
+    public static int BinSearchRange(int[] idxs, Obj[] objs, Obj obj, out int first) {
+      Miscellanea.Assert(idxs.Length == objs.Length);
+
+      int offset = 0;
+      int length = idxs.Length;
+
+      int low = offset;
+      int high = offset + length - 1;
+      int lower_bound = low;
+      int upper_bound = high;
+
+
+      while (low <= high) {
+        int mid = (int) (((long) low + (long) high) / 2);
+        switch (objs[idxs[mid]].Cmp(obj)) {
+          case -1:
+            // objs[idxs[mid]] > obj
+            upper_bound = high = mid - 1;
+            break;
+
+          case 0:
+            if (mid == offset || !objs[idxs[mid-1]].IsEq(obj)) {
+              first = mid;
+              low = lower_bound;
+              high = upper_bound;
+              goto Next;
+            }
+            else
+              high = mid - 1;
+            break;
+
+          case 1:
+            // objs[idxs[mid]] < obj
+            lower_bound = low = mid + 1;
+            break;
+        }
+      }
+
+      first = 0;
+      return 0;
+
+    Next:
+      while (low <= high) {
+        int mid = (int) (((long) low + (long) high) / 2);
+        switch (objs[idxs[mid]].Cmp(obj)) {
+          case -1:
+            // objs[idxs[mid]] > obj
+            high = mid - 1;
+            break;
+
+          case 0:
+            if (mid == upper_bound || !objs[idxs[mid+1]].IsEq(obj)) {
+              return mid - first + 1;
+            }
+            else
+              low = mid + 1;
+            break;
+
+          case 1:
+            // objs[idxs[mid]] < obj
+            low = mid + 1;
+            break;
+        }
+      }
+
+      // We're not supposed to ever get here.
+      throw new InvalidOperationException();
+    }
+
+
+    public static int BinSearchRange(Obj[] major, Obj[] minor, Obj majorVal, Obj minorVal, out int first) {
+      throw new Exception();
+    }
+
+
+    public static int BinSearchRange(int[] idxs, Obj[] major, Obj[] minor, Obj majorVal, Obj minorVal, out int first) {
+      throw new Exception();
+    }
+
+
     public static Obj[] SortUnique(Obj[] objs, int count) {
       Miscellanea.Assert(count > 0);
       Array.Sort(objs, 0, count);

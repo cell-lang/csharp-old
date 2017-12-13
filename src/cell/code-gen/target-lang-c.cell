@@ -533,19 +533,19 @@ implicit {
   String compile_get_bin_rel_iter_to_c(BinRelItVar var, AtomicExpr src, (Maybe[AtomicExpr], Maybe[AtomicExpr]) args) =
     match (args)
       (nothing,   nothing)    = native_method_call(var, src, "GetBinRelIter", ()),
-      (just(a0?), nothing)    = native_method_call(var, src, "GetBinRelIter0", (a0)),
-      (nothing,   just(a1?))  = native_method_call(var, src, "GetBinRelIter1", (a1));
+      (just(a0?), nothing)    = native_method_call(var, src, "GetBinRelIterByCol1", (a0)),
+      (nothing,   just(a1?))  = native_method_call(var, src, "GetBinRelIterByCol2", (a1));
 
 
   String compile_get_tern_rel_iter_to_c(TernRelItVar var, AtomicExpr src, (Maybe[AtomicExpr], Maybe[AtomicExpr], Maybe[AtomicExpr]) args) =
     match (args)
       (nothing,   nothing,   nothing)     = native_method_call(var, src, "GetTernRelIter", ()),
-      (just(a0?), nothing,   nothing)     = native_method_call(var, src, "GetTernRelIter", (0, a0)),
-      (nothing,   just(a1?), nothing)     = native_method_call(var, src, "GetTernRelIter", (1, a1)),
-      (nothing,   nothing,   just(a2?))   = native_method_call(var, src, "GetTernRelIter", (2, a2)),
-      (just(a0?), just(a1?), nothing)     = native_method_call(var, src, "GetTernRelIter", (0, a0, a1)),
-      (just(a0?), nothing,   just(a2?))   = native_method_call(var, src, "GetTernRelIter", (2, a2, a0)),
-      (nothing,   just(a1?), just(a2?))   = native_method_call(var, src, "GetTernRelIter", (1, a1, a2));
+      (just(a0?), nothing,   nothing)     = native_method_call(var, src, "GetTernRelIterByCol1",  (a0)),
+      (nothing,   just(a1?), nothing)     = native_method_call(var, src, "GetTernRelIterByCol2",  (a1)),
+      (nothing,   nothing,   just(a2?))   = native_method_call(var, src, "GetTernRelIterByCol3",  (a2)),
+      (just(a0?), just(a1?), nothing)     = native_method_call(var, src, "GetTernRelIterByCol12", (a0, a1)),
+      (just(a0?), nothing,   just(a2?))   = native_method_call(var, src, "GetTernRelIterByCol13", (a2, a0)),
+      (nothing,   just(a1?), just(a2?))   = native_method_call(var, src, "GetTernRelIterByCol23", (a1, a2));
 
 
   String* compile_repeat_to_c(Instr+ body, Maybe[Nat] block_id) {

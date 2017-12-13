@@ -27,7 +27,9 @@ codegen.exe: codegen.cs $(RUNTIME-FILES)
 codegen-rel.exe: codegen.cs $(RUNTIME-FILES)
 	mcs -optimize -nowarn:162,168,219,414 codegen.cs $(RUNTIME-FILES) -out:codegen-rel.exe
 
-codegen-2.cs: generated-2.cs
+codegen-2.cs: codegen.exe codegen.txt
+	./codegen.exe codegen.txt
+	mv generated.cs generated-2.cs
 	bin/apply-hacks < generated-2.cs > codegen-2.cs
 
 codegen-2.exe: codegen-2.cs $(RUNTIME-FILES)
@@ -100,4 +102,7 @@ check:
 	cmp html/updates.html         html-ref/updates.html          
 
 clean:
-	@rm -rf tmp/ codegen-dbg gen-html-dbg generated.cs gen-html-dbg.mdb
+	@rm -rf tmp/
+	@rm -f codegen-dbg codegen-rel codegen.exe codegen-2.exe codegen.txt
+	@rm -f generated.cs generated-2.cs codegen.cs codegen-2.cs
+	@rm -f gen-html-dbg gen-html-dbg.mdb

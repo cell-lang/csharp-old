@@ -62,11 +62,17 @@ namespace CellLang {
     // Copy-on-write update
     public virtual Obj UpdateAt(long i, Obj v)                    {throw new NotImplementedException();}
 
-    public virtual BinRelIter GetBinRelIter0(Obj obj)             {throw new NotImplementedException();}
-    public virtual BinRelIter GetBinRelIter1(Obj obj)             {throw new NotImplementedException();}
+    public virtual BinRelIter GetBinRelIterByCol1(Obj obj)        {throw new NotImplementedException();}
+    public virtual BinRelIter GetBinRelIterByCol2(Obj obj)        {throw new NotImplementedException();}
 
-    public virtual TernRelIter GetTernRelIter(int col, Obj val)   {throw new NotImplementedException();}
-    public virtual TernRelIter GetTernRelIter(int col, Obj val1, Obj val2) {throw new NotImplementedException();}
+    public virtual TernRelIter GetTernRelIterByCol1(Obj val)      {throw new NotImplementedException();}
+    public virtual TernRelIter GetTernRelIterByCol2(Obj val)      {throw new NotImplementedException();}
+    public virtual TernRelIter GetTernRelIterByCol3(Obj val)      {throw new NotImplementedException();}
+
+    public virtual TernRelIter GetTernRelIterByCol12(Obj val1, Obj val2)  {throw new NotImplementedException();}
+    public virtual TernRelIter GetTernRelIterByCol13(Obj val1, Obj val3)  {throw new NotImplementedException();}
+    public virtual TernRelIter GetTernRelIterByCol23(Obj val2, Obj val3)  {throw new NotImplementedException();}
+
 
     public virtual long Mantissa()                                {throw new NotImplementedException();}
     public virtual long DecExp()                                  {throw new NotImplementedException();}
@@ -330,15 +336,39 @@ namespace CellLang {
       return iter2;
     }
 
-    override public BinRelIter GetBinRelIter0(Obj obj) {
+    override public BinRelIter GetBinRelIterByCol1(Obj obj) {
       return iter2;
     }
 
-    override public BinRelIter GetBinRelIter1(Obj obj) {
+    override public BinRelIter GetBinRelIterByCol2(Obj obj) {
       return iter2;
     }
 
     override public TernRelIter GetTernRelIter() {
+      return iter3;
+    }
+
+    override public TernRelIter GetTernRelIterByCol1(Obj val) {
+      return iter3;
+    }
+
+    override public TernRelIter GetTernRelIterByCol2(Obj val) {
+      return iter3;
+    }
+
+    override public TernRelIter GetTernRelIterByCol3(Obj val) {
+      return iter3;
+    }
+
+    override public TernRelIter GetTernRelIterByCol12(Obj val1, Obj val2) {
+      return iter3;
+    }
+
+    override public TernRelIter GetTernRelIterByCol13(Obj val1, Obj val3) {
+      return iter3;
+    }
+
+    override public TernRelIter GetTernRelIterByCol23(Obj val2, Obj val3) {
       return iter3;
     }
 
@@ -431,6 +461,7 @@ namespace CellLang {
   class NeBinRelObj : Obj {
     Obj[] col1;
     Obj[] col2;
+    int[] revIdxs;
     bool isMap;
 
     public NeBinRelObj(Obj[] col1, Obj[] col2, bool isMap) {
@@ -498,15 +529,19 @@ namespace CellLang {
       return new BinRelIter(col1, col2);
     }
 
-    override public BinRelIter GetBinRelIter0(Obj obj) {
+    override public BinRelIter GetBinRelIterByCol1(Obj obj) {
       int first;
       int count = Algs.BinSearchRange(col1, 0, col1.Length, obj, out first);
       return new BinRelIter(col1, col2, first, first+count-1);
     }
 
-    // override public BinRelIter GetBinRelIter1(Obj obj) {
-    //
-    // }
+    override public BinRelIter GetBinRelIterByCol2(Obj obj) {
+      if (revIdxs == null)
+        revIdxs = Algs.SortedIndexes(col2, col1);
+      int first;
+      int count = Algs.BinSearchRange(col2, 0, col2.Length, obj, out first);
+      return new BinRelIter(col1, col2, first, first+count-1);
+    }
 
     override public Obj Lookup(Obj key) {
       int idx = Algs.BinSearch(col1, key);
@@ -559,6 +594,8 @@ namespace CellLang {
     Obj[] col1;
     Obj[] col2;
     Obj[] col3;
+    int[] idxs231;
+    int[] idxs312;
 
     public NeTernRelObj(Obj[] col1, Obj[] col2, Obj[] col3) {
       Miscellanea.Assert(col1 != null && col2 != null && col3 != null);
@@ -605,6 +642,50 @@ namespace CellLang {
 
     override public TernRelIter GetTernRelIter() {
       return new TernRelIter(col1, col2, col3);
+    }
+
+    override public TernRelIter GetTernRelIterByCol1(Obj val) {
+      int first;
+      int count = Algs.BinSearchRange(col1, 0, col1.Length, val, out first);
+      return new TernRelIter(col1, col2, col3, null, first, first+count-1);
+    }
+
+    override public TernRelIter GetTernRelIterByCol2(Obj val) {
+      if (idxs231 == null)
+        idxs231 = Algs.SortedIndexes(col2, col3, col1);
+      int first;
+      int count = Algs.BinSearchRange(idxs231, col2, val, out first);
+      return new TernRelIter(col1, col2, col3, idxs231, first, first+count-1);
+    }
+
+    override public TernRelIter GetTernRelIterByCol3(Obj val) {
+      if (idxs312 == null)
+        idxs312 = Algs.SortedIndexes(col3, col1, col2);
+      int first;
+      int count = Algs.BinSearchRange(idxs312, col3, val, out first);
+      return new TernRelIter(col1, col2, col3, idxs312, first, first+count+1);
+    }
+
+    override public TernRelIter GetTernRelIterByCol12(Obj val1, Obj val2) {
+      int first;
+      int count = Algs.BinSearchRange(col1, col2, val1, val2, out first);
+      return new TernRelIter(col1, col2, col3, null, first, first+count-1);
+    }
+
+    override public TernRelIter GetTernRelIterByCol13(Obj val1, Obj val3) {
+      if (idxs312 == null)
+        idxs312 = Algs.SortedIndexes(col3, col1, col2);
+      int first;
+      int count = Algs.BinSearchRange(idxs312, col3, col1, val3, val1, out first);
+      return new TernRelIter(col1, col2, col3, idxs312, first, first+count-1);
+    }
+
+    override public TernRelIter GetTernRelIterByCol23(Obj val2, Obj val3) {
+      if (idxs231 == null)
+        idxs231 = Algs.SortedIndexes(col2, col3, col1);
+      int first;
+      int count = Algs.BinSearchRange(idxs231, col2, col3, val2, val3, out first);
+      return new TernRelIter(col1, col2, col3, idxs231, first, first+count-1);
     }
 
     override protected int TypeId() {
