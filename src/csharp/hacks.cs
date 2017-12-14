@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 
 namespace CellLang {
@@ -18,6 +19,20 @@ namespace CellLang {
         if (targets[i] == target)
           return new TaggedObj(SymbTable.JustSymbId, attachments[i]);
       return new SymbObj(SymbTable.NothingSymbId);
+    }
+
+    static ConditionalWeakTable<Obj, Obj> cachedSourceFileLocation = new ConditionalWeakTable<Obj, Obj>();
+
+    static public void SetSourceFileLocation(Obj ast, Obj value) {
+      cachedSourceFileLocation.Add(ast, value);
+    }
+
+    static public Obj GetSourceFileLocation(Obj ast) {
+      Obj value;
+      if (cachedSourceFileLocation.TryGetValue(ast, out value))
+        return value;
+      else
+        return null;
     }
   }
 }
