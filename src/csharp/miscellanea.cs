@@ -26,6 +26,21 @@ namespace CellLang {
       throw new InvalidOperationException();
     }
 
+    public static Obj SoftFail(int val) {
+      throw new InvalidOperationException();
+    }
+
+    public static void PrintAssertionFailedMsg(string file, int line, string text) {
+      if (text == null)
+        Console.WriteLine("\nAssertion failed. File: {0}, line: {1}\n\n", file, line);
+      else
+        Console.WriteLine("\nAssertion failed: {0}\nFile: {1}, line: {2}\n\n", text, file, line);
+    }
+
+    public static void DumpVar(string name, Obj val) {
+      Console.WriteLine("{0} = {1}\n", name, val.ToString());
+    }
+
     public static long RandNat(Obj max) {
       return 0;
     }

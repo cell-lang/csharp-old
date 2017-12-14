@@ -41,7 +41,7 @@ codegen-2.cs: codegen.exe codegen.txt
 codegen-2.exe: codegen-2.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 codegen-2.cs $(RUNTIME-FILES) -out:codegen-2.exe
 
-compiler.cs:
+compiler.cs: codegen.exe $(SRC-FILES)
 	./codegen.exe tests/compiler.txt
 	bin/apply-hacks < generated.cs > compiler.cs
 	mv generated.cs tmp/
