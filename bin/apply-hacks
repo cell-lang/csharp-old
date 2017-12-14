@@ -17,7 +17,7 @@ sed 's/static Obj fetch_F1(/static Obj fetch_F1(Obj obj, Env env) {\
 \
 \
     static Obj fetch_F1_(/' | \
-sed 's/static Obj source_file_location_F1_(/static Obj source_file_location_F1(Obj ast, Env env) {\
+sed 's/static Obj source_file_location_F1(/static Obj source_file_location_F1(Obj ast, Env env) {\
       Obj cachedVal = Hacks.GetSourceFileLocation(ast);\
       if (cachedVal == null) {\
         cachedVal = source_file_location_F1_(ast, env);\
