@@ -182,12 +182,162 @@ namespace CellLang {
 
 
     public static int BinSearchRange(Obj[] major, Obj[] minor, Obj majorVal, Obj minorVal, out int first) {
-      throw new Exception();
+      int offset = 0;
+      int length = major.Length;
+
+      int low = offset;
+      int high = offset + length - 1;
+      int lower_bound = low;
+      int upper_bound = high;
+
+
+      while (low <= high) {
+        int mid = (int) (((long) low + (long) high) / 2);
+        int res = major[mid].Cmp(majorVal);
+        if (res == 0)
+          res = minor[mid].Cmp(minorVal);
+        switch (res) {
+          case -1:
+            // major[mid] > majorVal | (major[mid] == majorVal & minor[mid] > minorVal)
+            upper_bound = high = mid - 1;
+            break;
+
+          case 0:
+            if (mid == offset || (!major[mid-1].IsEq(majorVal) || !minor[mid-1].IsEq(minorVal))) {
+              first = mid;
+              low = lower_bound;
+              high = upper_bound;
+              goto Next;
+            }
+            else
+              high = mid - 1;
+            break;
+
+          case 1:
+            // major[mid] < majorVal | (major[mid] == majorVal) & minor[mid] < minorVal)
+            lower_bound = low = mid + 1;
+            break;
+        }
+      }
+
+      first = 0;
+      return 0;
+
+    Next:
+      while (low <= high) {
+        int mid = (int) (((long) low + (long) high) / 2);
+        int res = major[mid].Cmp(majorVal);
+        if (res == 0)
+          res = minor[mid].Cmp(minorVal);
+        switch (res) {
+          case -1:
+            // major[mid] > majorVal | (major[mid] == majorVal & minor[mid] > minorVal)
+            high = mid - 1;
+            break;
+
+          case 0:
+            if (mid == upper_bound || (!major[mid+1].IsEq(majorVal) || !minor[mid+1].IsEq(minorVal))) {
+              return mid - first + 1;
+            }
+            else
+              low = mid + 1;
+            break;
+
+          case 1:
+            // major[mid] < majorVal | (major[mid] == majorVal) & minor[mid] < minorVal)
+            low = mid + 1;
+            break;
+        }
+      }
+
+      // We're not supposed to ever get here.
+      throw new InvalidOperationException();
     }
 
 
     public static int BinSearchRange(int[] idxs, Obj[] major, Obj[] minor, Obj majorVal, Obj minorVal, out int first) {
-      throw new Exception();
+      int offset = 0;
+      int length = major.Length;
+
+      int low = offset;
+      int high = offset + length - 1;
+      int lower_bound = low;
+      int upper_bound = high;
+
+
+      while (low <= high) {
+        int mid = (int) (((long) low + (long) high) / 2);
+        int mid_idx = idxs[mid];
+        int res = major[mid_idx].Cmp(majorVal);
+        if (res == 0)
+          res = minor[mid_idx].Cmp(minorVal);
+        switch (res) {
+          case -1:
+            // major[mid] > majorVal | (major[mid] == majorVal & minor[mid] > minorVal)
+            upper_bound = high = mid - 1;
+            break;
+
+          case 0:
+            bool isFirst = mid == offset;
+            if (!isFirst) {
+              int prev_idx = idxs[mid-1];
+              isFirst = !major[mid-1].IsEq(majorVal) || !minor[mid-1].IsEq(minorVal);
+            }
+            if (isFirst) {
+              first = mid;
+              low = lower_bound;
+              high = upper_bound;
+              goto Next;
+            }
+            else
+              high = mid - 1;
+            break;
+
+          case 1:
+            // major[mid] < majorVal | (major[mid] == majorVal) & minor[mid] < minorVal)
+            lower_bound = low = mid + 1;
+            break;
+        }
+      }
+
+      first = 0;
+      return 0;
+
+    Next:
+      while (low <= high) {
+        int mid = (int) (((long) low + (long) high) / 2);
+        int mid_idx = idxs[mid];
+        int res = major[mid_idx].Cmp(majorVal);
+        if (res == 0)
+          res = minor[mid_idx].Cmp(minorVal);
+        switch (res) {
+          case -1:
+            // major[mid] > majorVal | (major[mid] == majorVal & minor[mid] > minorVal)
+            high = mid - 1;
+            break;
+
+          case 0:
+            bool isLast = mid == upper_bound;
+            if (!isLast) {
+              int next_idx = idxs[mid+1];
+              isLast = !major[next_idx].IsEq(majorVal) || !minor[next_idx].IsEq(minorVal);
+            }
+            if (isLast) {
+              return mid - first + 1;
+            }
+            else
+              low = mid + 1;
+            break;
+
+          case 1:
+            // major[mid] < majorVal | (major[mid] == majorVal) & minor[mid] < minorVal)
+            low = mid + 1;
+            break;
+        }
+      }
+
+      // We're not supposed to ever get here.
+      throw new InvalidOperationException();
     }
 
 
