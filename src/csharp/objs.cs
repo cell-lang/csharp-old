@@ -105,6 +105,8 @@ namespace CellLang {
     }
 
     public int Cmp(Obj o) {
+      if (this == o)
+        return 0;
       int id1 = TypeId();
       int id2 = o.TypeId();
       if (id1 == id2)
