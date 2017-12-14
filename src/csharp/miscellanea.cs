@@ -36,7 +36,7 @@ namespace CellLang {
     }
 
     public static long GetTickCount() {
-      return 0;
+      return Environment.TickCount & Int32.MaxValue;
     }
 
     public static void Assert(bool cond) {
