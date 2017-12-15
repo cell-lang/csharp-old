@@ -35,7 +35,7 @@ namespace CellLang {
     public static Obj GetChar_P(object env) {
       int ch = Console.Read();
       if (ch != -1)
-        return new TaggedObj(SymbTable.JustSymbId, new IntObj(ch));
+        return new TaggedObj(SymbTable.JustSymbId, IntObj.Get(ch));
       else
         return SymbObj.Get(SymbTable.NothingSymbId);
     }

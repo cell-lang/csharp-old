@@ -108,7 +108,7 @@ namespace CellLang {
       int len = vals.Length;
       Obj[] objs = new Obj[len];
       for (int i=0 ; i < len ; i++)
-        objs[i] = new IntObj(vals[i]);
+        objs[i] = IntObj.Get(vals[i]);
       return new MasterSeqObj(objs);
     }
 
@@ -116,7 +116,7 @@ namespace CellLang {
       int len = vals.Length;
       Obj[] objs = new Obj[len];
       for (int i=0 ; i < len ; i++)
-        objs[i] = new IntObj(vals[i]);
+        objs[i] = IntObj.Get(vals[i]);
       return new MasterSeqObj(objs);
     }
 
@@ -124,7 +124,7 @@ namespace CellLang {
       int len = vals.Length;
       Obj[] objs = new Obj[len];
       for (int i=0 ; i < len ; i++)
-        objs[i] = new IntObj(vals[i]);
+        objs[i] = IntObj.Get(vals[i]);
       return new MasterSeqObj(objs);
     }
 
@@ -132,7 +132,7 @@ namespace CellLang {
       int len = vals.Length;
       Obj[] objs = new Obj[len];
       for (int i=0 ; i < len ; i++)
-        objs[i] = new IntObj(vals[i]);
+        objs[i] = IntObj.Get(vals[i]);
       return new MasterSeqObj(objs);
     }
 
@@ -140,7 +140,7 @@ namespace CellLang {
       int len = vals.Length;
       Obj[] objs = new Obj[len];
       for (int i=0 ; i < len ; i++)
-        objs[i] = new IntObj(vals[i]);
+        objs[i] = IntObj.Get(vals[i]);
       return new MasterSeqObj(objs);
     }
 
@@ -148,7 +148,7 @@ namespace CellLang {
       int len = vals.Length;
       Obj[] objs = new Obj[len];
       for (int i=0 ; i < len ; i++)
-        objs[i] = new IntObj(vals[i]);
+        objs[i] = IntObj.Get(vals[i]);
       return new MasterSeqObj(objs);
     }
   }

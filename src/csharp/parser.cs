@@ -19,7 +19,7 @@ namespace CellLang {
       if (ok)
         return new TaggedObj(SymbTable.SuccessSymbId, obj);
       else
-        return new TaggedObj(SymbTable.FailureSymbId, new IntObj(error_offset));
+        return new TaggedObj(SymbTable.FailureSymbId, IntObj.Get(error_offset));
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -670,7 +670,7 @@ namespace CellLang {
           return -offset - 1;
 
         case TokenType.Int:
-          var = new IntObj((long) token.value);
+          var = IntObj.Get((long) token.value);
           return offset + 1;
 
         case TokenType.Float:

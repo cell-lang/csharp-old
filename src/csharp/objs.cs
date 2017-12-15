@@ -147,7 +147,7 @@ namespace CellLang {
 //  }
 
 
-  public class SymbObj : Obj {
+  class SymbObj : Obj {
     int id;
 
     public SymbObj(int id) {
@@ -208,8 +208,14 @@ namespace CellLang {
   class IntObj : Obj {
     long value;
 
-    public IntObj(long value) {
+    IntObj(long value) {
       this.value = value;
+    }
+
+    public static IntObj Get(long value) {
+      if (value >= 0 & value < 256)
+        return byteObjs[value];
+      return new IntObj(value);
     }
 
     override public bool IsInt() {
@@ -239,6 +245,13 @@ namespace CellLang {
     override protected int InternalCmp(Obj obj) {
       long other_value = obj.GetLong();
       return value == other_value ? 0 : (value < other_value ? 1 : -1);
+    }
+
+    static IntObj[] byteObjs = new IntObj[256];
+
+    static IntObj() {
+      for (int i=0 ; i < byteObjs.Length ; i++)
+        byteObjs[i] = new IntObj(i);
     }
   }
 

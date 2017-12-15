@@ -12,7 +12,7 @@ namespace CellLang {
       int i = 0;
       while (i < len) {
         int ch = Char.ConvertToUtf32(str, i);
-        chars[count++] = new IntObj(ch);
+        chars[count++] = IntObj.Get(ch);
         i += Char.IsSurrogatePair(str, i) ? 2 : 1;
       }
       return new TaggedObj(SymbTable.StringSymbId, new MasterSeqObj(chars, count));

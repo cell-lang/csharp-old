@@ -1,6 +1,6 @@
 String to_c_expr(InlineObj) =
   object(<+> a?)    = "SymbObj.Get(" & symb_idx_name(a) & ")",
-  object(<*..*> n?) = "new IntObj(" & printed(n) & ")",
+  object(<*..*> n?) = "IntObj.Get(" & printed(n) & ")",
   empty_seq         = "SeqObj.Empty()",
   empty_rel         = "EmptyRelObj.Singleton()";
 
@@ -18,7 +18,7 @@ String to_c_expr(NatObjOp expr) =
   get_curr_obj(v?)    = to_c_var_ref_name(v)   & ".Get()",
   rand_elem(e?)       = to_c_expr(e)           & ".RandElem()",
   bool_obj(e?)        = "SymbObj.Get(" & to_c_expr(e, true) & " ? " & symb_idx_name(true) & " : " & symb_idx_name(false) & ")",
-  int_obj(e?)         = "new IntObj("  & to_c_expr(e) & ")",
+  int_obj(e?)         = "IntObj.Get("  & to_c_expr(e) & ")",
   to_symb(e?)         = "Parser.ParseSymb(" & to_c_expr(e) & ")",
   get_curr_arg()      = get_curr_arg_to_c_expr(expr.var, expr.arg);
 

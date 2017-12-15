@@ -38,7 +38,7 @@ namespace CellLang {
       }
     }
 
-    public static SymbObj Get(int id) {
+    internal static SymbObj Get(int id) {
       return symbObjs[id];
     }
 
