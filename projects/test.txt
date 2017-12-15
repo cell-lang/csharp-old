@@ -1,0 +1,7 @@
+../compiler/src/stdlib/prelude.cell
+../compiler/src/types-2-core.cell
+../compiler/src/types-3-proc.cell
+test.cell
+//hello-world.cell
+//gen-html.cell
+codegen.cell

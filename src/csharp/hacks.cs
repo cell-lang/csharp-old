@@ -6,19 +6,19 @@ using System.Runtime.CompilerServices;
 namespace CellLang {
   static class Hacks {
 
-    static List<Obj> targets = new List<Obj>();
-    static List<Obj> attachments = new List<Obj>();
+    static ConditionalWeakTable<Obj, Obj> attachments = new ConditionalWeakTable<Obj, Obj>();
 
     static public void Attach(Obj target, Obj attachment) {
-      targets.Add(target);
-      attachments.Add(attachment);
+      attachments.Remove(target);
+      attachments.Add(target, attachment);
     }
 
     static public Obj Fetch(Obj target) {
-      for (int i=0 ; i < targets.Count ; i++)
-        if (targets[i] == target)
-          return new TaggedObj(SymbTable.JustSymbId, attachments[i]);
-      return SymbObj.Get(SymbTable.NothingSymbId);
+      Obj attachment;
+      if (attachments.TryGetValue(target, out attachment))
+        return new TaggedObj(SymbTable.JustSymbId, attachment);
+      else
+        return SymbObj.Get(SymbTable.NothingSymbId);
     }
 
     static ConditionalWeakTable<Obj, Obj> cachedSourceFileLocation = new ConditionalWeakTable<Obj, Obj>();

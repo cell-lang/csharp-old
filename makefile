@@ -4,7 +4,7 @@ RUNTIME-FILES=$(shell ls src/csharp/*)
 codegen-dbg codegen.txt tmp/generated.cpp: $(SRC-FILES)
 	rm -rf tmp/
 	mkdir tmp
-	cellc -p project.txt
+	cellc -p projects/codegen.txt
 	mv dump-opt-code.txt codegen.txt
 	rm dump-*.txt
 	mv generated.* tmp/
@@ -49,15 +49,28 @@ compiler.cs: codegen.exe $(SRC-FILES)
 cellc-cs.exe: compiler.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 compiler.cs $(RUNTIME-FILES) -out:cellc-cs.exe
 
-test.txt: test.cell
-	cellc -p test-project.txt
-	mv dump-opt-code.txt test.txt
-	rm generated.cpp dump-*.txt
+tests/desugar.txt: $(SRC-FILES)
+	cellc -p projects/desugar.txt
+	mv dump-opt-code.txt tests/desugar.txt
+	rm dump-* generated.cpp
 
-test.exe: test.txt $(RUNTIME-FILES)
-	./codegen-dbg test.txt
-	mv generated.cs test.cs
-	mcs test.cs $(RUNTIME-FILES) -out:test.exe
+desugar.cs: codegen.exe tests/desugar.txt $(SRC-FILES)
+	./codegen.exe tests/desugar.txt
+	bin/apply-hacks < generated.cs > desugar.cs
+	mv generated.cs tmp/
+
+desugar.exe: desugar.cs $(RUNTIME-FILES)
+	mcs -nowarn:162,168,219,414 desugar.cs $(RUNTIME-FILES) -out:desugar.exe
+
+# test.txt: test.cell
+# 	cellc -p test-project.txt
+# 	mv dump-opt-code.txt test.txt
+# 	rm generated.cpp dump-*.txt
+
+# test.exe: test.txt $(RUNTIME-FILES)
+# 	./codegen-dbg test.txt
+# 	mv generated.cs test.cs
+# 	mcs test.cs $(RUNTIME-FILES) -out:test.exe
 
 check:
 	./gen-html-dbg ../docs/commands.txt        html/commands.html

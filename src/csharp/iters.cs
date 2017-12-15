@@ -57,20 +57,20 @@ namespace CellLang {
 
     }
 
-    public virtual Obj Get1() {
+    public Obj Get1() {
       return col1[idxs == null ? next : idxs[next]];
     }
 
-    public virtual Obj Get2() {
+    public Obj Get2() {
       return col2[idxs == null ? next : idxs[next]];
     }
 
-    public virtual void Next() {
+    public void Next() {
       Miscellanea.Assert(next <= last);
       next++;
     }
 
-    public virtual bool Done() {
+    public bool Done() {
       return next > last;
     }
   }

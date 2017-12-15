@@ -14,3 +14,5 @@ codegen.txt
 codegen.cs
 codegen.exe
 tests/
+cellc-cs.exe
+compiler.cs
