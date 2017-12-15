@@ -147,11 +147,15 @@ namespace CellLang {
 //  }
 
 
-  class SymbObj : Obj {
+  public class SymbObj : Obj {
     int id;
 
     public SymbObj(int id) {
       this.id = id;
+    }
+
+    public static SymbObj Get(int id) {
+      return SymbTable.Get(id);
     }
 
     override public bool IsSymb() {
@@ -180,9 +184,9 @@ namespace CellLang {
 
     override public Obj Negate() {
       if (id == SymbTable.FalseSymbId)
-        return new SymbObj(SymbTable.TrueSymbId);
+        return SymbObj.Get(SymbTable.TrueSymbId);
       if (id == SymbTable.TrueSymbId)
-        return new SymbObj(SymbTable.FalseSymbId);
+        return SymbObj.Get(SymbTable.FalseSymbId);
       throw new NotImplementedException();
     }
 
@@ -765,7 +769,7 @@ namespace CellLang {
     }
 
     override public Obj GetTag() {
-      return new SymbObj(tag);
+      return SymbObj.Get(tag);
     }
 
     override public Obj GetInnerObj() {

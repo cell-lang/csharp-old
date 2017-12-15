@@ -12,7 +12,7 @@ namespace CellLang {
         return new TaggedObj(SymbTable.JustSymbId, bytesObj);
       }
       catch {
-        return new SymbObj(SymbTable.NothingSymbId);
+        return SymbObj.Get(SymbTable.NothingSymbId);
       }
     }
 
@@ -21,10 +21,10 @@ namespace CellLang {
       byte[] bytes = data.GetByteArray();
       try {
         File.WriteAllBytes(fnameStr, bytes);
-        return new SymbObj(SymbTable.TrueSymbId);
+        return SymbObj.Get(SymbTable.TrueSymbId);
       }
       catch {
-        return new SymbObj(SymbTable.FalseSymbId);
+        return SymbObj.Get(SymbTable.FalseSymbId);
       }
     }
 
@@ -37,7 +37,7 @@ namespace CellLang {
       if (ch != -1)
         return new TaggedObj(SymbTable.JustSymbId, new IntObj(ch));
       else
-        return new SymbObj(SymbTable.NothingSymbId);
+        return SymbObj.Get(SymbTable.NothingSymbId);
     }
   }
 }

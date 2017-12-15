@@ -8,7 +8,7 @@ namespace CellLang {
     public static Obj ParseSymb(Obj obj) {
       string str = obj.GetString();
       int id = SymbTable.StrToIdx(str);
-      return new SymbObj(id);
+      return SymbObj.Get(id);
     }
 
     public static Obj Parse(Obj text) {
@@ -184,7 +184,7 @@ namespace CellLang {
         token.offset = offset;
         token.length = len;
         token.type = TokenType.Symbol;
-        token.value = new SymbObj(SymbTable.StrToIdx(new string(chars)));
+        token.value = SymbObj.Get(SymbTable.StrToIdx(new string(chars)));
       }
 
       return i;

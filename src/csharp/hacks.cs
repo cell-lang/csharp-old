@@ -18,7 +18,7 @@ namespace CellLang {
       for (int i=0 ; i < targets.Count ; i++)
         if (targets[i] == target)
           return new TaggedObj(SymbTable.JustSymbId, attachments[i]);
-      return new SymbObj(SymbTable.NothingSymbId);
+      return SymbObj.Get(SymbTable.NothingSymbId);
     }
 
     static ConditionalWeakTable<Obj, Obj> cachedSourceFileLocation = new ConditionalWeakTable<Obj, Obj>();

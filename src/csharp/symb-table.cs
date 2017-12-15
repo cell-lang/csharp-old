@@ -26,6 +26,7 @@ namespace CellLang {
 
     static List<String> symbTable = new List<String>();
     static Dictionary<String, int> symbMap = new Dictionary<String, int>();
+    static List<SymbObj> symbObjs = new List<SymbObj>();
 
     static SymbTable() {
       int len = defaultSymbols.Length;
@@ -33,7 +34,12 @@ namespace CellLang {
         string str = defaultSymbols[i];
         symbTable.Add(str);
         symbMap.Add(str, i);
+        symbObjs.Add(new SymbObj(i));
       }
+    }
+
+    public static SymbObj Get(int id) {
+      return symbObjs[id];
     }
 
     public static int StrToIdx(string str) {
@@ -45,6 +51,7 @@ namespace CellLang {
         idx = count;
         symbTable.Add(str);
         symbMap.Add(str, idx);
+        symbObjs.Add(new SymbObj(idx));
         return idx;
       }
       throw new InvalidOperationException();
