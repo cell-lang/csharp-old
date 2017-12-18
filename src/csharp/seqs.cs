@@ -287,4 +287,142 @@ namespace CellLang {
       return offset;
     }
   }
+
+  //////////////////////////////////////////////////////////////////////////////
+  //////////////////////////////////////////////////////////////////////////////
+
+  class RopeObj : Obj {
+    Obj left;
+    Obj right;
+    int length;
+    Obj[] array;
+
+    internal RopeObj(Obj left, Obj right) {
+      this.left = left;
+      this.right = right;
+      length = left.GetSize() + right.GetSize();
+    }
+
+    void BuildArray() {
+      if (array == null) {
+        array = new Obj[length];
+        left.CopyItems(array, 0);
+        right.CopyItems(array, left.GetSize());
+        left = right = null;
+      }
+    }
+
+    override public bool IsSeq() {
+      return true;
+    }
+
+    override public bool IsEmptySeq() {
+      return length == 0;
+    }
+
+    override public bool IsNeSeq() {
+      return length != 0;
+    }
+
+    override public int GetSize() {
+      return length;
+    }
+
+    override public Obj GetItem(long idx) {
+      BuildArray();
+      return array[idx];
+    }
+
+    override public Obj Reverse() {
+      BuildArray();
+      Obj[] revArray = new Obj[length];
+      for (int i=0 ; i < length ; i++)
+        revArray[i] = array[length-i-1];
+      return new MasterSeqObj(revArray);
+    }
+
+    override public long[] GetLongArray() {
+      BuildArray();
+      long[] longs = new long[length];
+      for (int i=0 ; i < length ; i++)
+        longs[i] = array[i].GetLong();
+      return longs;
+    }
+
+    override public byte[] GetByteArray() {
+      BuildArray();
+      byte[] bytes = new byte[length];
+      for (int i=0 ; i < length ; i++) {
+        long val = array[i].GetLong();
+        if (val < 0 | val > 255)
+          throw new NotImplementedException();
+        bytes[i] = (byte) val;
+      }
+      return bytes;
+    }
+
+    override public string ToString() {
+      BuildArray();
+      string[] reprs = new string[length];
+      for (int i=0 ; i < length ; i++)
+        reprs[i] = array[i].ToString();
+      return "(" + string.Join(", ", reprs) + ")";
+    }
+
+//    override public Obj ConcatMany() {
+//    }
+
+    override protected int TypeId() {
+      return 3;
+    }
+
+    override protected int InternalCmp(Obj other) {
+      BuildArray();
+      return other.CmpSeq(array, 0, length);
+
+    }
+
+    override public int CmpSeq(Obj[] other_items, int other_offset, int other_length) {
+      BuildArray();
+      if (other_length != length)
+        return other_length < length ? 1 : -1;
+      for (int i=0 ; i < length ; i++) {
+        int res = other_items[other_offset+i].Cmp(array[i]);
+        if (res != 0)
+          return res;
+      }
+      return 0;
+    }
+
+    override public SeqOrSetIter GetSeqOrSetIter() {
+      BuildArray();
+      return new SeqOrSetIter(array, 0, length-1);
+    }
+
+//    override public void InitAt(long idx, Obj value) {
+//    }
+
+    override public Obj GetSlice(long first, long len) {
+      long upperBound = first + len;
+      if (upperBound > length)
+        throw new Exception(); //## FIND BETTER EXCEPTION
+      int leftLength = left.GetSize();
+      if (upperBound <= leftLength)
+        return left.GetSlice(first, len);
+      if (first >= leftLength)
+        return right.GetSlice(first-leftLength, len);
+      Obj leftSlice = left.GetSlice(first, leftLength-first);
+      Obj rightSlice = right.GetSlice(0, len-leftLength);
+      return new RopeObj(leftSlice, rightSlice);
+    }
+
+    override public Obj Append(Obj obj) {
+      Obj newRight = right.Append(obj);
+      return new RopeObj(left, newRight);
+    }
+
+    override public Obj Concat(Obj seq) {
+      return new RopeObj(this, seq);
+    }
+  }
 }

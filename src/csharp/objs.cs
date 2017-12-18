@@ -96,6 +96,8 @@ namespace CellLang {
     public virtual Obj Concat(Obj seq)                            {throw new NotImplementedException();}
     public virtual Obj ConcatMany()                               {throw new NotImplementedException();}
 
+    public virtual void CopyItems(Obj[] items, int offset)        {throw new NotImplementedException();}
+
     public virtual bool IsEq(Obj o) {
       return Cmp(o) == 0;
     }
