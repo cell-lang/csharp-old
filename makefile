@@ -130,3 +130,4 @@ clean:
 	@rm -f codegen-dbg codegen-rel codegen.exe codegen-2.exe codegen.txt
 	@rm -f generated.cs generated-2.cs codegen.cs codegen-2.cs
 	@rm -f gen-html-dbg gen-html-dbg.mdb
+	@rm -f cellc-cs.exe compiler.cs

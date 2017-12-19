@@ -87,43 +87,28 @@ namespace CellLang {
       Obj[] newItems = new Obj[newLen];
       int targetOffset = 0;
       for (int i=0 ; i < length ; i++) {
-        SeqObj seq = (SeqObj) items[i+offset];
-        Array.Copy(seq.items, seq.Offset(), newItems, targetOffset, seq.length);
-        targetOffset += seq.length;
+        Obj seq = items[i+offset];
+        seq.CopyItems(newItems, targetOffset);
+        targetOffset += seq.GetSize();
       }
       Miscellanea.Assert(targetOffset == newLen);
       return new MasterSeqObj(newItems, newLen);
     }
 
-    protected Obj CopyOnWriteConcat(Obj seq) {
-      int offset = Offset();
-      int seqLen = seq.GetSize();
-      int minLen = length + seqLen;
-      Obj[] newItems = new Obj[Math.Max(4 * minLen, 32)];
-      Array.Copy(items, offset, newItems, 0, length);
-      SeqObj seqObj = (SeqObj) seq;
-      Array.Copy(seqObj.items, seqObj.Offset(), newItems, length, seqObj.length);
-//      for (int i=0 ; i < length ; i++)
-//        newItems[i] = items[i+offset];
-//      for (int i=0 ; i < seqLen ; i++)
-//        newItems[i+length] = seq.GetItem(i);
-      return new MasterSeqObj(newItems, minLen);
-
-      // Obj[] newItems = new Obj[newLen <= 16 ? 32 : (3 * newLen) / 2];
-      // for (int i=0 ; i < length ; i++)
-      //   newItems[i] = items[i];
-      // for (int i=0 ; i < seqLen ; i++)
-      //   newItems[length+i] = seq.GetItem(i);
-      // return new MasterSeqObj(newItems, newLen);
-
-      // newLen = length + seqLen;
-      // Obj[] newItems = new Obj[newLen <= 16 ? 32 : (3 * newLen) / 2];
-      // for (int i=0 ; i < length ; i++)
-      //   newItems[i] = items[offset+i];
-      // for (int i=0 ; i < seqLen ; i++)
-      //   newItems[length+i] = seq.GetItem(i);
-      // return new MasterSeqObj(newItems, newLen);
+    override public void CopyItems(Obj[] array, int offset) {
+      Array.Copy(items, Offset(), array, offset, length);
     }
+
+    // protected Obj CopyOnWriteConcat(Obj seq) {
+    //   int offset = Offset();
+    //   int seqLen = seq.GetSize();
+    //   int minLen = length + seqLen;
+    //   Obj[] newItems = new Obj[Math.Max(4 * minLen, 32)];
+    //   Array.Copy(items, offset, newItems, 0, length);
+    //   SeqObj seqObj = (SeqObj) seq;
+    //   Array.Copy(seqObj.items, seqObj.Offset(), newItems, length, seqObj.length);
+    //   return new MasterSeqObj(newItems, minLen);
+    // }
 
     override protected int TypeId() {
       return 3;
@@ -223,7 +208,8 @@ namespace CellLang {
         return new SliceObj(this, 0, newLen);
       }
 
-      return CopyOnWriteConcat(seq);
+      // return CopyOnWriteConcat(seq);
+      return new RopeObj(this, seq);
     }
 
     override protected int Offset() {
@@ -280,7 +266,8 @@ namespace CellLang {
         return new SliceObj(master, offset, newLen);
       }
 
-      return CopyOnWriteConcat(seq);
+      // return CopyOnWriteConcat(seq);
+      return new RopeObj(this, seq);
     }
 
     override protected int Offset() {
@@ -403,26 +390,50 @@ namespace CellLang {
 //    }
 
     override public Obj GetSlice(long first, long len) {
-      long upperBound = first + len;
-      if (upperBound > length)
-        throw new Exception(); //## FIND BETTER EXCEPTION
-      int leftLength = left.GetSize();
-      if (upperBound <= leftLength)
-        return left.GetSlice(first, len);
-      if (first >= leftLength)
-        return right.GetSlice(first-leftLength, len);
-      Obj leftSlice = left.GetSlice(first, leftLength-first);
-      Obj rightSlice = right.GetSlice(0, len-leftLength);
-      return new RopeObj(leftSlice, rightSlice);
+      if (array == null) {
+        long upperBound = first + len;
+        if (upperBound > length)
+          throw new Exception(); //## FIND BETTER EXCEPTION
+        int leftLength = left.GetSize();
+        if (upperBound <= leftLength)
+          return left.GetSlice(first, len);
+        if (first >= leftLength)
+          return right.GetSlice(first-leftLength, len);
+        Obj leftSlice = left.GetSlice(first, leftLength-first);
+        Obj rightSlice = right.GetSlice(0, len-leftLength);
+        return new RopeObj(leftSlice, rightSlice);
+      }
+      else {
+        //## BAD BAD BAD
+        MasterSeqObj master = new MasterSeqObj(array);
+        return master.GetSlice(first, len);
+      }
     }
 
     override public Obj Append(Obj obj) {
-      Obj newRight = right.Append(obj);
-      return new RopeObj(left, newRight);
+      if (array == null) {
+        Obj newRight = right.Append(obj);
+        return new RopeObj(left, newRight);
+      }
+      else {
+        Obj[] newArray = new Obj[16];
+        newArray[0] = obj;
+        Obj newSeq = new MasterSeqObj(newArray, 1);
+        return new RopeObj(this, newSeq);
+      }
     }
 
     override public Obj Concat(Obj seq) {
       return new RopeObj(this, seq);
+    }
+
+    override public void CopyItems(Obj[] destArray, int offset) {
+      if (array == null) {
+        left.CopyItems(destArray, offset);
+        right.CopyItems(destArray, offset+left.GetSize());
+      }
+      else
+        Array.Copy(array, 0, destArray, offset, length);
     }
   }
 }
