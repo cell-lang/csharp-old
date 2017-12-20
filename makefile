@@ -131,3 +131,7 @@ clean:
 	@rm -f generated.cs generated-2.cs codegen.cs codegen-2.cs
 	@rm -f gen-html-dbg gen-html-dbg.mdb
 	@rm -f cellc-cs.exe compiler.cs
+
+soft-clean:
+	@rm debug/*
+	@touch debug/stack_trace.txt

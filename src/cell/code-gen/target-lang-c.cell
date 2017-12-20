@@ -250,7 +250,7 @@ String* generate_push_call_info_wrapper(Nat arity) = ();
 
 ## THIS SHOULD NOT GO HERE
 type FnCallParam  = blank_obj, ObjExpr, ElemVar, PendingInputVar, VecVar, BoolExpr, IntExpr,
-                    ItVar, StreamVar, AnyClsVar, AnyRelVar, AnyValueStoreId;
+                    ItVar, StreamVar, AnyClsVar, AnyRelVar, AnyValueStoreId, AnyAutoVar, AnyDBVar;
 
 
 implicit sorted_cls_defs : ClsDef* {
@@ -492,40 +492,8 @@ implicit {
     //                         },
     // pop_call_info         = mk_call("pop_call_info", ()),
     runtime_check()       = compile_runtime_check_to_c(instr.cond, instr.file, instr.line, instr.text, instr.vars),
-    branch()              = compile_branch_to_c(instr.cond, instr.when_true, instr.when_false, block_id);
-
-    // queue_update()        = compile_queue_update_to_c(instr.type, instr.id, instr.args),
-    // insert_timer()        = (insert_timer_method_name(instr.type) & "(self, " & to_c_expr(instr.idx) & ", " & to_c_expr(instr.time) & ");"),
-    // clear_timer()         = (clear_timer_method_name(instr.type) & "(self, " & to_c_expr(instr.idx) & ");"),
-    // auto_pre_init()       = (pre_init_method_name(instr.type) & "(&" & to_c_var_ref_name(instr.var) & ", env);"),
-    // auto_cleanup()        = (cleanup_method_name(instr.type) & "(&" & to_c_var_ref_name(instr.var) & ");"),
-    // set_input()           = { value_str = to_c_expr(instr.value);
-    //                           method_name = input_set_method_name(instr.type, instr.input);
-    //                           return (method_name & "(&" & to_c_var_ref_name(instr.var) & ", " & value_str & ");");
-    //                         },
-    // clear_input()         = { method_name = input_set_method_name(instr.type, instr.input);
-    //                           target = if instr.var? then "&" & to_c_var_ref_name(instr.var) else "self";
-    //                           return (method_name & "(" & target & ", make_null_obj());");
-    //                         },
-    // auto_update_node()    = compile_auto_update_node_to_c(instr.type, instr.node, if instr.time_var? then just(instr.time_var) else nothing),
-    // auto_apply()          = compile_auto_apply_to_c(if instr.var? then just(instr.var) else nothing, instr.type),
-    // set_persistent_state()= compile_set_persistent_state_to_c(instr.auto_var, instr.state, instr.type),
-    // init_db()             = (compile_init_db_to_c(instr.db_var, instr.links, instr.type)),
-    // cleanup_db()          = (compile_cleanup_db_to_c(instr.db_var, instr.type)),
-    // send_msg()            = (compile_send_msg_to_c(instr.db_var, instr.type, instr.msg, instr.is_root, if instr.res_var? then just(instr.res_var) else nothing)),
-    // try_update()          = (compile_try_update_to_c(instr.type, instr.update_id, instr.args)),
-    // set_state()           = (compile_set_state_to_c(instr.state, instr.db_var, instr.type, if instr.res_var? then just(instr.res_var) else nothing)),
-    // invoke_auto_method()  = (compile_invoke_method_to_c(instr.res_var, if instr.auto_var? then just(instr.auto_var) else nothing, instr.type, instr.method_id, instr.args)),
-    // invoke_db_method()    = (compile_invoke_method_to_c(instr.res_var, if instr.db_var? then just(instr.db_var) else nothing, instr.type, instr.method_id, instr.args)),
-    // init_value_store()    = mk_call("value_store_init", (instr.store)),
-    // cleanup_value_store() = mk_call("value_store_cleanup", (instr.store)),
-    // init_table()          = compile_init_table_to_c(instr.rel_var, instr.table),
-    // cleanup_table()       = compile_cleanup_table_to_c(instr.rel_var, instr.table),
-    // set_table()           = compile_set_table_to_c(instr.relvar, instr.table, instr.state, instr.perm),
-    // get_table_iter()      = compile_get_table_iter_to_c(instr.it_var, instr.table, instr.args),
-    // queue_deletes()       = compile_queue_deletes_to_c(instr.rel_var, instr.args),
-    // queue_insert_value()  = (mk_gen_call(instr.res_var, "value_store_insert", (to_c_expr(instr.store), aux_struct_var_ref_name(instr.store)), (instr.value), ())),
-    // queue_insert_tuple()  = compile_queue_insert_tuple_to_c(instr.rel_var, instr.tuple);
+    branch()              = compile_branch_to_c(instr.cond, instr.when_true, instr.when_false, block_id),
+    _                     = auto_instr_native_code(instr, block_id);
 
 
 
@@ -630,15 +598,8 @@ implicit {
     internal_sort()             = native_method_call(var, expr.set,  "InternalSort",  ()),
     symb_to_str(e?)             = native_method_call(var, e,         "Printed",       ()),
     parse_value()               = native_static_call(var, "Parser.Parse",             (expr.value)),
-    print_value()               = native_method_call(var, expr.value,"Printed",       ());
-
-    // copy_state()                = (compile_copy_state_to_c(var, expr.var, expr.type)),
-    // copy_table()                = compile_copy_table_to_c(var, expr.relvar, expr.table, expr.perm),
-
-    // copy_persistent_state()     = (compile_copy_persistent_state_to_c(var, expr.var, expr.type)),
-
-    // lookup_surrogate()          = mk_call(var, "lookup_surrogate",    (expr.store, expr.surrogate)),
-    // read_pending_var(v?)        = (to_c_var_ref_name(var) & " = " & to_c_var_ref_name(v) & ";");
+    print_value()               = native_method_call(var, expr.value,"Printed",       ()),
+    _                           = auto_expr_native_code(expr, var);
 
 
   String compile_build_const_int_seq_to_c(Nat seq_id, ObjVar var) {
@@ -749,20 +710,36 @@ implicit {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-String native_method_call(FnCallParam target, String method_name, FnCallParam* args) =
-  to_c_expr(target) & "." & method_name & "(" & append((to_c_expr(a) : a <- args), ", ") & ");";
+String native_code(FnCallParam arg) = to_c_expr(arg);
+String native_code(String str)      = str;
 
-String native_method_call(AnyVar res, FnCallParam target, String method_name, FnCallParam* args) =
-  to_c_expr(res) & " = " & native_method_call(target, method_name, args);
+protocol Encodable:
+  native_code : Encodable -> String;
 
-String native_static_call(String static_name, FnCallParam* args) =
-  static_name & "(" & append((to_c_expr(a) : a <- args), ", ") & ");";
 
-String native_static_call(AnyVar res, String static_name, FnCallParam* args) =
-  to_c_expr(res) & " = " & native_static_call(static_name, args);
+String native_method_call(Encodable target, String method_name, Encodable* args) =
+  native_code(target) & "." & method_name & "(" & append((native_code(a) : a <- args), ", ") & ");";
 
-String native_new_call(<WriteObjVar, StreamVar> res, String obj_type, FnCallParam* args) =
-  to_c_expr(res) & " = new " & obj_type & "(" & append((to_c_expr(a) : a <- args), ", ") & ");";
+String native_method_call(Encodable res, Encodable target, String method_name, Encodable* args) =
+  native_code(res) & " = " & native_method_call(target, method_name, args);
+
+// String native_method_call(Encodable target, String method_name, Encodable* args, String+ extra_args) =
+//   to_c_expr(target) & "." & method_name & "(" & append((to_c_expr(a) : a <- args) & extra_args, ", ") & ");";
+//
+// String native_method_call(Encodable target, String method_name, Encodable* args, String extra_arg) =
+//   native_method_call(target, method_name, args, (extra_arg));
+//
+// String native_method_call(AnyVar res, Encodable target, String method_name, Encodable* args, String extra_arg) =
+//   to_c_expr(res) & " = " & native_method_call(target, method_name, args, extra_arg);
+
+String native_static_call(String static_name, Encodable* args) =
+  static_name & "(" & append((native_code(a) : a <- args), ", ") & ");";
+
+String native_static_call(Encodable res, String static_name, Encodable* args) =
+  native_code(res) & " = " & native_static_call(static_name, args);
+
+String native_new_call(Encodable res, String obj_type, Encodable* args) =
+  native_code(res) & " = new " & obj_type & "(" & append((native_code(a) : a <- args), ", ") & ");";
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -788,6 +765,7 @@ String* c_main_fn = (
   "    int idx = SymbTable.StrToIdx(EmbeddedSymbols[i]);",
   "    Miscellanea.Assert(idx == i);", //## REMOVE ONCE DONE
   "  }",
+
   "  Obj[] cell_args = new Obj[args.Length];",
   "  for (int i=0 ; i < args.Length ; i++)",
   "    cell_args[i] = Miscellanea.StrToObj(args[i]);",

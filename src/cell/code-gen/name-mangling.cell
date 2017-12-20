@@ -73,8 +73,8 @@ String to_c_var_name(<ObjVar, PendingInputVar> var, Bool add_prefix) {
     then match (var)
       impl_arg()          = "env.",
       prev_var_value()    |
-      pending_state_var() = "self_aux->",
-      _                   = "self->"
+      pending_state_var() = "this_aux.",
+      _                   = "this."
     else "";
 
   return match (var)
@@ -104,8 +104,8 @@ String to_c_var_name(<ObjVar, PendingInputVar> var, Bool add_prefix) {
 String to_c_var_name(BoolVar var, Bool add_prefix) {
   prefix = if add_prefix
     then match (var)
-      nested_db_spent() = "self_aux->",
-      _                 = "self->"
+      nested_db_spent() = "this_aux.",
+      _                 = "this."
     else "";
 
   return match (var)
@@ -129,7 +129,7 @@ String to_c_var_name(IntVar v, Bool add_prefix) {
     elapsed_time()    = add_prefix,
     _                 = true;
 
-  prefix = if add_prefix then "self->" else "";
+  prefix = if add_prefix then "this." else "";
   return match (v)
     ivar(n?)                            = "i" & printed(n),
     curr_time                           = "curr_time",
@@ -155,26 +155,26 @@ String to_c_var_name(IntVar v, Bool add_prefix) {
 
 String to_c_var_name(AnyAutoVar v, Bool add_prefix) =
   loc_auto_var(a?)    = _str_(a) & "_R",
-  nested_auto_var(a?) = {if add_prefix then "self->" else ""} & _str_(a) & "_R";
+  nested_auto_var(a?) = {if add_prefix then "this." else ""} & _str_(a) & "_R";
 
 
 String to_c_var_name(AnyDBVar v, Bool add_prefix) =
   loc_db_var(a?)    = _str_(a) & "_T",
-  nested_db_var(a?) = {if add_prefix then "self->" else ""} & _str_(a) & "_T",
-  linked_db_var(n?) = "(*" & {if add_prefix then "self->" else ""} & "linked_auto_" & printed(n) & ")",
+  nested_db_var(a?) = {if add_prefix then "this." else ""} & _str_(a) & "_T",
+  linked_db_var(n?) = "(*" & {if add_prefix then "this." else ""} & "linked_auto_" & printed(n) & ")",
   qual_db_var()     = to_c_var_name(v.outer, add_prefix) & "." & to_c_var_name(v.inner, false);
 
 
 String to_c_var_name(AnyRelVar v, Bool add_prefix) =
-  rel_var(a?)     = {if add_prefix then "self->" else ""} & _str_(a) & "_B",
+  rel_var(a?)     = {if add_prefix then "this." else ""} & _str_(a) & "_B",
   qual_rel_var()  = to_c_var_name(v.db_var, add_prefix) & "." & to_c_var_name(v.rel_var, false);
 
 
 String to_c_var_name(AnyValueStoreId v, Bool add_prefix) =
-  value_store_id(n?)      = {if add_prefix then "&self->" else ""} & "value_store_" & printed(n),
+  value_store_id(n?)      = {if add_prefix then "this." else ""} & "value_store_" & printed(n),
   nested_value_store_id() = { assert add_prefix;
                               db_var_str = to_c_var_name(v.db_var, true);
-                              return "&" & db_var_str & "." & to_c_var_name(v.store_id, false);
+                              return db_var_str & "." & to_c_var_name(v.store_id, false);
                             };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -189,17 +189,17 @@ String to_c_idx_expr(<add(val1: IntVar, val2: Nat)> e)  = to_c_var_ref_name(e.va
 String pending_updates_var_decl_name(RelVar rel_var) =
   rel_var(a?) = _str_(a) & "_Bp";
 
-String pending_updates_var_ref_name(RelVar rel_var) = "self_aux->" & pending_updates_var_decl_name(rel_var);
+String pending_updates_var_ref_name(RelVar rel_var) = "this_aux." & pending_updates_var_decl_name(rel_var);
 
 
 String aux_struct_var_decl_name(NestedDBVar db_var) = to_c_var_decl_name(db_var) & "x";
 
-String aux_struct_var_ref_name(NestedDBVar db_var) = "&self_aux->" & aux_struct_var_decl_name(db_var);
+String aux_struct_var_ref_name(NestedDBVar db_var) = "this_aux." & aux_struct_var_decl_name(db_var);
 
 String aux_struct_var_decl_name(ValueStoreId vs) =
   value_store_id(n?)  = "value_store_aux_" & printed(n);
 
-String aux_struct_var_ref_name(ValueStoreId vs) = "&self_aux->" & aux_struct_var_decl_name(vs);
+String aux_struct_var_ref_name(ValueStoreId vs) = "this_aux." & aux_struct_var_decl_name(vs);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -292,34 +292,34 @@ String to_c_name(UpdateId id) =
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-String copy_state_proc_name         (DBSymbol db_type) = to_c_name(db_type) & "_copy_state";
-String set_state_proc_name          (DBSymbol db_type) = to_c_name(db_type) & "_set_state";
-String set_state_entry_point_name   (DBSymbol db_type) = to_c_name(db_type) & "_set_state_entry_point";
-String aux_struct_init_proc_name    (DBSymbol db_type) = to_c_name(db_type) & "_aux_init";
-String aux_struct_cleanup_proc_name (DBSymbol db_type) = to_c_name(db_type) & "_aux_cleanup";
-String updates_copy_proc_name       (DBSymbol db_type) = to_c_name(db_type) & "_copy";
-String updates_apply_proc_name      (DBSymbol db_type) = to_c_name(db_type) & "_apply";
-String updates_finish_proc_name     (DBSymbol db_type) = to_c_name(db_type) & "_finish";
-String updates_check_proc_name      (DBSymbol db_type) = to_c_name(db_type) & "_check";
-String update_entry_point_name      (DBSymbol db_type) = to_c_name(db_type) & "_entry_point";
-String init_method_name             (DBSymbol db_type) = to_c_name(db_type) & "_init";
-String cleanup_method_name          (DBSymbol db_type) = to_c_name(db_type) & "_cleanup";
+String copy_state_proc_name         (DBSymbol db_type) = "CopyState";
+String set_state_proc_name          (DBSymbol db_type) = "SetState";
+String set_state_entry_point_name   (DBSymbol db_type) = "SetStateEntryPoint";
+String aux_struct_init_proc_name    (DBSymbol db_type) = "Init";
+String aux_struct_cleanup_proc_name (DBSymbol db_type) = "Cleanup";
+String updates_copy_proc_name       (DBSymbol db_type) = "Copy";
+String updates_apply_proc_name      (DBSymbol db_type) = "Apply";
+String updates_finish_proc_name     (DBSymbol db_type) = "Finish";
+String updates_check_proc_name      (DBSymbol db_type) = "Check";
+String update_entry_point_name      (DBSymbol db_type) = "UpdateEntryPoint";
+String init_method_name             (DBSymbol db_type) = "Init";
+String cleanup_method_name          (DBSymbol db_type) = "Cleanup";
 
 String state_is_def_proc_name(AutoSymbol auto_type) = to_c_name(auto_type) & "_state_is_def";
 
 String set_state_proc_name(AutoSymbol auto_type) = to_c_name(auto_type) & "_set_state";
 
-String copy_state_proc_name     (AutoSymbol auto_type) = to_c_name(auto_type) & "_copy_state";
-String pre_init_method_name     (AutoSymbol auto_type) = to_c_name(auto_type) & "_preinit";
-String apply_method_name        (AutoSymbol auto_type) = to_c_name(auto_type) & "_apply";
-String cleanup_method_name      (AutoSymbol auto_type) = to_c_name(auto_type) & "_cleanup";
-String insert_timer_method_name (AutoSymbol auto_type) = to_c_name(auto_type) & "_insert_timer";
-String clear_timer_method_name  (AutoSymbol auto_type) = to_c_name(auto_type) & "_clear_timer";
+String copy_state_proc_name     (AutoSymbol auto_type) = "CopyState";
+String pre_init_method_name     (AutoSymbol auto_type) = "Preinit";
+String apply_method_name        (AutoSymbol auto_type) = "Apply";
+String cleanup_method_name      (AutoSymbol auto_type) = "Cleanup";
+String insert_timer_method_name (AutoSymbol auto_type) = "InsertTimer";
+String clear_timer_method_name  (AutoSymbol auto_type) = "ClearTimer";
 
-String update_name(DBSymbol db, UpdateId id) = to_c_name(db) & "_" & to_c_name(id);
-String user_def_method_name(<AutoSymbol, DBSymbol> type, MethodId method) = to_c_name(type) & "_" & to_c_name(method);
+String update_name(DBSymbol db, UpdateId id) = to_c_name(id);
+String user_def_method_name(<AutoSymbol, DBSymbol> type, MethodId method) = to_c_name(method);
 
-String input_set_method_name(AutoSymbol auto, Atom input)   = to_c_name(auto) & "_" & _str_(input) & "_S_set";
+String input_set_method_name(AutoSymbol auto, Atom input) = _str_(input) & "_S_set";
 
 String node_update_method_name(AutoSymbol auto_type,  BlockNodeId node_id) = node_specific_method_name_prefix(node_id, auto_type) & "_update";
 String queue_update_method_name(AutoSymbol auto_type, BlockNodeId node_id) = node_specific_method_name_prefix(node_id, auto_type) & "_invalidate";
