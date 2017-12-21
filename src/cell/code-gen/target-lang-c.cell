@@ -478,7 +478,6 @@ implicit {
                               body_code = compile_to_c(body, just(new_block_id));
                               return body_code & (block_end_label(new_block_id) & ":;");
                             },
-    // try_block()           = compile_try_block_to_c(instr.var, instr.body, block_id),
     exit_block            = ("goto " & block_end_label(value_unsafe(block_id)) & ";"),
     switch_on_nat()       = compile_switch_on_nat_to_c(instr.value, instr.cases, block_id),
     symb_switch()         = compile_symb_switch_to_c(instr.value, instr.cases, instr.else, block_id),

@@ -305,9 +305,9 @@ String update_entry_point_name      (DBSymbol db_type) = "UpdateEntryPoint";
 String init_method_name             (DBSymbol db_type) = "Init";
 String cleanup_method_name          (DBSymbol db_type) = "Cleanup";
 
-String state_is_def_proc_name(AutoSymbol auto_type) = to_c_name(auto_type) & "_state_is_def";
+String state_is_def_proc_name(AutoSymbol auto_type) = "StateIsDef";
 
-String set_state_proc_name(AutoSymbol auto_type) = to_c_name(auto_type) & "_set_state";
+String set_state_proc_name(AutoSymbol auto_type) = "SetState";
 
 String copy_state_proc_name     (AutoSymbol auto_type) = "CopyState";
 String pre_init_method_name     (AutoSymbol auto_type) = "Preinit";
