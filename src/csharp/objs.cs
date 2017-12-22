@@ -5,7 +5,7 @@ using System.Diagnostics;
 
 namespace CellLang {
   public abstract class Obj : IComparable<Obj> {
-    // public virtual bool IsBlankObj()                              {return false;}
+    public virtual bool IsBlankObj()                              {return false;}
     public virtual bool IsNullObj()                               {return false;}
     public virtual bool IsSymb()                                  {return false;}
     // public virtual bool IsBool()                                  {return false;}
@@ -140,13 +140,46 @@ namespace CellLang {
   }
 
 
-//  class NullObj : Obj {
-//    static NullObj singleton = new NullObj();
-//
-//    public static NullObj Singleton() {
-//      return singleton;
-//    }
-//  }
+  class BlankObj : Obj {
+    override public bool IsBlankObj() {
+      return true;
+    }
+
+    override protected int TypeId() {
+      return -2;
+    }
+
+    override protected int InternalCmp(Obj o) {
+      throw new NotImplementedException();
+    }
+
+    static BlankObj singleton = new BlankObj();
+
+    public static BlankObj Singleton() {
+      return singleton;
+    }
+  }
+
+
+  class NullObj : Obj {
+    override public bool IsNullObj() {
+      return true;
+    }
+
+    override protected int TypeId() {
+      return -1;
+    }
+
+    override protected int InternalCmp(Obj o) {
+      throw new NotImplementedException();
+    }
+
+    static NullObj singleton = new NullObj();
+
+    public static NullObj Singleton() {
+      return singleton;
+    }
+  }
 
 
   class SymbObj : Obj {

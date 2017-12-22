@@ -25,18 +25,18 @@ implicit {
   String* auto_instr_native_code(Instr instr, Maybe[Nat] block_id) =
     try_block()           = native_try_block_code(instr.var, instr.body, block_id),
 
-    queue_update()        = (native_method_call("self", queue_update_method_name(instr.type, instr.id), instr.args)),
+    queue_update()        = (native_method_call("this", queue_update_method_name(instr.type, instr.id), instr.args)),
 
-    insert_timer()        = (native_method_call("self", insert_timer_method_name(instr.type), (instr.idx, instr.time))),
-    clear_timer()         = (native_method_call("self", clear_timer_method_name(instr.type), (instr.idx))),
+    insert_timer()        = (native_method_call("this", insert_timer_method_name(instr.type), (instr.idx, instr.time))),
+    clear_timer()         = (native_method_call("this", clear_timer_method_name(instr.type), (instr.idx))),
 
-    auto_pre_init()       = (native_method_call(instr.var, pre_init_method_name(instr.type), ("env"))),
-    auto_cleanup()        = (native_method_call(instr.var, cleanup_method_name(instr.type), ())),
-    clear_input()         = (native_method_call(if instr.var? then instr.var else "self", input_set_method_name(instr.type, instr.input), ("null"))),
-    auto_update_node()    = (native_method_call("this", node_update_method_name(instr.type, instr.node), (instr.time_var if instr.time_var?, "self_aux", "env"))),
+    auto_pre_init()       = (native_new_call(instr.var, to_c_name(instr.type), ())),
+    auto_cleanup()        = (), //(native_method_call(instr.var, cleanup_method_name(instr.type), ())),
+    clear_input()         = (native_method_call(if instr.var? then instr.var else "this", input_set_method_name(instr.type, instr.input), ("BlankObj.Singleton()"))),
+    auto_update_node()    = (native_method_call("this", node_update_method_name(instr.type, instr.node), (instr.time_var if instr.time_var?, "env"))),
 
     set_input()           = (native_method_call(instr.var, input_set_method_name(instr.type, instr.input), (instr.value))),
-    auto_apply()          = (native_method_call(if instr.var? then instr.var else "self", apply_method_name(instr.type), ())),
+    auto_apply()          = (native_method_call(if instr.var? then instr.var else "this", apply_method_name(instr.type), ("env"))),
 
     set_persistent_state()  = (native_method_call(instr.auto_var, set_state_proc_name(instr.type), (instr.state))),
 
@@ -44,10 +44,10 @@ implicit {
     cleanup_db()          = (native_method_call(instr.db_var, cleanup_method_name(instr.type), ())),
 
     send_msg()            = (native_send_msg_code(instr.db_var, instr.type, instr.msg, instr.is_root, if instr.res_var? then just(instr.res_var) else nothing)),
-    try_update()          = (native_method_call("self", update_name(instr.type, instr.update_id), (instr.args | "this_aux", "env"))),
+    try_update()          = (native_method_call("this", update_name(instr.type, instr.update_id), (instr.args | "this_aux", "env"))),
     set_state()           = (native_set_state_code(instr.state, instr.db_var, instr.type, if instr.res_var? then just(instr.res_var) else nothing)),
     invoke_auto_method()  |
-    invoke_db_method()    = (native_method_call(instr.res_var, if instr.db_var? then instr.db_var else "self", user_def_method_name(instr.type, instr.method_id), (instr.args | "env"))),
+    invoke_db_method()    = (native_method_call(instr.res_var, if instr.db_var? then instr.db_var else "this", user_def_method_name(instr.type, instr.method_id), (instr.args | "env"))),
 
     init_value_store()    = (native_method_call(instr.store,   "Init",    ())),
     cleanup_value_store() = (native_method_call(instr.store,   "Cleanup", ())),
@@ -63,10 +63,10 @@ implicit {
 
   String* native_try_block_code(LocVar var, Instr+ body, Maybe[Nat] block_id) = (
     "try {"
-    ) & indent_lines(compile_to_c(body, block_id)) & (
+  ) & indent_lines(compile_to_c(body, block_id)) & (
     "}",
-    "catch (...) {",
-    "  " & to_c_var_ref_name(var) & " = null;",
+    "catch {",
+    "  " & to_c_var_ref_name(var) & " = NullObj.Singleton();",
     "}"
   );
 

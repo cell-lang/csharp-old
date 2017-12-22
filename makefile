@@ -49,6 +49,20 @@ compiler.cs: codegen.exe $(SRC-FILES)
 cellc-cs.exe: compiler.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 compiler.cs $(RUNTIME-FILES) -out:cellc-cs.exe
 
+regression.cs: codegen.exe
+	./codegen.exe tests/regression.txt
+	mv generated.cs regression.cs
+
+regression.exe: regression.cs
+	mcs -nowarn:162,168,219,414 regression.cs $(RUNTIME-FILES) -out:regression.exe
+
+water-sensor.cs: codegen.exe
+	./codegen.exe tests/water-sensor.txt
+	mv generated.cs water-sensor.cs
+
+water-sensor.exe: water-sensor.cs
+	mcs -nowarn:162,168,219,414 water-sensor.cs $(RUNTIME-FILES) -out:water-sensor.exe
+
 tests/desugar.txt: $(SRC-FILES)
 	cellc -p projects/desugar.txt
 	mv dump-opt-code.txt tests/desugar.txt
@@ -131,6 +145,8 @@ clean:
 	@rm -f generated.cs generated-2.cs codegen.cs codegen-2.cs
 	@rm -f gen-html-dbg gen-html-dbg.mdb
 	@rm -f cellc-cs.exe compiler.cs
+	@rm -f regression.cs
+	@rm -f dump-*.txt
 
 soft-clean:
 	@rm debug/*

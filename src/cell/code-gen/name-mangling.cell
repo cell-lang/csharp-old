@@ -43,8 +43,8 @@ String to_c_var_ref_name(<VecVar, ItVar, StreamVar, AnyClsVar> v)  = to_c_var_na
 /////////////////////////////////////////////////////////////////////////////////////
 
 String to_c_var_decl_name(MembIntVectVar v) =
-  nodes_to_update_vect_var()  = "nodes_to_update_" & printed(v.level) & "[" & printed(v.size) & "]",
-  changed_outputs()           = "changed_outputs[" & printed(v.size) & "]";
+  nodes_to_update_vect_var()  = "nodes_to_update_" & printed(v.level),
+  changed_outputs()           = "changed_outputs";
 
 /////////////////////////////////////////////////////////////////////////////////////
 
@@ -248,9 +248,9 @@ String to_c_time_slots_table_name(AutoSymbol auto_name, Atom table_id) =
   to_c_name(auto_name) & "_" & _str_(table_id) & "_Bt";
 
 
-String var_c_type(ObjVar)           = "OBJ";
-String var_c_type(IntVar)           = "int64";
-String var_c_type(MembIntVectVar)   = "int64";
+String var_c_type(ObjVar)           = "Obj";
+String var_c_type(IntVar)           = "long";
+String var_c_type(MembIntVectVar)   = "long[]";
 String var_c_type(BoolVar)          = "bool";
 
 
@@ -267,7 +267,7 @@ String table_c_type(Table table) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-String to_c_const(<blank, undefined> state) = if state == :blank then "make_blank_obj()" else "make_null_obj()";
+String to_c_const(<blank, undefined> state) = {if state == :blank then "BlankObj" else "NullObj"} & ".Singleton()";
 
 ////////////////////////////////////////////////////////////////////////////////
 

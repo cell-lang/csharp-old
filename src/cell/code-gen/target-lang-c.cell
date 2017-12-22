@@ -65,6 +65,12 @@ CCodeOutput compile_to_cs(CompiledPrg prg, Bool include_runtime) {
   wrappers_private_decls = join(intermix(auto_wrappers_decls & db_wrappers_private_decls, ("", "")));
   wrappers_impls = join(intermix(auto_wrappers_impls & db_wrappers_impls, ("", "")));
 
+  wrappers_decls = ();
+  wrappers_private_decls = ();
+  wrappers_impls = ();
+
+
+
   has_automata = prg.react_blocks != [] or prg.static_blocks != [];
 
   gen_code = c_code & proc_code.body & int_seqs_defs & ("", "") & wrappers_private_decls & ("", "") & wrappers_impls;
@@ -233,12 +239,12 @@ Int pow(Int b, Nat e) {
 String* generate_push_call_info_wrapper(Nat arity) = ();
 // String+ generate_push_call_info_wrapper(Nat arity) {
 //   signature = "void push_call_info_wrapper(const char *fn_name" &
-//               append((", OBJ " & to_c_var_decl_name(fn_arg(i)) : i < arity)) & ")";
+//               append((", Obj " & to_c_var_decl_name(fn_arg(i)) : i < arity)) & ")";
 //   code = (signature & " {", "#ifndef NDEBUG");
 //   if arity == 0:
-//     code = code & ("  push_call_info(fn_name, 0, (OBJ *)0);");
+//     code = code & ("  push_call_info(fn_name, 0, (Obj *)0);");
 //   else
-//     code = code & ("  OBJ *params = new_obj_array(" & printed(arity) & ");");
+//     code = code & ("  Obj *params = new_obj_array(" & printed(arity) & ");");
 //     for i < arity:
 //       code = code & ("  params[" & printed(i) & "] = " & to_c_var_decl_name(fn_arg(i)) & ";");
 //     ;
@@ -277,9 +283,9 @@ implicit {
     // static_blocks_decls = join((b.header & ("", "") : b <- static_blocks_code));
     static_blocks_bodies = join(intermix((b.body : b <- static_blocks_code), ("", "")));
 
-    react_blocks_code = (compile_block_to_c(b) : b <- react_blocks);
+    react_blocks_code = join((("", "") & native_react_block_decl(b) : b <- react_blocks));
     // react_blocks_decls = join((b.header & ("", "") : b <- react_blocks_code));
-    react_blocks_bodies = join(intermix((b.body : b <- react_blocks_code), ("", "")));
+    // react_blocks_bodies = join(intermix(react_blocks_code, ("", "")));
 
     // header = join(intermix((fn_decls, static_blocks_decls, react_blocks_decls), ("", "")));
 
@@ -292,8 +298,8 @@ implicit {
       type_checking_fns,
       closures,
       functions,
-      react_blocks_bodies,
-      static_blocks_bodies
+      //static_blocks_bodies,
+      react_blocks_code
     ));
 
     return (body: body, header: ());
@@ -301,21 +307,21 @@ implicit {
 
 
   // String gen_c_decl(ObjProcDef pd) {
-  //   args_types = (if p == :obj then "OBJ" else "const CLS &" : p <- pd.args);
+  //   args_types = (if p == :obj then "Obj" else "const CLS &" : p <- pd.args);
   //   args_list = append(args_types & ("ENV &"), ", ");
-  //   return "OBJ " & to_c_fn_name(pd.name) & "(" & args_list & ");";
+  //   return "Obj " & to_c_fn_name(pd.name) & "(" & args_list & ");";
   // }
 
 
   // String gen_c_decl(BoolProcDef pd) {
-  //   par_list = append(pd.arity * ("OBJ"), ", ");
+  //   par_list = append(pd.arity * ("Obj"), ", ");
   //   return "bool " & to_c_fn_name(pd.name) & "(" & par_list & ");";
   // }
 
 
   // String gen_c_decl(ClsDef cd, Nat id) {
-  //   par_list = append(cd.arity * ("OBJ") & ("const OBJ *", "const CLS *", "ENV &"), ", ");
-  //   return "OBJ lambda_" & printed(id) & "(" & par_list & ");";
+  //   par_list = append(cd.arity * ("Obj") & ("const Obj *", "const CLS *", "ENV &"), ", ");
+  //   return "Obj lambda_" & printed(id) & "(" & par_list & ");";
   // }
 
 
@@ -435,8 +441,8 @@ implicit {
 
   ## DUPLICATED CODE
   // String* compile_to_c(ClsDef cd, Nat id) {
-  //   par_list  = ("OBJ " & to_c_var_decl_name(fn_arg(n)) : n < cd.arity) & ("const OBJ *captured", "const CLS *captured_cls", "ENV &env"); ## BAD
-  //   signature = "OBJ lambda_" & printed(id) & "(" & append(par_list, ", ") & ")";
+  //   par_list  = ("Obj " & to_c_var_decl_name(fn_arg(n)) : n < cd.arity) & ("const Obj *captured", "const CLS *captured_cls", "ENV &env"); ## BAD
+  //   signature = "Obj lambda_" & printed(id) & "(" & append(par_list, ", ") & ")";
 
   //   vars_decls = gen_vars_decls(cd.body);
   //   comp_body = compile_to_c(cd.body, nothing);
@@ -466,7 +472,7 @@ implicit {
     init_memb_var()       = (to_c_var_ref_name(instr.var) & " = " & to_c_const(instr.new_state) & ";"),
     reset_memb_var()      = (to_c_var_ref_name(instr.var) & " = " & to_c_const(instr.new_state) & ";"),
     clear_loc_var(v?)     = (to_c_var_ref_name(v) & " = NullObj.Singleton();"),
-    terminate             = ("return Miscellanea.Fail();"),
+    terminate             = ("Miscellanea.Fail();", "throw new Exception();"),
     add_ref(v?)           = (),
     release(v?)           = (),
     print_obj()           = (native_method_call(instr.obj, "Print", ())),
