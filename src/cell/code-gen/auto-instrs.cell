@@ -40,8 +40,8 @@ implicit {
 
     set_persistent_state()  = (native_method_call(instr.auto_var, set_state_proc_name(instr.type), (instr.state))),
 
-    init_db()             = (native_method_call(instr.db_var, init_method_name(instr.type), (instr.links | "env"))),
-    cleanup_db()          = (native_method_call(instr.db_var, cleanup_method_name(instr.type), ())),
+    init_db()             = (native_new_call(instr.db_var, to_c_name(instr.type), (instr.links | "env"))),
+    cleanup_db()          = (), //(native_method_call(instr.db_var, cleanup_method_name(instr.type), ())),
 
     send_msg()            = (native_send_msg_code(instr.db_var, instr.type, instr.msg, instr.is_root, if instr.res_var? then just(instr.res_var) else nothing)),
     try_update()          = (native_method_call("this", update_name(instr.type, instr.update_id), (instr.args | "this_aux", "env"))),

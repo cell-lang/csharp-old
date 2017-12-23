@@ -63,6 +63,13 @@ water-sensor.cs: codegen.exe
 water-sensor.exe: water-sensor.cs
 	mcs -nowarn:162,168,219,414 water-sensor.cs $(RUNTIME-FILES) -out:water-sensor.exe
 
+send-msgs.cs: codegen.exe
+	./codegen.exe tests/send-msgs.txt
+	mv generated.cs send-msgs.cs
+
+send-msgs.exe: send-msgs.cs
+	mcs -nowarn:162,168,219,414 send-msgs.cs $(RUNTIME-FILES) -out:send-msgs.exe
+
 tests/desugar.txt: $(SRC-FILES)
 	cellc -p projects/desugar.txt
 	mv dump-opt-code.txt tests/desugar.txt

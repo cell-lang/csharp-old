@@ -26,7 +26,7 @@ Main(String* args) {
 
   cs_code = compile_to_cs(prg, false);
 
-  text = append(cs_code.body, "\n");
+  text = append(cs_code, "\n");
   ok = FileWrite("generated.cs", chars(text));
   fail if not ok;
 }

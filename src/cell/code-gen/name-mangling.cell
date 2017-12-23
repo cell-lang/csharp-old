@@ -73,7 +73,7 @@ String to_c_var_name(<ObjVar, PendingInputVar> var, Bool add_prefix) {
     then match (var)
       impl_arg()          = "env.",
       prev_var_value()    |
-      pending_state_var() = "this_aux.",
+      pending_state_var() = "this.", ## THIS IS IN THE AUXILIARY DATA STRUCTURE IN THE C++ VERSION
       _                   = "this."
     else "";
 
@@ -104,7 +104,7 @@ String to_c_var_name(<ObjVar, PendingInputVar> var, Bool add_prefix) {
 String to_c_var_name(BoolVar var, Bool add_prefix) {
   prefix = if add_prefix
     then match (var)
-      nested_db_spent() = "this_aux.",
+      nested_db_spent() = "this.", ## THIS IS IN THE AUXILIARY DATA STRUCTURE IN THE C++ VERSION
       _                 = "this."
     else "";
 
