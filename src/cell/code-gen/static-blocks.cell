@@ -27,6 +27,8 @@ implicit {
     ctor_code = native_ctor_code(block.name, block.links, block.init_code);
     // cleanup_code = compile_cleanup_code_to_c(block.name, block.cleanup_code);
 
+    aux_struct_init_code = aux_struct_init_code(block);
+
     copy_state_code = native_copy_state_code(block.name, block.copy_state_code);
     set_state_code = native_set_state_code(block.name, block.set_state_code);
 
@@ -42,15 +44,10 @@ implicit {
 
     //copy_decl, copy_impl = updates_copy_code(block);
 
-    aux_init_decl, aux_init_impl = aux_struct_init_code(block);
+    // aux_cleanup_decl, aux_cleanup_impl = aux_struct_cleanup_code(block);
 
-    aux_cleanup_decl, aux_cleanup_impl = aux_struct_cleanup_code(block);
-
-    methods_decls, methods_impls = unzip(rand_sort([gen_user_def_method(block.name, id, m.code) : id, m <- block.methods]));
-    methods_impls = join(intermix(methods_impls, ("", "")));
-
-    updates_decls, updates_impls = unzip(rand_sort([gen_update(block.name, id, b) : id, b <- block.updates_code]));
-    updates_impls = join(intermix(updates_impls, ("", "")));
+    methods_code = [native_user_def_method_code(block.name, id, m.code) : id, m <- block.methods];
+    updates_code = [native_update_code(block.name, id, b) : id, b <- block.updates_code];
 
     class_name = to_c_name(block.name);
 
@@ -59,6 +56,7 @@ implicit {
       indent_lines(memb_decls),
       ("") & indent_lines(aux_memb_decls),
       ("") & indent_lines(ctor_code),
+      ("") & indent_lines(aux_struct_init_code),
       ("") & indent_lines(copy_state_code),
       ("") & indent_lines(set_state_code),
       ("") & indent_lines(set_state_entry_point_code),
@@ -66,6 +64,8 @@ implicit {
       ("") & indent_lines(update_check_code),
       ("") & indent_lines(update_apply_code),
       ("") & indent_lines(update_finish_code),
+      join((("") & indent_lines(c) : c <- isort(methods_code))),
+      join((("") & indent_lines(c) : c <- isort(updates_code))),
 
 
 //      indent_lines(join((("", c) : c <- isort(const_data)))),
@@ -131,44 +131,45 @@ implicit {
 
 
   String* update_entry_point(DBSymbol block_name) {
-//    aux_var_decl = aux_struct_c_name(block_name) & " self_aux;";
-//    aux_struct_init_call = mk_gen_call(aux_struct_init_proc_name(block_name), ("self", "&self_aux"), (), ());
-//    handler_call = mk_gen_call(update_name(block_name, main_handler), ("self", "&self_aux"), (fn_arg(0)), ("env"));
-//    updates_check_call = mk_gen_call(updates_check_proc_name(block_name), ("self", "&self_aux"), (), ());
-//    updates_copy_call = mk_gen_call(updates_copy_proc_name(block_name), ("self", "&self_aux"), (), ());
-//    updates_apply_call = mk_gen_call(updates_apply_proc_name(block_name), ("self", "&self_aux"), (), ());
-//    updates_finish_code = mk_gen_call(updates_finish_proc_name(block_name), ("self", "&self_aux"), (), ());
-//    aux_struct_cleanup_call = mk_gen_call(aux_struct_cleanup_proc_name(block_name), ("&self_aux"), (), ());
-//
-//    body = (
-//      aux_var_decl,
-//      aux_struct_init_call,
-//      "bool ok = false;",
-//      "int depth = get_call_stack_depth();",
-//      "try {",
-//      "  enter_try_state();",
-//      "  " & handler_call,
-//      "  ok = " & updates_check_call,
-//      "  enter_copy_state();",
-//      "  if (ok) {",
-//      "    " & updates_copy_call,
-//      "    " & updates_apply_call,
-//      "    " & updates_finish_code,
-//      "  }",
-//      "  return_to_normal_state();",
-//      "}",
-//      "catch (...) {",
-//      "  pop_try_mode_call_info(depth);",
-//      "  abort_try_state();",
-//      "}",
-//      aux_struct_cleanup_call,
-//      "return ok;"
-//    );
-//
+    // aux_var_decl = aux_struct_c_name(block_name) & " self_aux;";
+    // aux_struct_init_call = mk_gen_call(aux_struct_init_proc_name(block_name), ("self", "&self_aux"), (), ());
+    aux_struct_init_call = native_method_call("this", aux_struct_init_proc_name(block_name), ());
+    handler_call = native_method_call("this", update_name(block_name, main_handler), (fn_arg(0), "env"));
+    updates_check_call = native_method_call("this", updates_check_proc_name(block_name), ());
+    // updates_copy_call = native_method_call("this", updates_copy_proc_name(block_name), ());
+    updates_apply_call = native_method_call("this", updates_apply_proc_name(block_name), ());
+    updates_finish_code = native_method_call("this", updates_finish_proc_name(block_name), ());
+    // aux_struct_cleanup_call = native_method_call("this", aux_struct_cleanup_proc_name(block_name), ());
+
+    body = (
+      // aux_var_decl,
+      aux_struct_init_call,
+      "bool ok = false;",
+      // "int depth = get_call_stack_depth();",
+      "try {",
+      // "  enter_try_state();",
+      "  " & handler_call,
+      "  ok = " & updates_check_call,
+      // "  enter_copy_state();",
+      "  if (ok) {",
+      // "    " & updates_copy_call,
+      "    " & updates_apply_call,
+      "    " & updates_finish_code,
+      "  }",
+      // "  return_to_normal_state();",
+      "}",
+      "catch {",
+      // "  " & aux_struct_cleanup_call, ## CLEANUP OR REINIT?
+      // "  pop_try_mode_call_info(depth);",
+      // "  abort_try_state();",
+      "}",
+      "return ok;"
+    );
+
 //    return (sgn & ";", (sgn & " {") & indent_lines(body) & ("}"));
 
     sgn = "public bool " & update_entry_point_name(block_name) & "(Obj a0, Env env) {";
-    return (sgn, "  return true;", "}");
+    return (sgn) & indent_lines(body) & ("}");
   }
 
 
@@ -304,73 +305,63 @@ implicit {
   }
 
 
-  (String, String*) aux_struct_init_code(StaticBlock block) {
+  String* aux_struct_init_code(StaticBlock block) {
     var_ids = (bare_id(v) : v <- rand_sort(keys(block.state_vars)));
-    init_vars_code = (to_c_var_ref_name(pending_state_var(id)) & " = make_blank_obj();" : id <- var_ids);
+    init_vars_code = (to_c_var_ref_name(pending_state_var(id)) & " = BlankObj.Singleton();" : id <- var_ids);
 
     bool_vars_ids = rand_sort(keys(block.nested_blocks));
     bool_vars_init_code = (to_c_var_ref_name(nested_db_spent(v)) & " = false;" : v <- bool_vars_ids);
 
     value_stores_init_code = (
-      mk_gen_call("value_store_updates_init", (), (vs), (aux_struct_var_ref_name(vs)))
-      : vs <- rand_sort(block.value_stores)
+      native_method_call(vs, "Init", (aux_struct_var_ref_name(vs))) : vs <- rand_sort(block.value_stores)
     );
 
     tables_init_code = [
-      mk_gen_call(fn_names_by_arity[arity(t)], ("&" & pending_updates_var_ref_name(v)), (), ())
-      : v, t <- block.tables
+      native_method_call(pending_updates_var_ref_name(v), "Init", ()) : v, t <- block.tables
     ];
 
     nested_blocks_init_code = [
-      mk_gen_call(aux_struct_init_proc_name(t), ("&" & to_c_var_ref_name(v), aux_struct_var_ref_name(v)), (), ())
+      native_method_call(v, aux_struct_init_proc_name(t), (aux_struct_var_ref_name(v)))
       : v, t <- block.nested_blocks
     ];
 
-    body = init_vars_code & bool_vars_init_code & value_stores_init_code & rand_sort(tables_init_code) &
-          rand_sort(nested_blocks_init_code);
+    body = init_vars_code & bool_vars_init_code & value_stores_init_code &
+           rand_sort(tables_init_code) & rand_sort(nested_blocks_init_code);
 
-    sgn = "void " & aux_struct_init_proc_name(block.name) & "(" & to_c_name(block.name) & " *self, " & aux_struct_c_name(block.name) & " *self_aux)";
-
-    return (sgn & ";", (sgn & " {") & indent_lines(body) & ("}"));
-
-
-    [NzNat -> String] fn_names_by_arity = [
-      1 -> "unary_table_updates_init",
-      2 -> "binary_table_updates_init",
-      3 -> "ternary_table_updates_init"
-    ];
+    sgn = "public void " & aux_struct_init_proc_name(block.name) & "() {";
+    return (sgn) & indent_lines(body) & ("}");
   }
 
 
-  (String, String*) aux_struct_cleanup_code(StaticBlock block) {
-    // var_ids = (bare_id(v) | v <- rand_sort(block.state_vars));
-    // init_vars_code = (to_c_var_ref_name(pending_state_var(id)) & " = make_blank_obj();" | id <- var_ids);
+  // (String, String*) aux_struct_cleanup_code(StaticBlock block) {
+  //   // var_ids = (bare_id(v) | v <- rand_sort(block.state_vars));
+  //   // init_vars_code = (to_c_var_ref_name(pending_state_var(id)) & " = make_blank_obj();" | id <- var_ids);
 
-    value_stores_cleanup_code = (mk_gen_call("value_store_updates_cleanup", (aux_struct_var_ref_name(vs)), (), ()) : vs <- rand_sort(block.value_stores));
+  //   value_stores_cleanup_code = (mk_gen_call("value_store_updates_cleanup", (aux_struct_var_ref_name(vs)), (), ()) : vs <- rand_sort(block.value_stores));
 
-    tables_init_code = [
-      mk_gen_call(fn_names_by_arity[arity(t)], ("&" & pending_updates_var_ref_name(v)), (), ())
-      : v, t <- block.tables
-    ];
+  //   tables_init_code = [
+  //     mk_gen_call(fn_names_by_arity[arity(t)], ("&" & pending_updates_var_ref_name(v)), (), ())
+  //     : v, t <- block.tables
+  //   ];
 
-    nested_blocks_init_code = [
-      mk_gen_call(aux_struct_cleanup_proc_name(t), (aux_struct_var_ref_name(v)), (), ())
-      : v, t <- block.nested_blocks
-    ];
+  //   nested_blocks_init_code = [
+  //     mk_gen_call(aux_struct_cleanup_proc_name(t), (aux_struct_var_ref_name(v)), (), ())
+  //     : v, t <- block.nested_blocks
+  //   ];
 
-    body = value_stores_cleanup_code & rand_sort(tables_init_code) & rand_sort(nested_blocks_init_code);
+  //   body = value_stores_cleanup_code & rand_sort(tables_init_code) & rand_sort(nested_blocks_init_code);
 
-    sgn = "void " & aux_struct_cleanup_proc_name(block.name) & "(" & aux_struct_c_name(block.name) & " *self_aux)";
+  //   sgn = "void " & aux_struct_cleanup_proc_name(block.name) & "(" & aux_struct_c_name(block.name) & " *self_aux)";
 
-    return (sgn & ";", (sgn & " {") & indent_lines(body) & ("}"));
+  //   return (sgn & ";", (sgn & " {") & indent_lines(body) & ("}"));
 
 
-    [NzNat -> String] fn_names_by_arity = [
-      1 -> "unary_table_updates_cleanup",
-      2 -> "binary_table_updates_cleanup",
-      3 -> "ternary_table_updates_cleanup"
-    ];
-  }
+  //   [NzNat -> String] fn_names_by_arity = [
+  //     1 -> "unary_table_updates_cleanup",
+  //     2 -> "binary_table_updates_cleanup",
+  //     3 -> "ternary_table_updates_cleanup"
+  //   ];
+  // }
 
 
 //  String* var_copy_code(Atom var_id) {
@@ -390,22 +381,20 @@ implicit {
   }
 
 
-  (String, String*) gen_user_def_method(DBSymbol block_name, MethodId method_id, Instr* body) {
-    args_str = append((to_c_name(block_name) & " *self") & ("Obj " & to_c_var_decl_name(fn_arg(i)) : i < method_id.arity), ", ");
-    sgn = "Obj " & user_def_method_name(block_name, method_id) & "(" & args_str & ", Env env)";
+  String* native_user_def_method_code(DBSymbol block_name, MethodId method_id, Instr* body) {
+    args_str = append(("Obj " & to_c_var_decl_name(fn_arg(i)) : i < method_id.arity), ", ");
+    sgn = "Obj " & user_def_method_name(block_name, method_id) & "(" & args_str & ", Env env) {";
     vars_decls = gen_vars_decls(body);
     body_text = vars_decls & ("" if vars_decls != ()) & compile_to_c(body, nothing);
-    return (sgn & ";", (sgn & " {") & indent_lines(body_text) & ("}"));
+    return (sgn) & indent_lines(body_text) & ("}");
   }
 
 
-  (String, String*) gen_update(DBSymbol block_name, UpdateId update_id, Instr* body) {
-    impl_args_strs = (to_c_name(block_name) & " *self", aux_struct_c_name(block_name) & " *self_aux");
-    expl_args_strs = ("Obj " & to_c_var_decl_name(fn_arg(i)) : i < arity(update_id));
-    args_str = append(impl_args_strs & expl_args_strs, ", ");
-    sgn = "void " & update_name(block_name, update_id) & "(" & args_str & ", Env env)";
+  String* native_update_code(DBSymbol block_name, UpdateId update_id, Instr* body) {
+    args_strs = ("Obj " & to_c_var_decl_name(fn_arg(i)) & ", " : i < arity(update_id));
+    sgn = "void " & update_name(block_name, update_id) & "(" & append(args_strs) & "Env env) {";
     vars_decls = gen_vars_decls(body);
     body_text = vars_decls & ("" if vars_decls != ()) & compile_to_c(body, nothing);
-    return (sgn & ";", (sgn & " {") & indent_lines(body_text) & ("}"));
+    return (sgn) & indent_lines(body_text) & ("}");
   }
 }
