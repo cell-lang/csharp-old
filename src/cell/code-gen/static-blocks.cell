@@ -7,15 +7,15 @@ implicit {
   String* native_static_block_decl(StaticBlock block) {
     links_decls = (to_c_name(l) & " *linkedAuto" & printed(i) & ";" : l @ i <- block.links);
     state_vars_decls = ["Obj " & to_c_var_decl_name(v) & ";" : v, unused_var <- block.state_vars];
-    value_store_decls = ["ValueStore " & to_c_var_decl_name(v) & ";" : v <- block.value_stores];
-    table_decls = [table_c_type(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- block.tables];
+    value_store_decls = ["ValueStore " & to_c_var_decl_name(v) & " = new ValueStore();" : v <- block.value_stores];
+    table_decls = [table_c_type(t) & " " & to_c_var_decl_name(v) & " = new " & table_c_type(t) & "();" : v, t <- block.tables];
     nested_blocks_decls = [to_c_name(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- block.nested_blocks];
 
     memb_decls = links_decls & rand_sort(state_vars_decls) & rand_sort(value_store_decls) & rand_sort(table_decls) & rand_sort(nested_blocks_decls);
 
     aux_vars_decls = ["Obj " & to_c_var_decl_name(pending_state_var(bare_id(v))) & ";" : v, unused_var <- block.state_vars];
     aux_bool_vars_decls = ["bool " & to_c_var_decl_name(nested_db_spent(v)) & ";" : v, unused_var <- block.nested_blocks];
-    aux_stores_decls = ["ValueStoreUpdates " & aux_struct_var_decl_name(vs) & ";" : vs <- block.value_stores];
+    aux_stores_decls = ["ValueStoreUpdater " & aux_struct_var_decl_name(vs) & ";" : vs <- block.value_stores];
     aux_tables_decls = [
       pending_updates_var_type(t) & " " & pending_updates_var_decl_name(v) & ";"
       : v, t <- block.tables
@@ -204,7 +204,7 @@ implicit {
 
   String* updates_check_code(StaticBlock block) {
     tables_check_code = isort([
-      "ok &= " & native_method_call(pending_updates_var_ref_name(v), fn_names[arity(t)][t.keys], (v))
+      "ok &= " & native_method_call(pending_updates_var_ref_name(v), fn_names[arity(t)][t.keys], ())
       : v, t <- block.tables, t.keys != []
     ]);
 
@@ -263,12 +263,12 @@ implicit {
 
   String* updates_apply_code(StaticBlock block) {
     value_stores_apply_code = (
-      native_method_call(vs, "Apply", (aux_struct_var_ref_name(vs)))
+      native_method_call(aux_struct_var_ref_name(vs), "Apply", ())
       : vs <- rand_sort(block.value_stores)
     );
 
     tables_apply_code = [
-      native_method_call(v, "Apply", (pending_updates_var_ref_name(v)) & t.value_stores)
+      native_method_call(pending_updates_var_ref_name(v), "Apply", ())
       : v, t <- block.tables
     ];
 
@@ -289,7 +289,7 @@ implicit {
     vars_copy_code = join((var_apply_code(id) : id <- var_ids));
 
     tables_finish_code = [{
-        native_method_call(pending_updates_var_ref_name(v), "Finish", t.value_stores)
+        native_method_call(pending_updates_var_ref_name(v), "Finish", ())
       } : v, t <- block.tables
     ];
 
@@ -313,11 +313,11 @@ implicit {
     bool_vars_init_code = (to_c_var_ref_name(nested_db_spent(v)) & " = false;" : v <- bool_vars_ids);
 
     value_stores_init_code = (
-      native_method_call(vs, "Init", (aux_struct_var_ref_name(vs))) : vs <- rand_sort(block.value_stores)
+      native_new_call(aux_struct_var_ref_name(vs), "ValueStoreUpdater", (vs)) : vs <- rand_sort(block.value_stores)
     );
 
     tables_init_code = [
-      native_method_call(pending_updates_var_ref_name(v), "Init", ()) : v, t <- block.tables
+      native_new_call(pending_updates_var_ref_name(v), pending_updates_var_type(t), (v)) : v, t <- block.tables
     ];
 
     nested_blocks_init_code = [

@@ -116,6 +116,10 @@ namespace CellLang {
       return id1 < id2 ? 1 : -1;
     }
 
+    public int Hashcode() {
+      throw new NotImplementedException(); //## SHOULD BE ABSTRACT
+    }
+
     public virtual int CmpSeq(Obj[] es, int o, int l)             {throw new NotImplementedException();}
     public virtual int CmpNeSet(Obj[] es)                         {throw new NotImplementedException();}
     public virtual int CmpNeBinRel(Obj[] c1, Obj[] c2)            {throw new NotImplementedException();}

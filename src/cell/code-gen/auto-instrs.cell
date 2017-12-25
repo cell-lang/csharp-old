@@ -18,7 +18,7 @@ implicit {
       (0, 1)    = (false),
       (1, 0)    = (true),
       (_, _, _) = perm;
-    return native_method_call(res_var, "Copy", table.value_stores & perm_args);
+    return native_method_call(res_var, relvar, "Copy", perm_args);
   }
 
 
@@ -44,20 +44,20 @@ implicit {
     cleanup_db()          = (), //(native_method_call(instr.db_var, cleanup_method_name(instr.type), ())),
 
     send_msg()            = (native_send_msg_code(instr.db_var, instr.type, instr.msg, instr.is_root, if instr.res_var? then just(instr.res_var) else nothing)),
-    try_update()          = (native_method_call("this", update_name(instr.type, instr.update_id), (instr.args | "this_aux", "env"))),
+    try_update()          = (native_method_call("this", update_name(instr.type, instr.update_id), (instr.args | "env"))),
     set_state()           = (native_set_state_code(instr.state, instr.db_var, instr.type, if instr.res_var? then just(instr.res_var) else nothing)),
     invoke_auto_method()  |
     invoke_db_method()    = (native_method_call(instr.res_var, if instr.db_var? then instr.db_var else "this", user_def_method_name(instr.type, instr.method_id), (instr.args | "env"))),
 
-    init_value_store()    = (native_method_call(instr.store,   "Init",    ())),
-    cleanup_value_store() = (native_method_call(instr.store,   "Cleanup", ())),
-    init_table()          = (native_method_call(instr.rel_var, "Init",    ())),
-    cleanup_table()       = (native_method_call(instr.rel_var, "Cleanup", ())),
+    init_value_store()    = (), //(native_method_call(instr.store,   "Init",    ())),
+    cleanup_value_store() = (), //(native_method_call(instr.store,   "Cleanup", ())),
+    init_table()          = (), //(native_method_call(instr.rel_var, "Init",    ())),
+    cleanup_table()       = (), //(native_method_call(instr.rel_var, "Cleanup", ())),
 
     get_table_iter()      = (native_get_table_iter_code(instr.it_var, instr.table, instr.args)),
     set_table()           = (native_set_table_code(instr.relvar, instr.table, instr.state, instr.perm)),
     queue_deletes()       = (native_queue_deletes_code(instr.rel_var, instr.args)),
-    queue_insert_value()  = (native_method_call(instr.res_var, instr.store, "Insert", (aux_struct_var_ref_name(instr.store)))),
+    queue_insert_value()  = (native_method_call(instr.res_var, aux_struct_var_ref_name(instr.store), "Insert", (instr.value))),
     queue_insert_tuple()  = (native_method_call(pending_updates_var_ref_name(instr.rel_var), "Insert", instr.tuple));
 
 
@@ -77,16 +77,16 @@ implicit {
       (0, 1)    = (false),
       (1, 0)    = (true),
       (_, _, _) = perm;
-    args = (pending_updates_var_ref_name(relvar)) & table.value_stores &
-           (aux_struct_var_ref_name(vs) : vs <- table.value_stores) & perm_args;
-    return native_method_call(relvar, "Set", args);
+    // args = (pending_updates_var_ref_name(relvar)) & table.value_stores &
+    //        (aux_struct_var_ref_name(vs) : vs <- table.value_stores) & perm_args;
+    return native_method_call(pending_updates_var_ref_name(relvar), "Set", (state) & perm_args);
   }
 
 
   String native_queue_deletes_code(RelVar relvar, Maybe[IntVar]+ args) {
     fn_name = fn_names_by_args[(a != nothing : a <- args)];
-    updates_arg = pending_updates_var_ref_name(relvar);
-    return native_method_call(relvar, fn_name, ((value(a) : a <- args, a != nothing) | updates_arg));
+    target = pending_updates_var_ref_name(relvar);
+    return native_method_call(target, fn_name, (value(a) : a <- args, a != nothing));
 
     [Bool+ -> String] fn_names_by_args = [
       (true)                  -> "Delete",

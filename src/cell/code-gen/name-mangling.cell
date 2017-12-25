@@ -189,17 +189,16 @@ String to_c_idx_expr(<add(val1: IntVar, val2: Nat)> e)  = to_c_var_ref_name(e.va
 String pending_updates_var_decl_name(RelVar rel_var) =
   rel_var(a?) = _str_(a) & "_Bp";
 
-String pending_updates_var_ref_name(RelVar rel_var) = "this_aux." & pending_updates_var_decl_name(rel_var);
-
+String pending_updates_var_ref_name(RelVar rel_var) = "this." & pending_updates_var_decl_name(rel_var); //## USED TO BE this_aux
 
 String aux_struct_var_decl_name(NestedDBVar db_var) = to_c_var_decl_name(db_var) & "x";
 
-String aux_struct_var_ref_name(NestedDBVar db_var) = "this_aux." & aux_struct_var_decl_name(db_var);
+String aux_struct_var_ref_name(NestedDBVar db_var) = "this." & aux_struct_var_decl_name(db_var); //## USED TO BE this_aux
 
 String aux_struct_var_decl_name(ValueStoreId vs) =
   value_store_id(n?)  = "value_store_aux_" & printed(n);
 
-String aux_struct_var_ref_name(ValueStoreId vs) = "this_aux." & aux_struct_var_decl_name(vs);
+String aux_struct_var_ref_name(ValueStoreId vs) = "this." & aux_struct_var_decl_name(vs); //## USED TO BE this_aux
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -216,9 +215,9 @@ String var_decl(TableItVar v)   = table_it_var_type[v.arity] & " " & to_c_var_de
 
 
 [NzNat -> String] table_it_var_type = [
-  1 -> "UNARY_TABLE_ITER",
-  2 -> "BINARY_TABLE_ITER",
-  3 -> "TERNARY_TABLE_ITER"
+  1 -> "UnaryTableIter",
+  2 -> "BinaryTableIter",
+  3 -> "TernaryTableIter"
 ];
 
 
@@ -226,9 +225,9 @@ String pending_updates_var_type(Table table) {
   return names_by_arity[arity(table)];
 
   [NzNat -> String] names_by_arity = [
-    1 -> "UNARY_TABLE_UPDATES",
-    2 -> "BINARY_TABLE_UPDATES",
-    3 -> "TERNARY_TABLE_UPDATES"
+    1 -> "UnaryTableUpdater",
+    2 -> "BinaryTableUpdater",
+    3 -> "TernaryTableUpdater"
   ];
 }
 
@@ -258,9 +257,9 @@ String table_c_type(Table table) {
   return names_by_arity[arity(table)];
 
   [NzNat -> String] names_by_arity = [
-    1 -> "UNARY_TABLE",
-    2 -> "BINARY_TABLE",
-    3 -> "TERNARY_TABLE"
+    1 -> "UnaryTable",
+    2 -> "BinaryTable",
+    3 -> "TernaryTable"
   ];
 }
 

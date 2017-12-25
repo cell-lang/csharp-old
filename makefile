@@ -70,6 +70,13 @@ send-msgs.cs: codegen.exe
 send-msgs.exe: send-msgs.cs
 	mcs -nowarn:162,168,219,414 send-msgs.cs $(RUNTIME-FILES) -out:send-msgs.exe
 
+chat-server.cs: codegen.exe
+	./codegen.exe tests/chat-server.txt
+	mv generated.cs chat-server.cs
+
+chat-server.exe: chat-server.cs
+	mcs -nowarn:162,168,219,414 chat-server.cs $(RUNTIME-FILES) -out:chat-server.exe
+
 tests/desugar.txt: $(SRC-FILES)
 	cellc -p projects/desugar.txt
 	mv dump-opt-code.txt tests/desugar.txt
@@ -128,7 +135,6 @@ check:
 	../build-website/gen-html ../docs/types.txt           html-ref/types.html
 	../build-website/gen-html ../docs/updates.txt         html-ref/updates.html
 
-
 	cmp html/commands.html        html-ref/commands.html           
 	cmp html/data.html            html-ref/data.html       
 	cmp html/functions.html       html-ref/functions.html            
@@ -153,6 +159,7 @@ clean:
 	@rm -f gen-html-dbg gen-html-dbg.mdb
 	@rm -f cellc-cs.exe compiler.cs
 	@rm -f regression.cs
+	@rm -f chat-server.cs chat-server.exe
 	@rm -f dump-*.txt
 
 soft-clean:

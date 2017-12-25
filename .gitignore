@@ -16,3 +16,5 @@ codegen.exe
 tests/
 cellc-cs.exe
 compiler.cs
+chat-server.cs
+chat-server.exe
