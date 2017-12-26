@@ -42,6 +42,10 @@ namespace CellLang {
       return -1;
     }
 
+    public Obj GetValue(uint index) {
+      return slots[index];
+    }
+
     public void Insert(Obj value, int slotIdx) {
       Insert(value, value.Hashcode(), slotIdx);
     }

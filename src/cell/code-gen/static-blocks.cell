@@ -8,7 +8,7 @@ implicit {
     links_decls = (to_c_name(l) & " *linkedAuto" & printed(i) & ";" : l @ i <- block.links);
     state_vars_decls = ["Obj " & to_c_var_decl_name(v) & ";" : v, unused_var <- block.state_vars];
     value_store_decls = ["ValueStore " & to_c_var_decl_name(v) & " = new ValueStore();" : v <- block.value_stores];
-    table_decls = [table_c_type(t) & " " & to_c_var_decl_name(v) & " = new " & table_c_type(t) & "();" : v, t <- block.tables];
+    table_decls = [table_c_type(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- block.tables];
     nested_blocks_decls = [to_c_name(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- block.nested_blocks];
 
     memb_decls = links_decls & rand_sort(state_vars_decls) & rand_sort(value_store_decls) & rand_sort(table_decls) & rand_sort(nested_blocks_decls);
@@ -24,7 +24,7 @@ implicit {
     aux_memb_decls = rand_sort(aux_vars_decls) & rand_sort(aux_bool_vars_decls) & rand_sort(aux_stores_decls) &
       rand_sort(aux_tables_decls) & rand_sort(nested_aux_blocks_decls);
 
-    ctor_code = native_ctor_code(block.name, block.links, block.init_code);
+    ctor_code = native_ctor_code(block.name, block.links, block.tables, block.init_code);
     // cleanup_code = compile_cleanup_code_to_c(block.name, block.cleanup_code);
 
     aux_struct_init_code = aux_struct_init_code(block);
@@ -94,11 +94,16 @@ implicit {
   }
 
 
-  String* native_ctor_code(DBSymbol name, DBSymbol* links, Instr* init_code) {
+  String* native_ctor_code(DBSymbol name, DBSymbol* links, [RelVar -> Table] tables, Instr* init_code) {
     links_init_code = ("this.linkedAuto" & printed(i) & " = linkedAuto" & printed(i) & ";" : i < |links|);
+    tables_init_code = ({
+        arg_list = append((to_c_var_decl_name(vs) : vs <- t.value_stores), ", ");
+        return to_c_var_ref_name(v) & " = new " & table_c_type(t) & "(" & arg_list & ");";
+      } : v, t <- isort(tables)
+    );
     vars_decl = gen_vars_decls(init_code);
     vars_decl = vars_decl & ("") if vars_decl != ();
-    body = links_init_code & vars_decl & compile_to_c(init_code, nothing);
+    body = vars_decl & links_init_code & tables_init_code & compile_to_c(init_code, nothing);
     link_args = append((to_c_name(l) & " linkedAuto" & printed(i) & ", " : l @ i <- links));
     signature = "public " & to_c_name(name) & "(" & link_args & "Env env) {";
     return (signature) & indent_lines(body) & ("}");
