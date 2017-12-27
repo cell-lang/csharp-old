@@ -126,6 +126,27 @@ namespace CellLang {
         }
       }
     }
+
+    public uint[,] Copy() {
+      uint[,] res = new uint[count, 2];
+      int next = 0;
+      for (uint i=0 ; i < column.Length ; i++) {
+        uint code = column[i];
+        if (code == MultiValueSlot) {
+          var it = multimap[i].GetEnumerator();
+          while (it.MoveNext()) {
+            uint surr2 = it.Current;
+            res[next, 0] = i;
+            res[next++, 1] = surr2;
+          }
+        }
+        else if (code != EmptySlot) {
+          res[next, 0] = i;
+          res[next++, 1] = code;
+        }
+      }
+      return res;
+    }
   }
 
 
@@ -204,6 +225,10 @@ namespace CellLang {
 
       return Builder.CreateBinRel(flipped ? objs1 : objs2, flipped ? objs2 : objs1, count); //## THIS COULD BE MADE MORE EFFICIENT
     }
+
+    public uint[,] RawCopy() {
+      return table1.Copy();
+    }
   }
 
 
@@ -228,7 +253,11 @@ namespace CellLang {
     }
 
     public void Clear() {
-      throw new NotImplementedException();
+      uint[,] columns = table.RawCopy();
+      int len = columns.GetLength(0);
+      deleteList.Clear();
+      for (int i=0 ; i < len ; i++)
+        deleteList.Add(new Tuple(columns[i, 0], columns[i, 1]));
     }
 
     public void Set(Obj value, bool flipped) {
@@ -269,13 +298,15 @@ namespace CellLang {
     }
 
     public void Apply() {
-      var it = deleteList.GetEnumerator();
-      while (it.MoveNext()) {
-        var curr = it.Current;
-        table.Delete(curr.field1, curr.field2);
+      for (int i=0 ; i < deleteList.Count ; i++) {
+        Tuple tuple = deleteList[i];
+        if (table.Contains(tuple.field1, tuple.field2))
+          table.Delete(tuple.field1, tuple.field2);
+        else
+          deleteList[i] = new Tuple(0xFFFFFFFF, 0xFFFFFFFF);
       }
 
-      it = insertList.GetEnumerator();
+      var it = insertList.GetEnumerator();
       while (it.MoveNext()) {
         var curr = it.Current;
         if (!table.Contains(curr.field1, curr.field2)) {
@@ -289,9 +320,11 @@ namespace CellLang {
     public void Finish() {
       var it = deleteList.GetEnumerator();
       while (it.MoveNext()) {
-        var curr = it.Current;
-        table.store1.Release(curr.field1);
-        table.store2.Release(curr.field2);
+        var tuple = it.Current;
+        if (tuple.field1 != 0xFFFFFFFF) {
+          table.store1.Release(tuple.field1);
+          table.store2.Release(tuple.field2);
+        }
       }
     }
 
