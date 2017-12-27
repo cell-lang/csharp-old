@@ -10,16 +10,65 @@ namespace CellLang {
     public const uint MultiValueSlot = 0xFFFFFFFE;
     //const uint MaxSurrId = 0x1FFFFFFF;
 
-    static uint[] emptyColumn = new uint[0];
+    static uint[] emptyArray = new uint[0];
 
     public uint[] column;
     public Dictionary<uint, HashSet<uint>> multimap;
     public int count;
 
     public void Init() {
-      column = emptyColumn;
+      column = emptyArray;
       multimap = new Dictionary<uint, HashSet<uint>>();
       count = 0;
+    }
+
+    public void InitReverse(OneWayBinTable source) {
+      Miscellanea.Assert(count == 0);
+
+      uint[] srcCol = source.column;
+      Dictionary<uint, HashSet<uint>> srcMultimap = source.multimap;
+
+      for (uint i=0 ; i < column.Length ; i++) {
+        uint code = srcCol[i];
+        if (code == MultiValueSlot) {
+          HashSet<uint>.Enumerator it = srcMultimap[i].GetEnumerator();
+          while (it.MoveNext())
+            Insert(it.Current, i);
+        }
+        else if (code != EmptySlot)
+          Insert(code, i);
+      }
+    }
+
+    public bool Contains(uint surr1, uint surr2) {
+      if (surr1 >= column.Length)
+        return false;
+      uint code = column[surr1];
+      if (code == EmptySlot)
+        return false;
+      if (code == MultiValueSlot)
+        return multimap[surr1].Contains(surr2);
+      return code == surr2;
+    }
+
+    public uint[] Lookup(uint surr) {
+      if (surr >= column.Length)
+        return emptyArray;
+      uint code = column[surr];
+      if (code == EmptySlot)
+        return emptyArray;
+      if (code != MultiValueSlot)
+        return new uint[] {code};
+
+      HashSet<uint> surrSet = multimap[surr];
+      int count = surrSet.Count;
+      uint[] surrs = new uint[count];
+      HashSet<uint>.Enumerator it = surrSet.GetEnumerator();
+      for (int i=0 ; i < count ; i++) {
+        surrs[i] = it.Current;
+        it.MoveNext();
+      }
+      return surrs;
     }
 
     public void Insert(uint surr1, uint surr2) {
@@ -55,7 +104,7 @@ namespace CellLang {
     }
 
     public void Clear() {
-      column = emptyColumn;
+      column = emptyArray;
       multimap.Clear();
       count = 0;
     }
@@ -92,6 +141,20 @@ namespace CellLang {
       table2.Init();
       this.store1 = store1;
       this.store2 = store2;
+    }
+
+    public bool Contains(uint surr1, uint surr2) {
+      return table1.Contains(surr1, surr2);
+    }
+
+    public uint[] LookupByCol1(uint surr) {
+      return table1.Lookup(surr);
+    }
+
+    public uint[] LookupByCol2(uint surr) {
+      if (table2.count == 0 & table1.count > 0)
+        table2.InitReverse(table1);
+      return table2.Lookup(surr);
     }
 
     public void Insert(uint surr1, uint surr2) {
@@ -146,8 +209,13 @@ namespace CellLang {
 
   class BinaryTableUpdater {
     struct Tuple {
-      uint field1;
-      uint field2;
+      public uint field1;
+      public uint field2;
+
+      public Tuple(uint field1, uint field2) {
+        this.field1 = field1;
+        this.field2 = field2;
+      }
     }
 
     bool clear = false;
@@ -169,19 +237,23 @@ namespace CellLang {
     }
 
     public void Delete(long value1, long value2) {
-      //deleteList.Add(ValueTuple((uint) value1, (uint) value2));
+      deleteList.Add(new Tuple((uint) value1, (uint) value2));
     }
 
     public void DeleteByCol1(long value) {
-      throw new NotImplementedException();
+      uint[] assocs = table.LookupByCol1((uint) value);
+      for (int i=0 ; i < assocs.Length ; i++)
+        deleteList.Add(new Tuple((uint) value, assocs[i]));
     }
 
     public void DeleteByCol2(long value) {
-      throw new NotImplementedException();
+      uint[] assocs = table.LookupByCol2((uint) value);
+      for (int i=0 ; i < assocs.Length ; i++)
+        deleteList.Add(new Tuple(assocs[i], (uint) value));
     }
 
     public void Insert(long value1, long value2) {
-      throw new NotImplementedException();
+      insertList.Add(new Tuple((uint) value1, (uint) value2));
     }
 
     public bool CheckUpdates_0() {
