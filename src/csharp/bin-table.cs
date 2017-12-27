@@ -133,8 +133,8 @@ namespace CellLang {
     OneWayBinTable table1;
     OneWayBinTable table2;
 
-    ValueStore store1;
-    ValueStore store2;
+    public ValueStore store1;
+    public ValueStore store2;
 
     public BinaryTable(ValueStore store1, ValueStore store2) {
       table1.Init();
@@ -218,7 +218,6 @@ namespace CellLang {
       }
     }
 
-    bool clear = false;
     List<Tuple> deleteList = new List<Tuple>();
     List<Tuple> insertList = new List<Tuple>();
 
@@ -229,7 +228,7 @@ namespace CellLang {
     }
 
     public void Clear() {
-      clear = true;
+      throw new NotImplementedException();
     }
 
     public void Set(Obj value, bool flipped) {
@@ -237,7 +236,8 @@ namespace CellLang {
     }
 
     public void Delete(long value1, long value2) {
-      deleteList.Add(new Tuple((uint) value1, (uint) value2));
+      if (table.Contains((uint) value1, (uint) value2))
+        deleteList.Add(new Tuple((uint) value1, (uint) value2));
     }
 
     public void DeleteByCol1(long value) {
@@ -269,11 +269,35 @@ namespace CellLang {
     }
 
     public void Apply() {
+      var it = deleteList.GetEnumerator();
+      while (it.MoveNext()) {
+        var curr = it.Current;
+        table.Delete(curr.field1, curr.field2);
+      }
 
+      it = insertList.GetEnumerator();
+      while (it.MoveNext()) {
+        var curr = it.Current;
+        if (!table.Contains(curr.field1, curr.field2)) {
+          table.Insert(curr.field1, curr.field2);
+          table.store1.AddRef(curr.field1);
+          table.store2.AddRef(curr.field2);
+        }
+      }
     }
 
     public void Finish() {
+      var it = deleteList.GetEnumerator();
+      while (it.MoveNext()) {
+        var curr = it.Current;
+        table.store1.Release(curr.field1);
+        table.store2.Release(curr.field2);
+      }
+    }
 
+    public void Reset() {
+      deleteList.Clear();
+      insertList.Clear();
     }
   }
 }

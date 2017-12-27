@@ -19,8 +19,10 @@ namespace CellLang {
       hashtable = new int[initSize];
       buckets   = new int[initSize];
 
-      for (int i=0 ; i < initSize ; i++)
+      for (int i=0 ; i < initSize ; i++) {
         hashtable[i] = -1;
+        buckets[i] = -1;
+      }
     }
 
     public int Count() {
@@ -65,6 +67,37 @@ namespace CellLang {
       buckets[slotIdx] = head;
 
       count++;
+    }
+
+    protected void Delete(int index) {
+      Miscellanea.Assert(slots != null && index < slots.Length);
+      Miscellanea.Assert(slots[index] != null);
+
+      int hashcode = hashcodes[index];
+
+      slots[index] = null;
+      hashcodes[index] = 0; //## NOT STRICTLY NECESSARY...
+
+      int hashtableIdx = hashcode % slots.Length;
+      int idx = hashtable[hashtableIdx];
+      Miscellanea.Assert(idx != -1);
+
+      if (idx == index) {
+        hashtable[hashtableIdx] = buckets[idx];
+        buckets[idx] = -1;
+        return;
+      }
+
+      int prevIdx = idx;
+      idx = buckets[idx];
+      while (idx != index) {
+        prevIdx = idx;
+        idx = buckets[idx];
+        Miscellanea.Assert(idx != -1);
+      }
+
+      buckets[prevIdx] = buckets[idx];
+      buckets[idx] = -1;
     }
 
     public virtual void Resize(int minCapacity) {
@@ -122,6 +155,18 @@ namespace CellLang {
     public ValueStore() : base(InitSize) {
       for (int i=0 ; i < InitSize ; i++)
         nextFreeIdx[i] = i + 1;
+    }
+
+    public void AddRef(uint index) {
+      refCounts[index] = refCounts[index] + 1;
+    }
+
+    public void Release(uint index) {
+      int count = refCounts[index];
+      Miscellanea.Assert(count > 0);
+      refCounts[index] = count - 1;
+      if (count == 1)
+        Delete((int) index);
     }
 
     override public void Insert(Obj value, int hashcode, int index) {
