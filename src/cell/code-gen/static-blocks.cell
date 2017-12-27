@@ -318,11 +318,16 @@ implicit {
     bool_vars_init_code = (to_c_var_ref_name(nested_db_spent(v)) & " = false;" : v <- bool_vars_ids);
 
     value_stores_init_code = (
-      native_new_call(aux_struct_var_ref_name(vs), "ValueStoreUpdater", (vs)) : vs <- rand_sort(block.value_stores)
+      native_new_call(aux_struct_var_ref_name(vs), "ValueStoreUpdater", (vs))
+      : vs <- rand_sort(block.value_stores)
     );
 
     tables_init_code = [
-      native_new_call(pending_updates_var_ref_name(v), pending_updates_var_type(t), (v)) : v, t <- block.tables
+      native_new_call(
+        pending_updates_var_ref_name(v),
+        pending_updates_var_type(t),
+        (v) & (aux_struct_var_ref_name(vs) : vs <- t.value_stores)
+      ) : v, t <- block.tables
     ];
 
     nested_blocks_init_code = [

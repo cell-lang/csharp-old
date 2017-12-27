@@ -254,7 +254,7 @@ namespace CellLang {
 
     }
 
-    public long LookupValueEx(Obj value) {
+    public int LookupValueEx(Obj value) {
       int surrogate = store.LookupValue(value);
       if (surrogate != -1)
         return surrogate;

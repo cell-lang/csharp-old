@@ -247,9 +247,13 @@ namespace CellLang {
     List<Tuple> insertList = new List<Tuple>();
 
     BinaryTable table;
+    ValueStoreUpdater store1;
+    ValueStoreUpdater store2;
 
-    public BinaryTableUpdater(BinaryTable table) {
+    public BinaryTableUpdater(BinaryTable table, ValueStoreUpdater store1, ValueStoreUpdater store2) {
       this.table = table;
+      this.store1 = store1;
+      this.store2 = store2;
     }
 
     public void Clear() {
@@ -261,7 +265,21 @@ namespace CellLang {
     }
 
     public void Set(Obj value, bool flipped) {
-
+      Clear();
+      Miscellanea.Assert(insertList.Count == 0);
+      BinRelIter it = value.GetBinRelIter();
+      while (!it.Done()) {
+        Obj val1 = it.Get1();
+        Obj val2 = it.Get2();
+        int surr1 = store1.LookupValueEx(val1);
+        if (surr1 == -1)
+          surr1 = store1.Insert(val1);
+        int surr2 = store2.LookupValueEx(val2);
+        if (surr2 == -1)
+          surr2 = store2.Insert(val2);
+        insertList.Add(new Tuple((uint) surr1, (uint) surr2));
+        it.Next();
+      }
     }
 
     public void Delete(long value1, long value2) {
