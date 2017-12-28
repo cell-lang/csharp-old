@@ -128,8 +128,9 @@ implicit {
 
 
   String* native_set_state_code(DBSymbol name, Instr* code) {
+    aux_struct_init_call = native_method_call("this", aux_struct_init_proc_name(name), ());
     vars_decls = gen_vars_decls(code);
-    body = vars_decls & ("" if vars_decls != ()) & compile_to_c(code, nothing);
+    body = vars_decls & ("" if vars_decls != (), aux_struct_init_call) & compile_to_c(code, nothing);
     sgn = "void " & set_state_proc_name(name) & "(Obj a0) {";
     return (sgn) & indent_lines(body) & ("}");
   }

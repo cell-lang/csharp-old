@@ -110,6 +110,13 @@ namespace CellLang {
     //   return new MasterSeqObj(newItems, minLen);
     // }
 
+    override public int Hashcode() {
+      int hashcodesSum = 0;
+      for (int i=0 ; i < items.Length ; i++)
+        hashcodesSum += items[i].Hashcode();
+      return hashcodesSum ^ items.Length;
+    }
+
     override protected int TypeId() {
       return 3;
     }
@@ -358,6 +365,14 @@ namespace CellLang {
 
 //    override public Obj ConcatMany() {
 //    }
+
+    override public int Hashcode() {
+      BuildArray();
+      int hashcodesSum = 0;
+      for (int i=0 ; i < length ; i++)
+        hashcodesSum += array[i].Hashcode();
+      return hashcodesSum ^ length;
+    }
 
     override protected int TypeId() {
       return 3;

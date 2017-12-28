@@ -304,15 +304,15 @@ namespace CellLang {
     }
 
     public bool CheckUpdates_0() {
-      throw new NotImplementedException();
+      return true; //## IMPLEMENT IMPLEMENT IMPLEMENT
     }
 
     public bool CheckUpdates_1() {
-      throw new NotImplementedException();
+      return true; //## IMPLEMENT IMPLEMENT IMPLEMENT
     }
 
     public bool CheckUpdates_0_1() {
-      throw new NotImplementedException();
+      return true; //## IMPLEMENT IMPLEMENT IMPLEMENT
     }
 
     public void Apply() {

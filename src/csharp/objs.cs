@@ -35,7 +35,7 @@ namespace CellLang {
 
     public virtual int    GetSymbId()                             {throw new NotImplementedException();}
     public virtual bool   GetBool()                               {throw new NotImplementedException();}
-    //public virtual long   GetLong()                               {throw new NotImplementedException();}
+    public virtual long   GetLong()                               {throw new NotImplementedException();}
     public virtual double GetFloat()                              {throw new NotImplementedException();}
     public virtual int    GetSize()                               {throw new NotImplementedException();}
     public virtual Obj    GetItem(long i)                         {throw new NotImplementedException();}
@@ -89,7 +89,7 @@ namespace CellLang {
     public virtual string GetString()                             {throw new NotImplementedException();}
 
     public virtual Obj Lookup(Obj key)                            {throw new NotImplementedException();}
-    // public virtual Obj LookupField(int id)                        {throw new NotImplementedException();}
+    public virtual Obj LookupField(int id)                        {throw new NotImplementedException();}
 
     public virtual Obj Append(Obj obj)                            {throw new NotImplementedException();}
     public virtual Obj Concat(Obj seq)                            {throw new NotImplementedException();}
@@ -115,37 +115,26 @@ namespace CellLang {
       return id1 < id2 ? 1 : -1;
     }
 
-    public int Hashcode() {
-      throw new NotImplementedException(); //## SHOULD BE ABSTRACT
-    }
-
     public virtual int CmpSeq(Obj[] es, int o, int l)             {throw new NotImplementedException();}
     public virtual int CmpNeSet(Obj[] es)                         {throw new NotImplementedException();}
     public virtual int CmpNeBinRel(Obj[] c1, Obj[] c2)            {throw new NotImplementedException();}
     public virtual int CmpNeTernRel(Obj[] c1, Obj[] c2, Obj[] c3) {throw new NotImplementedException();}
     public virtual int CmpTaggedObj(int tag, Obj obj)             {throw new NotImplementedException();}
 
+    public abstract int Hashcode();
+
     protected abstract int TypeId();
     protected abstract int InternalCmp(Obj o);
-
-
-
-    public virtual long GetLong() {
-      Console.WriteLine(ToString());
-      throw new NotImplementedException();
-    }
-
-    public virtual Obj LookupField(int id) {
-      Console.WriteLine(this);
-      throw new NotImplementedException();
-    }
-
   }
 
 
   class BlankObj : Obj {
     override public bool IsBlankObj() {
       return true;
+    }
+
+    override public int Hashcode() {
+      throw new NotImplementedException();
     }
 
     override protected int TypeId() {
@@ -167,6 +156,10 @@ namespace CellLang {
   class NullObj : Obj {
     override public bool IsNullObj() {
       return true;
+    }
+
+    override public int Hashcode() {
+      throw new NotImplementedException();
     }
 
     override protected int TypeId() {
@@ -232,6 +225,10 @@ namespace CellLang {
       return SymbTable.IdxToStr(id);
     }
 
+    override public int Hashcode() {
+      return id; //## BAD HASHCODE, IT'S NOT STABLE
+    }
+
     override protected int TypeId() {
       return 0;
     }
@@ -274,6 +271,10 @@ namespace CellLang {
 
     override public string ToString() {
       return value.ToString();
+    }
+
+    override public int Hashcode() {
+      return ((int) (value >> 32)) ^ ((int) value);
     }
 
     override protected int TypeId() {
@@ -319,6 +320,11 @@ namespace CellLang {
 
     override public string ToString() {
       return value.ToString();
+    }
+
+    override public int Hashcode() {
+      long longVal = BitConverter.DoubleToInt64Bits(value);
+      return ((int) (longVal >> 32)) ^ ((int) longVal);
     }
 
     override protected int TypeId() {
@@ -433,6 +439,10 @@ namespace CellLang {
       return SeqObj.Empty();
     }
 
+    override public int Hashcode() {
+      return 0; //## FIND BETTER VALUE
+    }
+
     override protected int TypeId() {
       return 4;
     }
@@ -490,6 +500,13 @@ namespace CellLang {
 
     override public Obj InternalSort() {
       return new MasterSeqObj(elts);
+    }
+
+    override public int Hashcode() {
+      int hashcodesSum = 0;
+      for (int i=0 ; i < elts.Length ; i++)
+        hashcodesSum += elts[i].Hashcode();
+      return hashcodesSum ^ elts.Length;
     }
 
     override protected int TypeId() {
@@ -619,6 +636,13 @@ namespace CellLang {
       throw new InvalidOperationException();
     }
 
+    override public int Hashcode() {
+      int hashcodesSum = 0;
+      for (int i=0 ; i < col1.Length ; i++)
+        hashcodesSum += col1[i].Hashcode() + col2[i].Hashcode();
+      return hashcodesSum ^ col1.Length;
+    }
+
     override protected int TypeId() {
       return 6;
     }
@@ -745,6 +769,13 @@ namespace CellLang {
       return new TernRelIter(col1, col2, col3, idxs231, first, first+count-1);
     }
 
+    override public int Hashcode() {
+      int hashcodesSum = 0;
+      for (int i=0 ; i < col1.Length ; i++)
+        hashcodesSum += col1[i].Hashcode() + col2[i].Hashcode() + col3[i].Hashcode();
+      return hashcodesSum ^ col1.Length;
+    }
+
     override protected int TypeId() {
       return 7;
     }
@@ -866,6 +897,10 @@ namespace CellLang {
         chars[i] = (char) code;
       }
       return new string(chars);
+    }
+
+    override public int Hashcode() {
+      return tag ^ obj.Hashcode();
     }
 
     override protected int TypeId() {

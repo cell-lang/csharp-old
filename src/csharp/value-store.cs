@@ -34,6 +34,8 @@ namespace CellLang {
     }
 
     public int LookupValue(Obj value) {
+      if (count == 0)
+        return -1;
       int hashcode = value.Hashcode();
       int idx = hashtable[hashcode % hashtable.Length];
       while (idx != -1) {
@@ -226,10 +228,11 @@ namespace CellLang {
     }
 
     override public void Resize(int minCapacity) {
-      Resize(count+1);
+      base.Resize(count+1);
       int[] currSurrogates = surrogates;
       surrogates = new int[slots.Length];
-      Array.Copy(currSurrogates, surrogates, count);
+      if (count > 0)
+        Array.Copy(currSurrogates, surrogates, count);
     }
 
     public void Apply() {
