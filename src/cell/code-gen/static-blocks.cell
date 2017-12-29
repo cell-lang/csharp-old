@@ -229,16 +229,16 @@ implicit {
       // 1 -> [[] -> "unary_table_updates_check"],
       2 -> [
         // []                        -> "binary_table_updates_check",
-        [[0]]                     -> "CheckUpdates_0",
-        [[1]]                     -> "CheckUpdates_1",
-        [[0], [1]]                -> "CheckUpdates_0_1"
+        [[0]]                     -> "CheckUpdates_1",
+        [[1]]                     -> "CheckUpdates_2",
+        [[0], [1]]                -> "CheckUpdates_1_2"
       ],
       3 -> [
         // []                        -> "ternary_table_updates_check",
-        [[0, 1]]                  -> "CheckUpdates_01",
-        [[0, 1], [2]]             -> "CheckUpdates_01_2",
-        [[0, 1], [1, 2]]          -> "CheckUpdates_01_12",
-        [[0, 1], [1, 2], [2, 0]]  -> "CheckUpdates_01_12_20"
+        [[0, 1]]                  -> "CheckUpdates_12",
+        [[0, 1], [2]]             -> "CheckUpdates_12_3",
+        [[0, 1], [1, 2]]          -> "CheckUpdates_12_23",
+        [[0, 1], [1, 2], [2, 0]]  -> "CheckUpdates_12_23_31"
       ]
     ];
   }

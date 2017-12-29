@@ -51,6 +51,10 @@ namespace CellLang {
       return code == surr2;
     }
 
+    public bool ContainsKey(uint surr1) {
+      return surr1 < column.Length && column[surr1] != EmptySlot;
+    }
+
     public uint[] Lookup(uint surr) {
       if (surr >= column.Length)
         return emptyArray;
@@ -168,6 +172,16 @@ namespace CellLang {
       return table1.Contains(surr1, surr2);
     }
 
+    public bool ContainsField1(uint surr1) {
+      return table1.ContainsKey(surr1);
+    }
+
+    public bool ContainsField2(uint surr2) {
+      if (table2.count == 0 & table1.count > 0)
+        table2.InitReverse(table1);
+      return table2.ContainsKey(surr2);
+    }
+
     public uint[] LookupByCol1(uint surr) {
       return table1.Lookup(surr);
     }
@@ -233,13 +247,17 @@ namespace CellLang {
 
 
   class BinaryTableUpdater {
-    struct Tuple {
+    struct Tuple : IComparable<Tuple> {
       public uint field1;
       public uint field2;
 
       public Tuple(uint field1, uint field2) {
         this.field1 = field1;
         this.field2 = field2;
+      }
+
+      public int CompareTo(Tuple other) {
+        return (int) (field1 != other.field1 ? other.field1 - field1 : other.field2 - field2);
       }
     }
 
@@ -303,15 +321,38 @@ namespace CellLang {
       insertList.Add(new Tuple((uint) value1, (uint) value2));
     }
 
-    public bool CheckUpdates_0() {
-      return true; //## IMPLEMENT IMPLEMENT IMPLEMENT
-    }
-
     public bool CheckUpdates_1() {
+      deleteList.Sort();
+      insertList.Sort();
+
+      int count = insertList.Count;
+      if (count == 0)
+        return true;
+
+      Tuple prev = insertList[0];
+      //## TRY TO REMOVE THIS DUPLICATE CODE
+      if (!ContainsField1(deleteList, prev.field1))
+        if (table.ContainsField1(prev.field1))
+          return false;
+
+      for (int i=1 ; i < count ; i++) {
+        Tuple curr = insertList[i];
+        if (curr.field1 == prev.field1 & curr.field2 != prev.field2)
+          return false;
+        if (!ContainsField1(deleteList, curr.field1))
+          if (table.ContainsField1(curr.field1))
+            return false;
+        prev = curr;
+      }
+
+      return true;
+    }
+
+    public bool CheckUpdates_2() {
       return true; //## IMPLEMENT IMPLEMENT IMPLEMENT
     }
 
-    public bool CheckUpdates_0_1() {
+    public bool CheckUpdates_1_2() {
       return true; //## IMPLEMENT IMPLEMENT IMPLEMENT
     }
 
@@ -349,6 +390,24 @@ namespace CellLang {
     public void Reset() {
       deleteList.Clear();
       insertList.Clear();
+    }
+
+    static bool ContainsField1(List<Tuple> tuples, uint field1) {
+      int low = 0;
+      int high = tuples.Count - 1;
+
+      while (low <= high) {
+        int mid = (int) (((long) low + (long) high) / 2);
+        uint midField1 = tuples[mid].field1;
+        if (midField1 > field1)
+          high = mid - 1;
+        else if (midField1 < field1)
+          low = mid + 1;
+        else
+          return true;
+      }
+
+      return false;
     }
   }
 }

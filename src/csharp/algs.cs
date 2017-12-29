@@ -355,6 +355,7 @@ namespace CellLang {
       return norm_objs;
     }
 
+
     public static void SortUnique(Obj[] col1, Obj[] col2, int count, out Obj[] norm_col_1, out Obj[] norm_col_2) {
       Miscellanea.Assert(count > 0);
 
