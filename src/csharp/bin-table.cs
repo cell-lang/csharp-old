@@ -16,6 +16,20 @@ namespace CellLang {
     public Dictionary<uint, HashSet<uint>> multimap;
     public int count;
 
+    public void Dump() {
+      Console.WriteLine("count = " + count.ToString());
+      Console.Write("column = [");
+      for (int i=0 ; i < column.Length ; i++)
+        Console.Write((i > 0 ? " " : "") + ((int) column[i]) .ToString());
+      Console.WriteLine("]");
+      foreach(var entry in multimap) {
+        Console.Write(entry.Key.ToString() + " ->");
+        foreach (uint val in entry.Value)
+          Console.Write(" " + val.ToString());
+        Console.WriteLine();
+      }
+    }
+
     public void Init() {
       column = emptyArray;
       multimap = new Dictionary<uint, HashSet<uint>>();
@@ -28,7 +42,7 @@ namespace CellLang {
       uint[] srcCol = source.column;
       Dictionary<uint, HashSet<uint>> srcMultimap = source.multimap;
 
-      for (uint i=0 ; i < column.Length ; i++) {
+      for (uint i=0 ; i < srcCol.Length ; i++) {
         uint code = srcCol[i];
         if (code == MultiValueSlot) {
           HashSet<uint>.Enumerator it = srcMultimap[i].GetEnumerator();
@@ -235,8 +249,6 @@ namespace CellLang {
           }
         }
       }
-Console.WriteLine("next = " + next.ToString());
-Console.WriteLine("count = " + count.ToString());
       Miscellanea.Assert(next == count);
 
       return Builder.CreateBinRel(flipped ? objs1 : objs2, flipped ? objs2 : objs1, count); //## THIS COULD BE MADE MORE EFFICIENT
@@ -261,6 +273,11 @@ Console.WriteLine("count = " + count.ToString());
       public int CompareTo(Tuple other) {
         return (int) (field1 != other.field1 ? other.field1 - field1 : other.field2 - field2);
       }
+
+      override public string ToString() {
+        return "(" + field1.ToString() + ", " + field2.ToString() + ")";
+      }
+
     }
 
     List<Tuple> deleteList = new List<Tuple>();
@@ -350,6 +367,9 @@ Console.WriteLine("count = " + count.ToString());
     }
 
     public bool CheckUpdates_1_2() {
+      if (!CheckUpdates_1())
+        return false;
+
       Comparison<Tuple> cmp = delegate(Tuple t1, Tuple t2) {
         return (int) (t1.field2 != t2.field2 ? t2.field2 - t1.field2 : t2.field1 - t1.field1);
       };
