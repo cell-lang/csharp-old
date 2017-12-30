@@ -235,6 +235,8 @@ namespace CellLang {
           }
         }
       }
+Console.WriteLine("next = " + next.ToString());
+Console.WriteLine("count = " + count.ToString());
       Miscellanea.Assert(next == count);
 
       return Builder.CreateBinRel(flipped ? objs1 : objs2, flipped ? objs2 : objs1, count); //## THIS COULD BE MADE MORE EFFICIENT
@@ -330,7 +332,6 @@ namespace CellLang {
         return true;
 
       Tuple prev = insertList[0];
-      //## TRY TO REMOVE THIS DUPLICATE CODE
       if (!ContainsField1(deleteList, prev.field1))
         if (table.ContainsField1(prev.field1))
           return false;
@@ -348,12 +349,34 @@ namespace CellLang {
       return true;
     }
 
-    public bool CheckUpdates_2() {
-      return true; //## IMPLEMENT IMPLEMENT IMPLEMENT
-    }
-
     public bool CheckUpdates_1_2() {
-      return true; //## IMPLEMENT IMPLEMENT IMPLEMENT
+      Comparison<Tuple> cmp = delegate(Tuple t1, Tuple t2) {
+        return (int) (t1.field2 != t2.field2 ? t2.field2 - t1.field2 : t2.field1 - t1.field1);
+      };
+
+      deleteList.Sort(cmp);
+      insertList.Sort(cmp);
+
+      int count = insertList.Count;
+      if (count == 0)
+        return true;
+
+      Tuple prev = insertList[0];
+      if (!ContainsField2(deleteList, prev.field2))
+        if (table.ContainsField2(prev.field2))
+          return false;
+
+      for (int i=1 ; i < count ; i++) {
+        Tuple curr = insertList[i];
+        if (curr.field2 == prev.field2 & curr.field1 != prev.field1)
+          return false;
+        if (!ContainsField2(deleteList, curr.field2))
+          if (table.ContainsField2(curr.field2))
+            return false;
+        prev = curr;
+      }
+
+      return true;
     }
 
     public void Apply() {
@@ -402,6 +425,24 @@ namespace CellLang {
         if (midField1 > field1)
           high = mid - 1;
         else if (midField1 < field1)
+          low = mid + 1;
+        else
+          return true;
+      }
+
+      return false;
+    }
+
+    static bool ContainsField2(List<Tuple> tuples, uint field2) {
+      int low = 0;
+      int high = tuples.Count - 1;
+
+      while (low <= high) {
+        int mid = (int) (((long) low + (long) high) / 2);
+        uint midField2 = tuples[mid].field2;
+        if (midField2 > field2)
+          high = mid - 1;
+        else if (midField2 < field2)
           low = mid + 1;
         else
           return true;
