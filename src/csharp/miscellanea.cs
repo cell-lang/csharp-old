@@ -78,5 +78,17 @@ namespace CellLang {
       char ch = (char) b;
       return ('0' <= ch & ch <= '9') | ('a' <= ch & ch <= 'f') | ('A' <= ch & ch <= 'F');
     }
+
+    public static uint Hashcode(uint n) {
+      return n;
+    }
+
+    public static uint Hashcode(uint n1, uint n2) {
+      return n1 ^ n2;
+    }
+
+    public static uint Hashcode(uint n1, uint n2, uint n3) {
+      return n1 ^ n2 ^ n3;
+    }
   }
 }
