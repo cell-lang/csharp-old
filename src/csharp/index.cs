@@ -18,6 +18,16 @@ namespace CellLang {
       }
     }
 
+    public void Clear() {
+      if (hashtable != null) {
+        int size = hashtable.Length;
+        for (int i=0 ; i < size ; i++) {
+          hashtable[i] = Empty;
+          buckets[i] = Empty;
+        }
+      }
+    }
+
     public void Insert(uint index, uint hashcode) {
       Miscellanea.Assert(buckets[index] == Empty);
 

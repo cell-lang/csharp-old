@@ -98,6 +98,25 @@ namespace CellLang {
       store3.AddRef(field3);
     }
 
+    public void Clear() {
+      count = 0;
+      firstFree = 0;
+
+      int size = tuples.Length;
+      for (uint i=0 ; i < size ; i++) {
+        tuples[i].field1OrNext = i + 1;
+        tuples[i].field2OrEmptyMarker = Tuple.Empty;
+      }
+
+      index123.Clear();
+      index12.Clear();
+      index13.Clear();
+      index23.Clear();
+      index1.Clear();
+      index2.Clear();
+      index3.Clear();
+    }
+
     public void Delete(uint field1, uint field2, uint field3) {
       uint hashcode = Miscellanea.Hashcode(field1, field2, field3);
       for (uint idx = index123.Head(hashcode) ; idx != Tuple.Empty ; idx = index123.Next(idx)) {
@@ -172,6 +191,117 @@ namespace CellLang {
           DeleteAt(idx, Miscellanea.Hashcode(tuple.field1OrNext, tuple.field2OrEmptyMarker, tuple.field3));
       }
     }
+
+    public bool Contains(uint field1, uint field2, uint field3) {
+      uint hashcode = Miscellanea.Hashcode(field1, field2, field3);
+      for (uint idx = index123.Head(hashcode) ; idx != Tuple.Empty ; idx = index123.Next(idx)) {
+        Tuple tuple = tuples[idx];
+        if (tuple.field1OrNext == field1 & tuple.field2OrEmptyMarker == field2 & tuple.field3 == field3)
+          return true;
+      }
+      return false;
+    }
+
+    public bool Contains12(uint field1, uint field2) {
+      uint hashcode = Miscellanea.Hashcode(field1, field2);
+      for (uint idx = index12.Head(hashcode) ; idx != Tuple.Empty ; idx = index12.Next(idx)) {
+        Tuple tuple = tuples[idx];
+        if (tuple.field1OrNext == field1 & tuple.field2OrEmptyMarker == field2)
+          return true;
+      }
+      return false;
+    }
+
+    public bool Contains13(uint field1, uint field3) {
+      if (index13.IsBlank())
+        BuildIndex13();
+      uint hashcode = Miscellanea.Hashcode(field1, field3);
+      for (uint idx = index13.Head(hashcode) ; idx != Tuple.Empty ; idx = index13.Next(idx)) {
+        Tuple tuple = tuples[idx];
+        if (tuple.field1OrNext == field1 & tuple.field3 == field3)
+          return true;
+      }
+      return false;
+    }
+
+    public bool Contains23(uint field2, uint field3) {
+      if (index23.IsBlank())
+        BuildIndex23();
+      uint hashcode = Miscellanea.Hashcode(field2, field3);
+      for (uint idx = index23.Head(hashcode) ; idx != Tuple.Empty ; idx = index23.Next(idx)) {
+        Tuple tuple = tuples[idx];
+        if (tuple.field2OrEmptyMarker == field2 & tuple.field3 == field3)
+          return true;
+      }
+      return false;
+    }
+
+    public bool Contains1(uint field1) {
+      if (index1.IsBlank())
+        BuildIndex1();
+      uint hashcode = Miscellanea.Hashcode(field1);
+      for (uint idx = index1.Head(hashcode) ; idx != Tuple.Empty ; idx = index1.Next(idx)) {
+        Tuple tuple = tuples[idx];
+        if (tuple.field1OrNext == field1)
+          return true;
+      }
+      return false;
+    }
+
+    public bool Contains2(uint field2) {
+      if (index2.IsBlank())
+        BuildIndex2();
+      uint hashcode = Miscellanea.Hashcode(field2);
+      for (uint idx = index2.Head(hashcode) ; idx != Tuple.Empty ; idx = index2.Next(idx)) {
+        Tuple tuple = tuples[idx];
+        if (tuple.field2OrEmptyMarker == field2)
+          return true;
+      }
+      return false;
+    }
+
+    public bool Contains3(uint field3) {
+      if (index3.IsBlank())
+        BuildIndex3();
+      uint hashcode = Miscellanea.Hashcode(field3);
+      for (uint idx = index3.Head(hashcode) ; idx != Tuple.Empty ; idx = index3.Next(idx)) {
+        Tuple tuple = tuples[idx];
+        if (tuple.field3 == field3)
+          return true;
+      }
+      return false;
+    }
+
+    public Obj Copy(int idx1, int idx2, int idx3) {
+      if (count == 0)
+        return EmptyRelObj.Singleton();
+
+      Obj[] objs1 = new Obj[count];
+      Obj[] objs2 = new Obj[count];
+      Obj[] objs3 = new Obj[count];
+
+      int len = tuples.Length;
+      int next = 0;
+      for (uint i=0 ; i < len ; i++) {
+        Tuple tuple = tuples[i];
+        if (tuple.field2OrEmptyMarker != Tuple.Empty) {
+          objs1[next] = store1.GetValue(tuple.field1OrNext);
+          objs2[next] = store2.GetValue(tuple.field2OrEmptyMarker);
+          objs3[next] = store3.GetValue(tuple.field3);
+          next++;
+        }
+      }
+      Miscellanea.Assert(next == count);
+
+      return Builder.CreateTernRel(
+        idx1 == 0 ? objs1 : (idx1 == 1 ? objs2 : objs3),
+        idx2 == 0 ? objs1 : (idx2 == 1 ? objs2 : objs3),
+        idx3 == 0 ? objs1 : (idx3 == 1 ? objs2 : objs3),
+        count
+      );
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
 
     void DeleteAt(uint index, uint hashcode) {
       Tuple tuple = tuples[index];
@@ -263,3 +393,83 @@ namespace CellLang {
     }
   }
 }
+
+// bool Contains(uint field1, uint field2, uint field3)
+// bool Contains12(uint field1, uint field2)
+// bool Contains13(uint field1, uint field3)
+// bool Contains23(uint field2, uint field3)
+// bool Contains1(uint field1)
+// bool Contains2(uint field2)
+// bool Contains3(uint field3)
+// void Insert(uint field1, uint field2, uint field3)
+// void Clear()
+// void Delete(uint field1, uint field2, uint field3)
+// void Delete12(uint field1, uint field2)
+// void Delete13(uint field1, uint field3)
+// void Delete23(uint field2, uint field3)
+// void Delete1(uint field1)
+// void Delete2(uint field2)
+// void Delete3(uint field3)
+// Obj Copy(int idx1, int idx2, int idx3) {
+
+// bool Contains(uint surr1, uint surr2)
+// bool ContainsField1(uint surr1)
+// bool ContainsField2(uint surr2)
+// uint[] LookupByCol1(uint surr)
+// uint[] LookupByCol2(uint surr)
+// void Insert(uint surr1, uint surr2)
+// void Clear()
+// void Delete(uint surr1, uint surr2)
+// Obj Copy(bool flipped)
+
+// void ternary_table_init(TERNARY_TABLE *table);
+// void ternary_table_cleanup(TERNARY_TABLE *table);
+//
+// void ternary_table_updates_init(TERNARY_TABLE_UPDATES *updates);
+// void ternary_table_updates_cleanup(TERNARY_TABLE_UPDATES *updates);
+//
+// bool ternary_table_contains(TERNARY_TABLE *table, uint32 left_val, uint32 middle_val, uint32 right_val);
+//
+// void ternary_table_delete(TERNARY_TABLE *table, TERNARY_TABLE_UPDATES *updates, uint32 left_val, uint32 middle_val, uint32 right_val);
+// void ternary_table_delete_by_cols_01(TERNARY_TABLE *table, TERNARY_TABLE_UPDATES *updates, uint32 value0, uint32 value1);
+// void ternary_table_delete_by_cols_02(TERNARY_TABLE *table, TERNARY_TABLE_UPDATES *updates, uint32 value0, uint32 value2);
+// void ternary_table_delete_by_cols_12(TERNARY_TABLE *table, TERNARY_TABLE_UPDATES *updates, uint32 value1, uint32 value2);
+// void ternary_table_delete_by_col_0(TERNARY_TABLE *table, TERNARY_TABLE_UPDATES *updates, uint32 value);
+// void ternary_table_delete_by_col_1(TERNARY_TABLE *table, TERNARY_TABLE_UPDATES *updates, uint32 value);
+// void ternary_table_delete_by_col_2(TERNARY_TABLE *table, TERNARY_TABLE_UPDATES *updates, uint32 value);
+// void ternary_table_clear(TERNARY_TABLE *table, TERNARY_TABLE_UPDATES *updates);
+//
+// void ternary_table_insert(TERNARY_TABLE_UPDATES *updates, uint32 left_val, uint32 middle_val, uint32 right_val);
+//
+// bool ternary_table_updates_check_01(TERNARY_TABLE *table, TERNARY_TABLE_UPDATES *updates);
+// bool ternary_table_updates_check_01_2(TERNARY_TABLE *table, TERNARY_TABLE_UPDATES *updates);
+// bool ternary_table_updates_check_01_12(TERNARY_TABLE *table, TERNARY_TABLE_UPDATES *updates);
+// bool ternary_table_updates_check_01_12_20(TERNARY_TABLE *table, TERNARY_TABLE_UPDATES *updates);
+//
+// void ternary_table_updates_apply(TERNARY_TABLE *table, TERNARY_TABLE_UPDATES *updates, VALUE_STORE *vs0, VALUE_STORE *vs1, VALUE_STORE *vs2);
+// void ternary_table_updates_finish(TERNARY_TABLE_UPDATES *updates, VALUE_STORE *vs0, VALUE_STORE *vs1, VALUE_STORE *vs2);
+//
+// void ternary_table_get_iter_by_cols_01(TERNARY_TABLE *table, TERNARY_TABLE_ITER *iter, uint32 value0, uint32 value1);
+// void ternary_table_get_iter_by_cols_02(TERNARY_TABLE *table, TERNARY_TABLE_ITER *iter, uint32 value0, uint32 value2);
+// void ternary_table_get_iter_by_cols_12(TERNARY_TABLE *table, TERNARY_TABLE_ITER *iter, uint32 value1, uint32 value2);
+// void ternary_table_get_iter_by_col_0(TERNARY_TABLE *table, TERNARY_TABLE_ITER *iter, uint32 value);
+// void ternary_table_get_iter_by_col_1(TERNARY_TABLE *table, TERNARY_TABLE_ITER *iter, uint32 value);
+// void ternary_table_get_iter_by_col_2(TERNARY_TABLE *table, TERNARY_TABLE_ITER *iter, uint32 value);
+// void ternary_table_get_iter(TERNARY_TABLE *table, TERNARY_TABLE_ITER *iter);
+//
+// bool ternary_table_iter_is_out_of_range(TERNARY_TABLE_ITER *iter);
+//
+// uint32 ternary_table_iter_get_left_field(TERNARY_TABLE_ITER *iter);
+// uint32 ternary_table_iter_get_middle_field(TERNARY_TABLE_ITER *iter);
+// uint32 ternary_table_iter_get_right_field(TERNARY_TABLE_ITER *iter);
+//
+// void ternary_table_iter_next(TERNARY_TABLE_ITER *iter);
+//
+// OBJ copy_ternary_table(TERNARY_TABLE *table, VALUE_STORE *vs1, VALUE_STORE *vs2, VALUE_STORE *vs3, int idx1, int idx2, int idx3);
+//
+// void set_ternary_table(
+//   TERNARY_TABLE *table, TERNARY_TABLE_UPDATES *updates,
+//   VALUE_STORE *vs1, VALUE_STORE *vs2, VALUE_STORE *vs3,
+//   VALUE_STORE_UPDATES *vsu1, VALUE_STORE_UPDATES *vsu2, VALUE_STORE_UPDATES *vsu3,
+//   OBJ rel, int idx1, int idx2, int idx3
+// );
