@@ -31,6 +31,8 @@ namespace CellLang {
     public void Insert(uint index, uint hashcode) {
       Miscellanea.Assert(buckets[index] == Empty);
 
+      //## IMPLEMENT RESIZING
+
       uint hashIdx = hashcode % (uint) hashtable.Length;
       uint head = hashtable[hashIdx];
       hashtable[hashIdx] = index;

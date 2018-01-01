@@ -261,7 +261,7 @@ namespace CellLang {
 
 
   class BinaryTableUpdater {
-    struct Tuple : IComparable<Tuple> {
+    struct Tuple {
       public uint field1;
       public uint field2;
 
@@ -270,14 +270,9 @@ namespace CellLang {
         this.field2 = field2;
       }
 
-      public int CompareTo(Tuple other) {
-        return (int) (field1 != other.field1 ? other.field1 - field1 : other.field2 - field2);
-      }
-
       override public string ToString() {
         return "(" + field1.ToString() + ", " + field2.ToString() + ")";
       }
-
     }
 
     List<Tuple> deleteList = new List<Tuple>();
@@ -341,8 +336,12 @@ namespace CellLang {
     }
 
     public bool CheckUpdates_1() {
-      deleteList.Sort();
-      insertList.Sort();
+      Comparison<Tuple> cmp = delegate(Tuple t1, Tuple t2) {
+        return (int) (t1.field1 != t2.field1 ? t2.field1 - t1.field1 : t2.field2 - t1.field2);
+      };
+
+      deleteList.Sort(cmp);
+      insertList.Sort(cmp);
 
       int count = insertList.Count;
       if (count == 0)
