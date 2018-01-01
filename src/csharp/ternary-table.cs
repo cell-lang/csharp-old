@@ -18,6 +18,82 @@ namespace CellLang {
       }
     }
 
+
+    public struct Iter {
+      public enum Type {F123, F12, F13, F23, F1, F2, F3};
+
+      uint index;
+      Type type;
+
+      TernaryTable table;
+
+      public Iter(uint index, Type type, TernaryTable table) {
+        this.index = index;
+        this.type = type;
+        this.table = table;
+      }
+
+      public bool Done() {
+        return index == Tuple.Empty;
+      }
+
+      public uint GetField1() {
+        Miscellanea.Assert(index != Tuple.Empty);
+        return table.tuples[index].field1OrNext;
+      }
+
+      public uint GetField2() {
+        Miscellanea.Assert(index != Tuple.Empty);
+        return table.tuples[index].field2OrEmptyMarker;
+      }
+
+      public uint GetField3() {
+        Miscellanea.Assert(index != Tuple.Empty);
+        return table.tuples[index].field3;
+      }
+
+      public void Next() {
+        Miscellanea.Assert(index != Tuple.Empty);
+        switch (type) {
+          case Type.F123:
+            int len = table.tuples.Length;
+            do {
+              index++;
+              if (index == len) {
+                index = Tuple.Empty;
+                return;
+              }
+            } while (table.tuples[index].field2OrEmptyMarker == Tuple.Empty);
+            break;
+
+          case Type.F12:
+            index = table.index12.Next(index);
+            break;
+
+          case Type.F13:
+            index = table.index13.Next(index);
+            break;
+
+          case Type.F23:
+            index = table.index23.Next(index);
+            break;
+
+          case Type.F1:
+            index = table.index1.Next(index);
+            break;
+
+          case Type.F2:
+            index = table.index2.Next(index);
+            break;
+
+          case Type.F3:
+            index = table.index3.Next(index);
+            break;
+        }
+      }
+    }
+
+
     const int MinSize = 256;
 
     Tuple[] tuples = new Tuple[MinSize];
@@ -272,6 +348,50 @@ namespace CellLang {
       return false;
     }
 
+    public Iter GetIter() {
+      return new Iter(0, Iter.Type.F123, this);
+    }
+
+    public Iter GetIter12(uint field1, uint field2) {
+      uint hashcode = Miscellanea.Hashcode(field1, field2);
+      return new Iter(index12.Head(hashcode), Iter.Type.F12, this);
+    }
+
+    public Iter GetIter13(uint field1, uint field3) {
+      if (index13.IsBlank())
+        BuildIndex13();
+      uint hashcode = Miscellanea.Hashcode(field1, field3);
+      return new Iter(index13.Head(hashcode), Iter.Type.F13, this);
+    }
+
+    public Iter GetIter23(uint field2, uint field3) {
+      if (index23.IsBlank())
+        BuildIndex23();
+      uint hashcode = Miscellanea.Hashcode(field2, field3);
+      return new Iter(index23.Head(hashcode), Iter.Type.F23, this);
+    }
+
+    public Iter GetIter1(uint field1) {
+      if (index1.IsBlank())
+        BuildIndex1();
+      uint hashcode = Miscellanea.Hashcode(field1);
+      return new Iter(index1.Head(hashcode), Iter.Type.F1, this);
+    }
+
+    public Iter GetIter2(uint field2) {
+      if (index2.IsBlank())
+        BuildIndex2();
+      uint hashcode = Miscellanea.Hashcode(field2);
+      return new Iter(index2.Head(hashcode), Iter.Type.F2, this);
+    }
+
+    public Iter GetIter3(uint field3) {
+      if (index3.IsBlank())
+        BuildIndex3();
+      uint hashcode = Miscellanea.Hashcode(field3);
+      return new Iter(index3.Head(hashcode), Iter.Type.F3, this);
+    }
+
     public Obj Copy(int idx1, int idx2, int idx3) {
       if (count == 0)
         return EmptyRelObj.Singleton();
@@ -392,6 +512,203 @@ namespace CellLang {
       return size;
     }
   }
+
+
+  //class TernaryTableUpdater {
+
+//
+//    List<Tuple> deleteList = new List<Tuple>();
+//    List<Tuple> insertList = new List<Tuple>();
+//
+//    BinaryTable table;
+//    ValueStoreUpdater store1;
+//    ValueStoreUpdater store2;
+//
+//    public BinaryTableUpdater(BinaryTable table, ValueStoreUpdater store1, ValueStoreUpdater store2) {
+//      this.table = table;
+//      this.store1 = store1;
+//      this.store2 = store2;
+//    }
+//
+//    public void Clear() {
+//      uint[,] columns = table.RawCopy();
+//      int len = columns.GetLength(0);
+//      deleteList.Clear();
+//      for (int i=0 ; i < len ; i++)
+//        deleteList.Add(new Tuple(columns[i, 0], columns[i, 1]));
+//    }
+//
+//    public void Set(Obj value, bool flipped) {
+//      Clear();
+//      Miscellanea.Assert(insertList.Count == 0);
+//      BinRelIter it = value.GetBinRelIter();
+//      while (!it.Done()) {
+//        Obj val1 = it.Get1();
+//        Obj val2 = it.Get2();
+//        int surr1 = store1.LookupValueEx(val1);
+//        if (surr1 == -1)
+//          surr1 = store1.Insert(val1);
+//        int surr2 = store2.LookupValueEx(val2);
+//        if (surr2 == -1)
+//          surr2 = store2.Insert(val2);
+//        insertList.Add(new Tuple((uint) surr1, (uint) surr2));
+//        it.Next();
+//      }
+//    }
+//
+//    public void Delete(long value1, long value2) {
+//      if (table.Contains((uint) value1, (uint) value2))
+//        deleteList.Add(new Tuple((uint) value1, (uint) value2));
+//    }
+//
+//    public void DeleteByCol1(long value) {
+//      uint[] assocs = table.LookupByCol1((uint) value);
+//      for (int i=0 ; i < assocs.Length ; i++)
+//        deleteList.Add(new Tuple((uint) value, assocs[i]));
+//    }
+//
+//    public void DeleteByCol2(long value) {
+//      uint[] assocs = table.LookupByCol2((uint) value);
+//      for (int i=0 ; i < assocs.Length ; i++)
+//        deleteList.Add(new Tuple(assocs[i], (uint) value));
+//    }
+//
+//    public void Insert(long value1, long value2) {
+//      insertList.Add(new Tuple((uint) value1, (uint) value2));
+//    }
+//
+//    public bool CheckUpdates_1() {
+//      deleteList.Sort();
+//      insertList.Sort();
+//
+//      int count = insertList.Count;
+//      if (count == 0)
+//        return true;
+//
+//      Tuple prev = insertList[0];
+//      if (!ContainsField1(deleteList, prev.field1))
+//        if (table.ContainsField1(prev.field1))
+//          return false;
+//
+//      for (int i=1 ; i < count ; i++) {
+//        Tuple curr = insertList[i];
+//        if (curr.field1 == prev.field1 & curr.field2 != prev.field2)
+//          return false;
+//        if (!ContainsField1(deleteList, curr.field1))
+//          if (table.ContainsField1(curr.field1))
+//            return false;
+//        prev = curr;
+//      }
+//
+//      return true;
+//    }
+//
+//    public bool CheckUpdates_1_2() {
+//      if (!CheckUpdates_1())
+//        return false;
+//
+//      Comparison<Tuple> cmp = delegate(Tuple t1, Tuple t2) {
+//        return (int) (t1.field2 != t2.field2 ? t2.field2 - t1.field2 : t2.field1 - t1.field1);
+//      };
+//
+//      deleteList.Sort(cmp);
+//      insertList.Sort(cmp);
+//
+//      int count = insertList.Count;
+//      if (count == 0)
+//        return true;
+//
+//      Tuple prev = insertList[0];
+//      if (!ContainsField2(deleteList, prev.field2))
+//        if (table.ContainsField2(prev.field2))
+//          return false;
+//
+//      for (int i=1 ; i < count ; i++) {
+//        Tuple curr = insertList[i];
+//        if (curr.field2 == prev.field2 & curr.field1 != prev.field1)
+//          return false;
+//        if (!ContainsField2(deleteList, curr.field2))
+//          if (table.ContainsField2(curr.field2))
+//            return false;
+//        prev = curr;
+//      }
+//
+//      return true;
+//    }
+//
+//    public void Apply() {
+//      for (int i=0 ; i < deleteList.Count ; i++) {
+//        Tuple tuple = deleteList[i];
+//        if (table.Contains(tuple.field1, tuple.field2))
+//          table.Delete(tuple.field1, tuple.field2);
+//        else
+//          deleteList[i] = new Tuple(0xFFFFFFFF, 0xFFFFFFFF);
+//      }
+//
+//      var it = insertList.GetEnumerator();
+//      while (it.MoveNext()) {
+//        var curr = it.Current;
+//        if (!table.Contains(curr.field1, curr.field2)) {
+//          table.Insert(curr.field1, curr.field2);
+//          table.store1.AddRef(curr.field1);
+//          table.store2.AddRef(curr.field2);
+//        }
+//      }
+//    }
+//
+//    public void Finish() {
+//      var it = deleteList.GetEnumerator();
+//      while (it.MoveNext()) {
+//        var tuple = it.Current;
+//        if (tuple.field1 != 0xFFFFFFFF) {
+//          table.store1.Release(tuple.field1);
+//          table.store2.Release(tuple.field2);
+//        }
+//      }
+//    }
+//
+//    public void Reset() {
+//      deleteList.Clear();
+//      insertList.Clear();
+//    }
+//
+//    static bool ContainsField1(List<Tuple> tuples, uint field1) {
+//      int low = 0;
+//      int high = tuples.Count - 1;
+//
+//      while (low <= high) {
+//        int mid = (int) (((long) low + (long) high) / 2);
+//        uint midField1 = tuples[mid].field1;
+//        if (midField1 > field1)
+//          high = mid - 1;
+//        else if (midField1 < field1)
+//          low = mid + 1;
+//        else
+//          return true;
+//      }
+//
+//      return false;
+//    }
+//
+//    static bool ContainsField2(List<Tuple> tuples, uint field2) {
+//      int low = 0;
+//      int high = tuples.Count - 1;
+//
+//      while (low <= high) {
+//        int mid = (int) (((long) low + (long) high) / 2);
+//        uint midField2 = tuples[mid].field2;
+//        if (midField2 > field2)
+//          high = mid - 1;
+//        else if (midField2 < field2)
+//          low = mid + 1;
+//        else
+//          return true;
+//      }
+//
+//      return false;
+//    }
+//  }
+
 }
 
 // bool Contains(uint field1, uint field2, uint field3)

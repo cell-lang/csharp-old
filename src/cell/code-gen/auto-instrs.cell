@@ -92,16 +92,16 @@ implicit {
       (true)                  -> "Delete",
       (false)                 -> "Clear",
       (true,  true)           -> "Delete",
-      (true,  false)          -> "DeleteByCol1",
-      (false, true)           -> "DeleteByCol2",
+      (true,  false)          -> "Delete1",
+      (false, true)           -> "Delete2",
       (false, false)          -> "Clear",
       (true,  true,  true)    -> "Delete",
-      (true,  true,  false)   -> "DeleteByCols12",
-      (true,  false, true)    -> "DeleteByCols13",
-      (false, true,  true)    -> "DeleteByCols23",
-      (true,  false, false)   -> "DeleteByCol1",
-      (false, true,  false)   -> "DeleteByCol2",
-      (false, false, true)    -> "DeleteByCol3",
+      (true,  true,  false)   -> "Delete12",
+      (true,  false, true)    -> "Delete13",
+      (false, true,  true)    -> "Delete23",
+      (true,  false, false)   -> "Delete1",
+      (false, true,  false)   -> "Delete2",
+      (false, false, true)    -> "Delete3",
       (false, false, false)   -> "Clear"
     ];
   }
@@ -113,15 +113,15 @@ implicit {
 
     [Bool+ -> String] fn_names_by_args = [
       (false)                 -> "GetIter",
-      (true,  false)          -> "GetIterByCol1",
-      (false, true)           -> "GetIterByCol2",
+      (true,  false)          -> "GetIter1",
+      (false, true)           -> "GetIter2",
       (false, false)          -> "GetIter",
-      (true,  true,  false)   -> "GetIterByCols12",
-      (true,  false, true)    -> "GetIterByCols13",
-      (false, true,  true)    -> "GetIterByCols23",
-      (true,  false, false)   -> "GetIterByCol1",
-      (false, true,  false)   -> "GetIterByCol2",
-      (false, false, true)    -> "GetIterByCol3",
+      (true,  true,  false)   -> "GetIter12",
+      (true,  false, true)    -> "GetIter13",
+      (false, true,  true)    -> "GetIter23",
+      (true,  false, false)   -> "GetIter1",
+      (false, true,  false)   -> "GetIter2",
+      (false, false, true)    -> "GetIter3",
       (false, false, false)   -> "GetIter"
     ];
   }

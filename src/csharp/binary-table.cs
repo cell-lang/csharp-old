@@ -324,13 +324,13 @@ namespace CellLang {
         deleteList.Add(new Tuple((uint) value1, (uint) value2));
     }
 
-    public void DeleteByCol1(long value) {
+    public void Delete1(long value) {
       uint[] assocs = table.LookupByCol1((uint) value);
       for (int i=0 ; i < assocs.Length ; i++)
         deleteList.Add(new Tuple((uint) value, assocs[i]));
     }
 
-    public void DeleteByCol2(long value) {
+    public void Delete2(long value) {
       uint[] assocs = table.LookupByCol2((uint) value);
       for (int i=0 ; i < assocs.Length ; i++)
         deleteList.Add(new Tuple(assocs[i], (uint) value));
