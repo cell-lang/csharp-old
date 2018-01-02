@@ -39,9 +39,9 @@ implicit {
     class_name = to_c_name(block.name);
 
     return join((
-      ("class " & class_name & " {"),
+      aux_struct_decl(block),
+      ("", "", "class " & class_name & " {"),
       indent_lines(memb_decls),
-      (""), indent_lines(aux_struct_decl(block)),
       (""), indent_lines(ctor_code),
       (""), indent_lines(copy_state_code),
       (""), indent_lines(set_state_code),
@@ -119,7 +119,7 @@ implicit {
     vars_decls = gen_vars_decls(code);
     //body = vars_decls & ("" if vars_decls != (), aux_struct_init_call) & compile_to_c(code, nothing);
     body = vars_decls & compile_to_c(code, nothing);
-    sgn = "void " & set_state_proc_name(name) & "(Obj a0) {";
+    sgn = "void " & set_state_proc_name(name) & "(Obj a0, " & aux_struct_c_name(name) & " updater) {";
     return (sgn) & indent_lines(body) & ("}");
   }
 
@@ -142,7 +142,7 @@ implicit {
       "    " & updates_finish_code,
       "  }",
       "  else",
-      "  " & updater_reset_call,
+      "    " & updater_reset_call,
       "}",
       "catch {",
       "  " & updater_reset_call,
@@ -200,7 +200,7 @@ implicit {
 
     body = ("bool ok = true;") & tables_check_code & nested_blocks_check_code & ("return ok;");
 
-    sgn = "bool " & updates_check_proc_name(block.name) &  "() {";
+    sgn = "bool " & updates_check_proc_name(block.name) &  "(" & aux_struct_c_name(block.name) & " updater) {";
     return (sgn) & indent_lines(body) & ("}");
 
 
@@ -264,7 +264,7 @@ implicit {
 
     body = value_stores_apply_code & isort(tables_apply_code) & isort(nested_blocks_apply_code);
 
-    sgn = "void " & updates_apply_proc_name(block.name) & "() {";
+    sgn = "void " & updates_apply_proc_name(block.name) & "(" & aux_struct_c_name(block.name) & " updater) {";
     return (sgn) & indent_lines(body) & ("}");
   }
 
@@ -285,7 +285,7 @@ implicit {
 
     body = vars_copy_code & isort(tables_finish_code) & isort(nested_blocks_finish_code);
 
-    sgn = "void " & updates_finish_proc_name(block.name) & "() {";
+    sgn = "void " & updates_finish_proc_name(block.name) & "(" & aux_struct_c_name(block.name) & " updater) {";
     return (sgn) & indent_lines(body) & ("}");
   }
 
@@ -356,12 +356,9 @@ implicit {
 
     class_name = aux_struct_c_name(block.name);
     sgn = "public " & class_name & " " & updater_creation_proc_name(block.name) & "() {";
-    return (
-      sgn,
-      "  " & class_name & " updater = new " & class_name & "();",
-      ""
-    ) & indent_lines(body) &
-    ( "  return updater;", "}");
+    return (sgn, "  " & class_name & " updater = new " & class_name & "();") &
+           indent_lines(body) &
+           ("  return updater;", "}");
   }
 
 
@@ -389,7 +386,7 @@ implicit {
     body = vars_reset_code & bool_vars_reset_code & value_stores_reset_code &
            tables_reset_code & nested_blocks_reset_code;
 
-    sgn = "public void " & updater_reset_proc_name(block.name) & "() {";
+    sgn = "public void " & updater_reset_proc_name(block.name) & "(" & aux_struct_c_name(block.name) & " updater) {";
     return (sgn) & indent_lines(body) & ("}");
   }
 
@@ -422,7 +419,7 @@ implicit {
 
   String* native_update_code(DBSymbol block_name, UpdateId update_id, Instr* body) {
     args_strs = ("Obj " & to_c_var_decl_name(fn_arg(i)) & ", " : i < arity(update_id));
-    sgn = "void " & update_name(block_name, update_id) & "(" & append(args_strs) & "Env env) {";
+    sgn = "void " & update_name(block_name, update_id) & "(" & append(args_strs) & aux_struct_c_name(block_name) & " updater, Env env) {";
     vars_decls = gen_vars_decls(body);
     body_text = vars_decls & ("" if vars_decls != ()) & compile_to_c(body, nothing);
     return (sgn) & indent_lines(body_text) & ("}");

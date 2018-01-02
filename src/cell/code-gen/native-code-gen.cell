@@ -324,14 +324,15 @@ implicit {
     auto_vars = isort(keys(auto_vars_types));
     auto_var_decls = (to_c_name(auto_vars_types[v]) & " " & to_c_var_decl_name(v) & ";" : v <- auto_vars);
 
-    db_vars = isort(keys(db_vars_types));
-    db_vars_decls = (to_c_name(db_vars_types[v]) & " " & to_c_var_decl_name(v) & ";" : v <- db_vars);
+    db_vars_decls = (to_c_name(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- isort(db_vars_types));
+    aux_db_vars_decls = (aux_struct_c_name(t) & " " & aux_struct_var_decl_name(v) & ";" : v, t <- isort(db_vars_types));
 
     comp_body = compile_to_c(body, nothing);
 
     has_var_decls = var_decls != () or auto_var_decls != () or db_vars_decls != ();
     code = (signature & " {") & indent_lines(var_decls) & indent_lines(auto_var_decls) &
-           indent_lines(db_vars_decls) & ("" if has_var_decls) & indent_lines(comp_body) & ("}");
+           indent_lines(db_vars_decls) & indent_lines(aux_db_vars_decls) &
+           ("" if has_var_decls) & indent_lines(comp_body) & ("}");
 
     if cached:
       is_real_const = pd.cached? and pd.impl_args == [];

@@ -40,7 +40,7 @@ implicit {
 
     set_persistent_state()  = (native_method_call(instr.auto_var, set_state_proc_name(instr.type), (instr.state))),
 
-    init_db()             = (native_new_call(instr.db_var, to_c_name(instr.type), (instr.links | "env"))),
+    init_db()             = native_init_db_code(instr.db_var, instr.links, instr.type),
     cleanup_db()          = (), //(native_method_call(instr.db_var, cleanup_method_name(instr.type), ())),
 
     send_msg()            = (native_send_msg_code(instr.db_var, instr.type, instr.msg, instr.is_root, if instr.res_var? then just(instr.res_var) else nothing)),
@@ -59,6 +59,13 @@ implicit {
     queue_deletes()       = (native_queue_deletes_code(instr.rel_var, instr.args)),
     queue_insert_value()  = (native_method_call(instr.res_var, aux_struct_var_ref_name(instr.store), "Insert", (instr.value))),
     queue_insert_tuple()  = (native_method_call(pending_updates_var_ref_name(instr.rel_var), "Insert", instr.tuple));
+
+
+  String* native_init_db_code(AnyDBVar db_var, LocDBVar* links, DBSymbol type) = (
+    native_new_call(db_var, to_c_name(type), (links | "env")),
+    native_method_call(aux_struct_var_ref_name(db_var), db_var, updater_creation_proc_name(type), ())
+      if db_var :: LocDBVar
+  );
 
 
   String* native_try_block_code(LocVar var, Instr+ body, Maybe[Nat] block_id) = (
@@ -130,9 +137,11 @@ implicit {
   String native_send_msg_code(AnyDBVar db_var, DBSymbol type, AtomicExpr msg, Bool is_root, Maybe[BoolVar] maybe_res_var) {
     if is_root:
       method_name = update_entry_point_name(type);
+      updater_name = if db_var :: LocDBVar then aux_struct_var_ref_name(db_var) else "updater";
+      args = (msg, updater_name, "env");
       return if maybe_res_var == nothing
-        then native_method_call(db_var, method_name, (msg, "env"))
-        else native_method_call(value(maybe_res_var), db_var, method_name, (msg, "env"));
+        then native_method_call(db_var, method_name, args)
+        else native_method_call(value(maybe_res_var), db_var, method_name, args);
     else
       assert db_var :: NestedDBVar;
       fail if not db_var :: NestedDBVar;
@@ -145,7 +154,8 @@ implicit {
 
   String native_set_state_code(AtomicExpr state, AnyDBVar db_var, DBSymbol type, Maybe[BoolVar] maybe_res_var) {
     if maybe_res_var != nothing:
-      return native_method_call(value(maybe_res_var), db_var, set_state_entry_point_name(type), (state));
+      fail if not db_var :: <NestedDBVar, LocDBVar>; ## NOT SURE HERE. BAD, ANYWAY
+      return native_method_call(value(maybe_res_var), db_var, set_state_entry_point_name(type), (state, aux_struct_var_ref_name(db_var)));
     else
       fail if not db_var :: NestedDBVar; ## BAD BAD BAD: CHANGE THE DEFINITION OF set_state()
       return native_method_call(db_var, set_state_proc_name(type), (state, aux_struct_var_ref_name(db_var)));

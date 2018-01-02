@@ -191,7 +191,9 @@ String pending_updates_var_decl_name(RelVar rel_var) =
 
 String pending_updates_var_ref_name(RelVar rel_var) = "updater." & pending_updates_var_decl_name(rel_var);
 
-String aux_struct_var_decl_name(NestedDBVar db_var) = to_c_var_decl_name(db_var) & "x";
+String aux_struct_var_decl_name(<LocDBVar, NestedDBVar> db_var) = to_c_var_decl_name(db_var) & "x";
+
+String aux_struct_var_ref_name(LocDBVar db_var) = aux_struct_var_decl_name(db_var);
 
 String aux_struct_var_ref_name(NestedDBVar db_var) = "updater." & aux_struct_var_decl_name(db_var);
 
@@ -290,6 +292,8 @@ String to_c_name(UpdateId id) =
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
+
+## THE PARAMETER SHOULD BE REMOVED...
 
 String copy_state_proc_name         (DBSymbol db_type) = "CopyState";
 String set_state_proc_name          (DBSymbol db_type) = "SetState";
