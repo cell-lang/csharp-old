@@ -33,7 +33,7 @@ implicit {
     auto_pre_init()       = (native_new_call(instr.var, to_c_name(instr.type), ())),
     auto_cleanup()        = (), //(native_method_call(instr.var, cleanup_method_name(instr.type), ())),
     clear_input()         = (native_method_call(if instr.var? then instr.var else "this", input_set_method_name(instr.type, instr.input), ("BlankObj.Singleton()"))),
-    auto_update_node()    = (native_method_call("this", node_update_method_name(instr.type, instr.node), (instr.time_var if instr.time_var?, "env"))),
+    auto_update_node()    = (native_method_call("this", node_update_method_name(instr.type, instr.node), (instr.time_var if instr.time_var?, "updater", "env"))),
 
     set_input()           = (native_method_call(instr.var, input_set_method_name(instr.type, instr.input), (instr.value))),
     auto_apply()          = (native_method_call(if instr.var? then instr.var else "this", apply_method_name(instr.type), ("env"))),
@@ -44,7 +44,7 @@ implicit {
     cleanup_db()          = (), //(native_method_call(instr.db_var, cleanup_method_name(instr.type), ())),
 
     send_msg()            = (native_send_msg_code(instr.db_var, instr.type, instr.msg, instr.is_root, if instr.res_var? then just(instr.res_var) else nothing)),
-    try_update()          = (native_method_call("this", update_name(instr.type, instr.update_id), (instr.args | "env"))),
+    try_update()          = (native_method_call("this", update_name(instr.type, instr.update_id), (instr.args | "updater", "env"))),
     set_state()           = (native_set_state_code(instr.state, instr.db_var, instr.type, if instr.res_var? then just(instr.res_var) else nothing)),
     invoke_auto_method()  |
     invoke_db_method()    = (native_method_call(instr.res_var, if instr.db_var? then instr.db_var else "this", user_def_method_name(instr.type, instr.method_id), (instr.args | "env"))),

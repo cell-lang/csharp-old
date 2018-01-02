@@ -105,7 +105,7 @@ String to_c_expr(BoolExpr expr, Bool parentesised) {
     has_field()           = to_c_expr(expr.record) & ".HasField(" & symb_idx_name(expr.field) & ")",
 
     contains()            = contains_to_c_expr(expr.coll, expr.entry),
-    table_contains()      = native_method_call(expr.table, "Contains", expr.tuple),
+    table_contains()      = native_method_call_expr(expr.table, "Contains", expr.tuple),
 
     is_member()           = to_c_fn_name(expr.pred) & "(" & to_c_expr(expr.obj) & ")",
     state_is_def()        = state_is_def_proc_name(expr.type) & "(&" & to_c_var_ref_name(expr.auto_var) & ")",
@@ -167,8 +167,8 @@ String to_c_expr(NatIntOp expr, Bool parentesised) =
   mantissa(e?)          = to_c_expr(e) & ".Mantissa()",
   dec_exp(e?)           = to_c_expr(e) & ".DecExp()",
   rand_nat(e?)          = "Miscellanea.RandNat(" & to_c_expr(e) & ")",
-  lookup_value()        = native_method_call(expr.store, "LookupValue", (expr.value)),
-  lookup_value_ex()     = native_method_call(aux_struct_var_ref_name(expr.store), "LookupValueEx", (expr.value)),
+  lookup_value()        = native_method_call_expr(expr.store, "LookupValue", (expr.value)),
+  lookup_value_ex()     = native_method_call_expr(aux_struct_var_ref_name(expr.store), "LookupValueEx", (expr.value)),
   get_tuple_field()     = { field_num = if expr.iter.arity > 1 then printed(expr.field+1) else "";
                             return to_c_var_ref_name(expr.iter) & ".GetField" & field_num & "()";
                           },

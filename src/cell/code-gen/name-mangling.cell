@@ -73,7 +73,7 @@ String to_c_var_name(<ObjVar, PendingInputVar> var, Bool add_prefix) {
     then match (var)
       impl_arg()          = "env.",
       prev_var_value()    |
-      pending_state_var() = "this.", ## THIS IS IN THE AUXILIARY DATA STRUCTURE IN THE C++ VERSION
+      pending_state_var() = "updater.",
       _                   = "this."
     else "";
 
@@ -104,7 +104,7 @@ String to_c_var_name(<ObjVar, PendingInputVar> var, Bool add_prefix) {
 String to_c_var_name(BoolVar var, Bool add_prefix) {
   prefix = if add_prefix
     then match (var)
-      nested_db_spent() = "this.", ## THIS IS IN THE AUXILIARY DATA STRUCTURE IN THE C++ VERSION
+      nested_db_spent() = "updater.",
       _                 = "this."
     else "";
 
@@ -189,16 +189,16 @@ String to_c_idx_expr(<add(val1: IntVar, val2: Nat)> e)  = to_c_var_ref_name(e.va
 String pending_updates_var_decl_name(RelVar rel_var) =
   rel_var(a?) = _str_(a) & "_Bp";
 
-String pending_updates_var_ref_name(RelVar rel_var) = "this." & pending_updates_var_decl_name(rel_var); //## USED TO BE this_aux
+String pending_updates_var_ref_name(RelVar rel_var) = "updater." & pending_updates_var_decl_name(rel_var);
 
 String aux_struct_var_decl_name(NestedDBVar db_var) = to_c_var_decl_name(db_var) & "x";
 
-String aux_struct_var_ref_name(NestedDBVar db_var) = "this." & aux_struct_var_decl_name(db_var); //## USED TO BE this_aux
+String aux_struct_var_ref_name(NestedDBVar db_var) = "updater." & aux_struct_var_decl_name(db_var);
 
 String aux_struct_var_decl_name(ValueStoreId vs) =
   value_store_id(n?)  = "value_store_aux_" & printed(n);
 
-String aux_struct_var_ref_name(ValueStoreId vs) = "this." & aux_struct_var_decl_name(vs); //## USED TO BE this_aux
+String aux_struct_var_ref_name(ValueStoreId vs) = "updater." & aux_struct_var_decl_name(vs);
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -294,8 +294,8 @@ String to_c_name(UpdateId id) =
 String copy_state_proc_name         (DBSymbol db_type) = "CopyState";
 String set_state_proc_name          (DBSymbol db_type) = "SetState";
 String set_state_entry_point_name   (DBSymbol db_type) = "SetStateEntryPoint";
-String aux_struct_init_proc_name    (DBSymbol db_type) = "InitAux";
-//String aux_struct_cleanup_proc_name (DBSymbol db_type) = "CleanupAux";
+String updater_creation_proc_name   (DBSymbol db_type) = "NewUpdater";
+String updater_reset_proc_name      (DBSymbol db_type) = "ResetUpdater";
 String updates_copy_proc_name       (DBSymbol db_type) = "Copy";
 String updates_apply_proc_name      (DBSymbol db_type) = "Apply";
 String updates_finish_proc_name     (DBSymbol db_type) = "Finish";

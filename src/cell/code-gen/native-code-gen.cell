@@ -19,31 +19,31 @@ String* compile_to_cs(CompiledPrg prg, Bool include_runtime) {
   c_code = c_code & cls_obj_typedef & 4 * ("") if cls_obj_typedef != ();
 
   all_fn_arities = [in_arity(d) : d <- prg.procs];
-  c_code = c_code & join(intermix((generate_push_call_info_wrapper(a) : a <- rand_sort(all_fn_arities)), 2 * (""))) & 4 * ("");
+  c_code = c_code & join(intermix((generate_push_call_info_wrapper(a) : a <- isort(all_fn_arities)), 2 * (""))) & 4 * ("");
 
   int_seqs_decls, int_seqs_defs = gen_int_seqs_decl_and_def(prg.int_seqs);
 
   c_code = c_code & int_seqs_decls & 4 * ("");
 
-  sorted_cls_defs = rand_sort(cls_defs);
+  sorted_cls_defs = isort(cls_defs);
 
   int_seqs_types_and_lengths = ((native_int_type(min(s), max(s)), |s|) : s <- prg.int_seqs);
 
   // Sorting static blocks in topological order
   static_blocks_dep_map = [b.name -> values(b.nested_blocks) & set(b.links) : b <- prg.static_blocks];
-  ord_static_block_names = join((rand_sort(bs) : bs <- topological_sort(static_blocks_dep_map)));
+  ord_static_block_names = join((isort(bs) : bs <- topological_sort(static_blocks_dep_map)));
   static_blocks_by_name = [b.name -> b : b <- prg.static_blocks];
   ord_static_blocks = (static_blocks_by_name(b, !!) : b <- ord_static_block_names);
 
   // Sorting reactive blocks in topological order
   react_blocks_dep_map = [b.name -> [t : unused_var, t <- b.nested_auto_vars] : b <- prg.react_blocks];
-  ord_react_blocks_names = join((rand_sort(bs) : bs <- topological_sort(react_blocks_dep_map)));
+  ord_react_blocks_names = join((isort(bs) : bs <- topological_sort(react_blocks_dep_map)));
   react_blocks_by_name = [b.name -> b : b <- prg.react_blocks];
   ord_react_blocks = (react_blocks_by_name(b, !!) : b <- ord_react_blocks_names);
 
   proc_code = compile_to_c(
-    rand_sort(prg.procs),
-    rand_sort(prg.bool_procs),
+    isort(prg.procs),
+    isort(prg.bool_procs),
     sorted_cls_defs,
     ord_react_blocks,
     ord_static_blocks,
@@ -54,7 +54,7 @@ String* compile_to_cs(CompiledPrg prg, Bool include_runtime) {
   );
 
   let typedefs = prg.typedefs:
-    auto_wrappers_decls, auto_wrappers_impls = unzip(rand_sort([react_auto_wrapper(block=b) : b <- prg.react_blocks]));
+    auto_wrappers_decls, auto_wrappers_impls = unzip(isort([react_auto_wrapper(block=b) : b <- prg.react_blocks]));
     static_blocks = [b.name -> b : b <- prg.static_blocks];
     db_wrappers = (static_auto_wrapper(b, static_blocks) : b <- ord_static_blocks);
     db_wrappers_decls, db_wrappers_private_decls, db_wrappers_impls = unzip3(db_wrappers);
@@ -143,9 +143,9 @@ String* compile_to_cs(CompiledPrg prg, Bool include_runtime) {
 String* gen_env_decl(CompiledPrg prg) {
   all_impl_args = union([p.impl_args : p <- prg.procs]);
 
-  env_decl = ("class Env {") & ("  public Obj " & to_c_var_decl_name(impl_arg(bare_id(a))) & ";" : a <- rand_sort(all_impl_args));
+  env_decl = ("class Env {") & ("  public Obj " & to_c_var_decl_name(impl_arg(bare_id(a))) & ";" : a <- isort(all_impl_args));
 
-  semi_consts_cache_vars = rand_sort([p.name : p <- prg.procs, p.cached and p.impl_args != []]);
+  semi_consts_cache_vars = isort([p.name : p <- prg.procs, p.cached and p.impl_args != []]);
   semi_consts_cache_vars_decls = ("  public Obj " & to_c_memo_var_name(v) & ";" : v <- semi_consts_cache_vars);
   env_decl = (env_decl | "") & semi_consts_cache_vars_decls if semi_consts_cache_vars_decls != ();
 
@@ -321,10 +321,10 @@ implicit {
 
     var_decls = gen_vars_decls(body);
 
-    auto_vars = rand_sort(keys(auto_vars_types));
+    auto_vars = isort(keys(auto_vars_types));
     auto_var_decls = (to_c_name(auto_vars_types[v]) & " " & to_c_var_decl_name(v) & ";" : v <- auto_vars);
 
-    db_vars = rand_sort(keys(db_vars_types));
+    db_vars = isort(keys(db_vars_types));
     db_vars_decls = (to_c_name(db_vars_types[v]) & " " & to_c_var_decl_name(v) & ";" : v <- db_vars);
 
     comp_body = compile_to_c(body, nothing);
@@ -388,7 +388,7 @@ implicit {
     };
 
     vars_to_decl = scalar_vars & new_vec_vars;
-    return (var_decl(v) : v <- rand_sort(vars_to_decl));
+    return (var_decl(v) : v <- isort(vars_to_decl));
   }
 
 
@@ -514,7 +514,7 @@ implicit {
 
   String* gen_cache_clearing_code(ImplArg arg) {
     code = ();
-    for fn_id <- rand_sort(lookup(cached_semi_consts_by_impl_arg, arg, [])):
+    for fn_id <- isort(lookup(cached_semi_consts_by_impl_arg, arg, [])):
       cache_var_name = to_c_memo_var_name(fn_id);
       code = (code | "env." & cache_var_name & " = null;");
     ;
@@ -548,9 +548,9 @@ implicit {
 
     body_code = (
       ("" if i > 0) &
-      ("case " & symb_idx_name(a) & ":" : a <- rand_sort(as)) &
+      ("case " & symb_idx_name(a) & ":" : a <- isort(as)) &
       indent_lines((compile_to_c(is, block_id) | "break;"))
-      : as, is @ i <- rand_sort(cases)
+      : as, is @ i <- isort(cases)
     );
     body_code = (body_code | ("", "default:") & indent_lines(compile_to_c(else, block_id))) if else != ();
 
@@ -700,8 +700,11 @@ protocol Encodable:
   native_code : Encodable -> String;
 
 
+String native_method_call_expr(Encodable target, String method_name, Encodable* args) =
+  native_code(target) & "." & method_name & "(" & append((native_code(a) : a <- args), ", ") & ")";
+
 String native_method_call(Encodable target, String method_name, Encodable* args) =
-  native_code(target) & "." & method_name & "(" & append((native_code(a) : a <- args), ", ") & ");";
+  native_method_call_expr(target, method_name, args) & ";";
 
 String native_method_call(Encodable res, Encodable target, String method_name, Encodable* args) =
   native_code(res) & " = " & native_method_call(target, method_name, args);

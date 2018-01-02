@@ -12,7 +12,7 @@ SymbObj+ used_symbols(CompiledPrg prg) {
   fixed_symbs = (object(a) : a <- special_symbols);
   other_symbs = select(prg, $ :: SymbObj) - set(fixed_symbs);
   fail if not other_symbs :: [SymbObj];
-  // other_symbs = rand_sort(other_symbs);
+  // other_symbs = isort(other_symbs);
   other_symbs = sort_set(other_symbs, lower_than(bare_obj($a), bare_obj($b)));
   return nonempty(fixed_symbs & other_symbs);
 

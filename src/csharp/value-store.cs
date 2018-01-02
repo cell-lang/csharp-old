@@ -257,6 +257,10 @@ namespace CellLang {
 
     }
 
+    public void Reset() {
+      throw new NotImplementedException();
+    }
+
     public int LookupValueEx(Obj value) {
       int surrogate = store.LookupValue(value);
       if (surrogate != -1)

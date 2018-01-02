@@ -9,9 +9,9 @@ implicit {
 
     class_name = to_c_name(block.name);
 
-    memb_vars_decl = (memb_var_decl(v) : v <- rand_sort(block.memb_vars));
-    auto_vars_decl = (to_c_name(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- rand_sort_pairs(block.nested_auto_vars));
-    db_vars_decl = (to_c_name(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- rand_sort_pairs(block.nested_static_blocks));
+    memb_vars_decl = (memb_var_decl(v) : v <- isort(block.memb_vars));
+    auto_vars_decl = (to_c_name(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- isort(block.nested_auto_vars));
+    db_vars_decl = (to_c_name(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- isort(block.nested_static_blocks));
     vars_decls = memb_vars_decl & auto_vars_decl & db_vars_decl;
 
     if block.time_rules_count != 0:
@@ -25,11 +25,11 @@ implicit {
 
     all_loc_vars = vars_to_declare(block.apply_code) & union([vars_to_declare(c) : id, c <- block.nodes_update_code]);
     aux_vars = [v : v <- all_loc_vars, v :: AuxVar] & [curr_time if has_time_rules];
-    aux_vars_decls = (var_decl(v) : v <- rand_sort(aux_vars));
+    aux_vars_decls = (var_decl(v) : v <- isort(aux_vars));
     aux_vars_decls = (aux_vars_decls | "") if aux_vars != ();
 
     // aux_name_str = aux_struct_c_name(block.name);
-    // aux_decls = ("struct " & aux_name_str & " {") & indent_lines((var_decl(v) : v <- rand_sort(aux_vars))) & ("};");
+    // aux_decls = ("struct " & aux_name_str & " {") & indent_lines((var_decl(v) : v <- isort(aux_vars))) & ("};");
 
     ctor_vars_decl = gen_vars_decls(block.pre_init_code);
     ctor_vars_decl = ctor_vars_decl & ("") if ctor_vars_decl != ();
@@ -47,9 +47,9 @@ implicit {
     apply_method_sgn = "public void " & apply_method_name(block.name) & "(Env env) {";
     apply_method_code = (apply_method_sgn) & indent_lines(apply_method_body) & ("}");
 
-    time_arg = if has_time_rules then "long " & to_c_var_decl_name(curr_time) else "";
+    time_arg = if has_time_rules then "long " & to_c_var_decl_name(curr_time) & ", " else "";
     node_update_methods_code = [{
-        sgn = "void " & node_update_method_name(block.name, id) & "(" & time_arg & ", Env env) {";
+        sgn = "void " & node_update_method_name(block.name, id) & "(" & time_arg & "Env env) {";
         loc_vars_decls = gen_vars_decls(body);
         loc_vars_decls = (loc_vars_decls | "") if loc_vars_decls != ();
         return ("", sgn) & indent_lines(loc_vars_decls & compile_to_c(body, nothing)) & ("}");
