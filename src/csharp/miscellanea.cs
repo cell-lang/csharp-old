@@ -57,14 +57,18 @@ namespace CellLang {
     public static void Assert(bool cond) {
       if (!cond) {
         Console.WriteLine("Assertion failed");
-        throw new Exception();
+        StackTrace st = new StackTrace(true);
+        Console.WriteLine(st.ToString());
+        Environment.Exit(1);
       }
     }
 
     public static void Assert(bool cond, string message) {
       if (!cond) {
         Console.WriteLine("Assertion failed: " + message);
-        throw new Exception();
+        StackTrace st = new StackTrace(true);
+        Console.WriteLine(st.ToString());
+        Environment.Exit(1);
       }
     }
 

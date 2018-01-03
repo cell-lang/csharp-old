@@ -25,6 +25,19 @@ namespace CellLang {
       }
     }
 
+    public virtual void Reset() {
+      if (slots != null) {
+        int size = slots.Length;
+        for (int i=0 ; i < size ; i++) {
+          slots[i] = null;
+          hashcodes[i] = 0; //## IS THIS NECESSARY?
+          hashtable[i] = -1;
+          buckets[i] = -1;
+        }
+        count = 0;
+      }
+    }
+
     public int Count() {
       return count;
     }
@@ -201,6 +214,13 @@ namespace CellLang {
       Miscellanea.Assert(index == -1 || (slots[index] == null & nextFreeIdx[index] != -1));
       return index != -1 ? nextFreeIdx[index] : firstFreeIdx;
     }
+
+    // void Dump() {
+    //   for (int i=0 ; i < slots.Length ; i++)
+    //     Console.WriteLine("slots[" + i.ToString() + "] = " + (slots[i] == null ? "null" : slots[i].ToString()));
+    //   for (int i=0 ; i < slots.Length ; i++)
+    //     Console.WriteLine("nextFreeIdx[" + i.ToString() + "] = " + nextFreeIdx[i].ToString());
+    // }
   }
 
 
@@ -250,15 +270,18 @@ namespace CellLang {
       for (int i=0 ; i < count ; i++)
         store.Insert(slots[i], hashcodes[i], surrogates[i]);
 
-      count = 0;
+      Reset();
     }
 
-    public void Finish() {
-
-    }
-
-    public void Reset() {
-      throw new NotImplementedException();
+    override public void Reset() {
+      base.Reset();
+      lastSurrogate = -1;
+      //## IS THIS NECESSARY?
+      if (surrogates != null) {
+        int len = surrogates.Length;
+        for (int i=0 ; i < len ; i++)
+          surrogates[i] = 0;
+      }
     }
 
     public int LookupValueEx(Obj value) {

@@ -427,6 +427,7 @@ namespace CellLang {
           table.store2.Release(tuple.field2);
         }
       }
+      Reset();
     }
 
     public void Reset() {
