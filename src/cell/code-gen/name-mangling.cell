@@ -72,7 +72,7 @@ String to_c_var_name(<ObjVar, PendingInputVar> var, Bool add_prefix) {
   prefix = if add_prefix
     then match (var)
       impl_arg()          = "env.",
-      prev_var_value()    |
+      prev_var_value()    = "this.",
       pending_state_var() = "updater.",
       _                   = "this."
     else "";
@@ -217,9 +217,9 @@ String var_decl(TableItVar v)   = table_it_var_type[v.arity] & " " & to_c_var_de
 
 
 [NzNat -> String] table_it_var_type = [
-  1 -> "UnaryTableIter",
-  2 -> "BinaryTableIter",
-  3 -> "TernaryTableIter"
+  1 -> "UnaryTable.Iter",
+  2 -> "BinaryTable.Iter",
+  3 -> "TernaryTable.Iter"
 ];
 
 

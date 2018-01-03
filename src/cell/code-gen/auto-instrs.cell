@@ -30,10 +30,10 @@ implicit {
     insert_timer()        = (native_method_call("this", insert_timer_method_name(instr.type), (instr.idx, instr.time))),
     clear_timer()         = (native_method_call("this", clear_timer_method_name(instr.type), (instr.idx))),
 
-    auto_pre_init()       = (native_new_call(instr.var, to_c_name(instr.type), ())),
+    auto_pre_init()       = (native_new_call(instr.var, to_c_name(instr.type), ("env"))),
     auto_cleanup()        = (), //(native_method_call(instr.var, cleanup_method_name(instr.type), ())),
     clear_input()         = (native_method_call(if instr.var? then instr.var else "this", input_set_method_name(instr.type, instr.input), ("BlankObj.Singleton()"))),
-    auto_update_node()    = (native_method_call("this", node_update_method_name(instr.type, instr.node), (instr.time_var if instr.time_var?, "updater", "env"))),
+    auto_update_node()    = (native_method_call("this", node_update_method_name(instr.type, instr.node), (instr.time_var if instr.time_var?, "env"))),
 
     set_input()           = (native_method_call(instr.var, input_set_method_name(instr.type, instr.input), (instr.value))),
     auto_apply()          = (native_method_call(if instr.var? then instr.var else "this", apply_method_name(instr.type), ("env"))),
@@ -46,7 +46,7 @@ implicit {
     send_msg()            = (native_send_msg_code(instr.db_var, instr.type, instr.msg, instr.is_root, if instr.res_var? then just(instr.res_var) else nothing)),
     try_update()          = (native_method_call("this", update_name(instr.type, instr.update_id), (instr.args | "updater", "env"))),
     set_state()           = (native_set_state_code(instr.state, instr.db_var, instr.type, if instr.res_var? then just(instr.res_var) else nothing)),
-    invoke_auto_method()  |
+    invoke_auto_method()  = (native_method_call(instr.res_var, if instr.auto_var? then instr.auto_var else "this", user_def_method_name(instr.type, instr.method_id), (instr.args | "env"))),
     invoke_db_method()    = (native_method_call(instr.res_var, if instr.db_var? then instr.db_var else "this", user_def_method_name(instr.type, instr.method_id), (instr.args | "env"))),
 
     init_value_store()    = (), //(native_method_call(instr.store,   "Init",    ())),
@@ -137,8 +137,16 @@ implicit {
   String native_send_msg_code(AnyDBVar db_var, DBSymbol type, AtomicExpr msg, Bool is_root, Maybe[BoolVar] maybe_res_var) {
     if is_root:
       method_name = update_entry_point_name(type);
-      updater_name = if db_var :: LocDBVar then aux_struct_var_ref_name(db_var) else "updater";
-      args = (msg, updater_name, "env");
+      // updater_name = if db_var :: LocDBVar then aux_struct_var_ref_name(db_var) else "updater";
+      fail if not db_var :: <LocDBVar, NestedDBVar>;
+
+      //## IF db_var IS A LocDBVar THEN NO PREFIX IS NEDEED
+      //## IF IT'S A NestedDBVar THEN IT'S NESTED INSIDE A REACTIVE AUTOMATON AND THE "this." PREFIX CAN BE USED
+      //## THIS IS A REALLY BAD WAY TO DO IT TOUGHT
+      aux_struct_name = aux_struct_var_decl_name(db_var);
+      aux_struct_name = "this." & aux_struct_name if db_var :: NestedDBVar;
+
+      args = (msg, aux_struct_name, "env");
       return if maybe_res_var == nothing
         then native_method_call(db_var, method_name, args)
         else native_method_call(value(maybe_res_var), db_var, method_name, args);
@@ -155,7 +163,12 @@ implicit {
   String native_set_state_code(AtomicExpr state, AnyDBVar db_var, DBSymbol type, Maybe[BoolVar] maybe_res_var) {
     if maybe_res_var != nothing:
       fail if not db_var :: <NestedDBVar, LocDBVar>; ## NOT SURE HERE. BAD, ANYWAY
-      return native_method_call(value(maybe_res_var), db_var, set_state_entry_point_name(type), (state, aux_struct_var_ref_name(db_var)));
+      //## IF db_var IS A LocDBVar THEN NO PREFIX IS NEDEED
+      //## IF IT'S A NestedDBVar THEN IT'S NESTED INSIDE A REACTIVE AUTOMATON AND THE "this." PREFIX CAN BE USED
+      //## THIS IS A REALLY BAD WAY TO DO IT TOUGHT
+      aux_struct_name = aux_struct_var_decl_name(db_var);
+      aux_struct_name = "this." & aux_struct_name if db_var :: NestedDBVar;
+      return native_method_call(value(maybe_res_var), db_var, set_state_entry_point_name(type), (state, aux_struct_name));
     else
       fail if not db_var :: NestedDBVar; ## BAD BAD BAD: CHANGE THE DEFINITION OF set_state()
       return native_method_call(db_var, set_state_proc_name(type), (state, aux_struct_var_ref_name(db_var)));

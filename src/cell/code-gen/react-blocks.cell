@@ -11,14 +11,16 @@ implicit {
 
     memb_vars_decl = (memb_var_decl(v) : v <- isort(block.memb_vars));
     auto_vars_decl = (to_c_name(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- isort(block.nested_auto_vars));
-    db_vars_decl = (to_c_name(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- isort(block.nested_static_blocks));
-    vars_decls = memb_vars_decl & auto_vars_decl & db_vars_decl;
+    db_vars_decl = ("public " & to_c_name(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- isort(block.nested_static_blocks));
+    aux_db_vars_decls = ("public " & aux_struct_c_name(t) & " " & aux_struct_var_decl_name(v) & ";" : v, t <- isort(block.nested_static_blocks));
+
+    vars_decls = memb_vars_decl & auto_vars_decl & db_vars_decl & aux_db_vars_decls;
 
     if block.time_rules_count != 0:
       size_str = printed(block.time_rules_count);
       vars_decls = vars_decls & (
-        "long[] trigger_times_heap = new long[" & size_str & "];",
-        "int[] time_varying_cond_ids_heap = new int[" & size_str & "];"
+        "public long[] trigger_times_heap = new long[" & size_str & "];",
+        "public int[] time_varying_cond_ids_heap = new int[" & size_str & "];"
       );
     ;
     vars_decls = (vars_decls | "") if vars_decls != ();
@@ -34,7 +36,14 @@ implicit {
     ctor_vars_decl = gen_vars_decls(block.pre_init_code);
     ctor_vars_decl = ctor_vars_decl & ("") if ctor_vars_decl != ();
     ctor_body = ctor_vars_decl & compile_to_c(block.pre_init_code, nothing);
-    ctor_sgn = "public " & class_name & "() {";
+
+    //## BAD BAD BAD: THIS IS JUST A HACK. IT SHOULD BE DEALT WITH IN THE CODE GENERATION PHASE
+    ctor_body = ctor_body & (
+      native_method_call("this." & aux_struct_var_decl_name(v), v, updater_creation_proc_name(t), ())
+      : v, t <- isort(block.nested_static_blocks)
+    );
+
+    ctor_sgn = "public " & class_name & "(Env env) {";
     ctor_code = (ctor_sgn) & indent_lines(ctor_body) & ("}", "");
 
     // cleanup_body = compile_to_c(block.cleanup_code, nothing);
@@ -112,7 +121,7 @@ implicit {
   String* native_state_is_def_code(AutoSymbol name, Instr* code) {
     vars_decls = gen_vars_decls(code);
     body = vars_decls & ("" if vars_decls != ()) & compile_to_c(code, nothing);
-    sng = "bool " & state_is_def_proc_name(name) & "()";
+    sng = "public bool " & state_is_def_proc_name(name) & "()";
     return (sng & " {") & indent_lines(body) & ("}");
   }
 
@@ -120,7 +129,7 @@ implicit {
   String* native_copy_state_code(AutoSymbol name, Instr* code) {
     vars_decls = gen_vars_decls(code);
     body = vars_decls & ("" if vars_decls != ()) & compile_to_c(code, nothing);
-    sgn = "Obj " & copy_state_proc_name(name) & "()";
+    sgn = "public Obj " & copy_state_proc_name(name) & "()";
     return (sgn & " {") & indent_lines(body) & ("}");
   }
 
@@ -129,7 +138,7 @@ implicit {
     vars_decls = gen_vars_decls(code);
     body = vars_decls & ("" if vars_decls != ()) & compile_to_c(code, nothing);
     ## WHY DOES THIS RETURN AN OBJ?
-    sgn = "void " & set_state_proc_name(name) & "(Obj a0)";
+    sgn = "public void " & set_state_proc_name(name) & "(Obj a0)";
     return (sgn & " {") & indent_lines(body) & ("}");
   }
 
@@ -141,7 +150,7 @@ implicit {
 
   String* gen_user_def_method(AutoSymbol block_name, MethodId name, Instr* body) {
     args_str = append(("Obj " & to_c_var_decl_name(fn_arg(i)) : i < name.arity), ", ");
-    sgn = "Obj " & user_def_method_name(block_name, name) & "(" & args_str & ", Env env)";
+    sgn = "public Obj " & user_def_method_name(block_name, name) & "(" & args_str & ", Env env)";
     vars_decls = gen_vars_decls(body);
     body_text = vars_decls & ("" if vars_decls != ()) & compile_to_c(body, nothing);
     return (sgn & " {") & indent_lines(body_text) & ("}");

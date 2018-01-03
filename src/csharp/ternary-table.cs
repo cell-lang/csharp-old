@@ -273,8 +273,8 @@ namespace CellLang {
     //   }
     // }
 
-    public bool Contains(uint field1, uint field2, uint field3) {
-      uint hashcode = Miscellanea.Hashcode(field1, field2, field3);
+    public bool Contains(long field1, long field2, long field3) {
+      uint hashcode = Miscellanea.Hashcode((uint) field1, (uint) field2, (uint) field3);
       for (uint idx = index123.Head(hashcode) ; idx != Tuple.Empty ; idx = index123.Next(idx)) {
         Tuple tuple = tuples[idx];
         if (tuple.field1OrNext == field1 & tuple.field2OrEmptyMarker == field2 & tuple.field3 == field3)
@@ -357,43 +357,43 @@ namespace CellLang {
       return new Iter(0, Iter.Type.F123, this);
     }
 
-    public Iter GetIter12(uint field1, uint field2) {
-      uint hashcode = Miscellanea.Hashcode(field1, field2);
+    public Iter GetIter12(long field1, long field2) {
+      uint hashcode = Miscellanea.Hashcode((uint) field1, (uint) field2);
       return new Iter(index12.Head(hashcode), Iter.Type.F12, this);
     }
 
-    public Iter GetIter13(uint field1, uint field3) {
+    public Iter GetIter13(long field1, long field3) {
       if (index13.IsBlank())
         BuildIndex13();
-      uint hashcode = Miscellanea.Hashcode(field1, field3);
+      uint hashcode = Miscellanea.Hashcode((uint) field1, (uint) field3);
       return new Iter(index13.Head(hashcode), Iter.Type.F13, this);
     }
 
-    public Iter GetIter23(uint field2, uint field3) {
+    public Iter GetIter23(long field2, long field3) {
       if (index23.IsBlank())
         BuildIndex23();
-      uint hashcode = Miscellanea.Hashcode(field2, field3);
+      uint hashcode = Miscellanea.Hashcode((uint) field2, (uint) field3);
       return new Iter(index23.Head(hashcode), Iter.Type.F23, this);
     }
 
-    public Iter GetIter1(uint field1) {
+    public Iter GetIter1(long field1) {
       if (index1.IsBlank())
         BuildIndex1();
-      uint hashcode = Miscellanea.Hashcode(field1);
+      uint hashcode = Miscellanea.Hashcode((uint) field1);
       return new Iter(index1.Head(hashcode), Iter.Type.F1, this);
     }
 
-    public Iter GetIter2(uint field2) {
+    public Iter GetIter2(long field2) {
       if (index2.IsBlank())
         BuildIndex2();
-      uint hashcode = Miscellanea.Hashcode(field2);
+      uint hashcode = Miscellanea.Hashcode((uint) field2);
       return new Iter(index2.Head(hashcode), Iter.Type.F2, this);
     }
 
-    public Iter GetIter3(uint field3) {
+    public Iter GetIter3(long field3) {
       if (index3.IsBlank())
         BuildIndex3();
-      uint hashcode = Miscellanea.Hashcode(field3);
+      uint hashcode = Miscellanea.Hashcode((uint) field3);
       return new Iter(index3.Head(hashcode), Iter.Type.F3, this);
     }
 

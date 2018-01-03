@@ -108,7 +108,7 @@ String to_c_expr(BoolExpr expr, Bool parentesised) {
     table_contains()      = native_method_call_expr(expr.table, "Contains", expr.tuple),
 
     is_member()           = to_c_fn_name(expr.pred) & "(" & to_c_expr(expr.obj) & ")",
-    state_is_def()        = state_is_def_proc_name(expr.type) & "(&" & to_c_var_ref_name(expr.auto_var) & ")",
+    state_is_def()        = to_c_var_ref_name(expr.auto_var) & "." & state_is_def_proc_name(expr.type) & "()",
 
     neg(e?)               = parentesize("!" & to_c_expr(e, true), parentesised),
 

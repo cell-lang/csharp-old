@@ -41,8 +41,10 @@ namespace CellLang {
       Console.WriteLine("{0} = {1}\n", name, val.ToString());
     }
 
-    public static long RandNat(Obj max) {
-      return 0;
+    static Random random = new Random(0);
+
+    public static long RandNat(long max) {
+      return random.Next((int) max);
     }
 
     static int nextUniqueNat = 0;

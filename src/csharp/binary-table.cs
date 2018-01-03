@@ -169,6 +169,49 @@ namespace CellLang {
 
 
   class BinaryTable {
+    public struct Iter {
+
+      BinaryTable table;
+
+      public Iter(BinaryTable table) {
+        this.table = table;
+      }
+
+      public bool Done() {
+        throw new NotImplementedException();
+      }
+
+      // public Tuple Get() {
+      //   throw new NotImplementedException();
+      // }
+
+      public uint GetField1() {
+        throw new NotImplementedException();
+      }
+
+      public uint GetField2() {
+        throw new NotImplementedException();
+      }
+
+      public void Next() {
+        throw new NotImplementedException();
+      }
+    }
+
+
+    public Iter GetIter() {
+      throw new NotImplementedException();
+    }
+
+    public Iter GetIter1(long surr1) {
+      throw new NotImplementedException();
+    }
+
+    public Iter GetIter2(long surr2) {
+      throw new NotImplementedException();
+    }
+
+
     OneWayBinTable table1;
     OneWayBinTable table2;
 
@@ -182,8 +225,8 @@ namespace CellLang {
       this.store2 = store2;
     }
 
-    public bool Contains(uint surr1, uint surr2) {
-      return table1.Contains(surr1, surr2);
+    public bool Contains(long surr1, long surr2) {
+      return table1.Contains((uint) surr1, (uint) surr2);
     }
 
     public bool ContainsField1(uint surr1) {

@@ -59,6 +59,11 @@ namespace CellLang {
       return -1;
     }
 
+    //## IS THIS A DUPLICATE OF GetValue()?
+    public Obj LookupSurrogate(uint index) {
+      return slots[index];
+    }
+
     public Obj GetValue(uint index) {
       return slots[index];
     }

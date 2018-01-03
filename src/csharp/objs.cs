@@ -125,6 +125,9 @@ namespace CellLang {
 
     protected abstract int TypeId();
     protected abstract int InternalCmp(Obj o);
+
+    //## IMPURE METHODS
+    public virtual Obj RandElem()                                 {throw new NotImplementedException();}
   }
 
 
@@ -528,6 +531,10 @@ namespace CellLang {
           return res;
       }
       return 0;
+    }
+
+    override public Obj RandElem() {
+      return elts[0];
     }
   }
 
