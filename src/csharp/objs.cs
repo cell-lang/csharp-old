@@ -136,6 +136,10 @@ namespace CellLang {
       return true;
     }
 
+    override public string ToString() {
+      return "Blank";
+    }
+
     override public int Hashcode() {
       throw new NotImplementedException();
     }
@@ -159,6 +163,10 @@ namespace CellLang {
   class NullObj : Obj {
     override public bool IsNullObj() {
       return true;
+    }
+
+    override public string ToString() {
+      return "Null";
     }
 
     override public int Hashcode() {

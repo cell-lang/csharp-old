@@ -90,6 +90,24 @@ desugar.cs: codegen.exe tests/desugar.txt $(SRC-FILES)
 desugar.exe: desugar.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 desugar.cs $(RUNTIME-FILES) -out:desugar.exe
 
+test.cs: test.cell codegen.exe $(RUNTIME-FILES)
+	cellc -p projects/test.txt
+	mv dump-opt-code.txt test.txt
+	rm dump-*
+	./codegen.exe test.txt
+	mv generated.cs test.cs
+
+test.exe: test.cs $(RUNTIME-FILES)
+	mcs -nowarn:162,168,219,414 test.cs $(RUNTIME-FILES) -out:test.exe
+
+test.cpp: test.cell
+	cellc projects/test.txt
+	mv generated.cpp test.cpp
+	rm generated.h
+
+test: test.cpp
+	g++ -ggdb test.cpp -o test
+
 # test.txt: test.cell
 # 	cellc -p test-project.txt
 # 	mv dump-opt-code.txt test.txt
@@ -153,15 +171,19 @@ check:
 	cmp html/updates.html         html-ref/updates.html          
 
 clean:
-	@rm -rf tmp/
 	@rm -f codegen-dbg codegen-rel codegen.exe codegen-2.exe codegen.txt
+	@make -s soft-clean
+
+soft-clean:
+	@rm -rf tmp/
 	@rm -f generated.cs generated-2.cs codegen.cs codegen-2.cs
 	@rm -f gen-html-dbg gen-html-dbg.mdb
 	@rm -f cellc-cs.exe compiler.cs
 	@rm -f regression.cs
 	@rm -f chat-server.cs chat-server.exe
 	@rm -f dump-*.txt
-
-soft-clean:
+	@rm -f test.txt test.cs test.exe test.cpp test
+	@rm -f regression.cs regression.exe
+	@rm -f generated.cpp generated.h
 	@rm debug/*
 	@touch debug/stack_trace.txt

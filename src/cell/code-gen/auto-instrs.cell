@@ -32,7 +32,7 @@ implicit {
 
     auto_pre_init()       = (native_new_call(instr.var, to_c_name(instr.type), ("env"))),
     auto_cleanup()        = (), //(native_method_call(instr.var, cleanup_method_name(instr.type), ())),
-    clear_input()         = (native_method_call(if instr.var? then instr.var else "this", input_set_method_name(instr.type, instr.input), ("BlankObj.Singleton()"))),
+    clear_input()         = (native_method_call(if instr.var? then instr.var else "this", input_set_method_name(instr.type, instr.input), ("NullObj.Singleton()"))),
     auto_update_node()    = (native_method_call("this", node_update_method_name(instr.type, instr.node), (instr.time_var if instr.time_var?, "env"))),
 
     set_input()           = (native_method_call(instr.var, input_set_method_name(instr.type, instr.input), (instr.value))),
