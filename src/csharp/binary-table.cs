@@ -170,45 +170,29 @@ namespace CellLang {
 
   class BinaryTable {
     public struct Iter {
+      int next;
+      uint[,] entries;
 
-      BinaryTable table;
-
-      public Iter(BinaryTable table) {
-        this.table = table;
+      public Iter(uint[,] entries) {
+        this.entries = entries;
+        next = 0;
       }
 
       public bool Done() {
-        throw new NotImplementedException();
+        return next >= entries.GetLength(0);
       }
 
-      // public Tuple Get() {
-      //   throw new NotImplementedException();
-      // }
-
       public uint GetField1() {
-        throw new NotImplementedException();
+        return entries[next, 0];
       }
 
       public uint GetField2() {
-        throw new NotImplementedException();
+        return entries[next, 1];
       }
 
       public void Next() {
-        throw new NotImplementedException();
+        next++;
       }
-    }
-
-
-    public Iter GetIter() {
-      throw new NotImplementedException();
-    }
-
-    public Iter GetIter1(long surr1) {
-      throw new NotImplementedException();
-    }
-
-    public Iter GetIter2(long surr2) {
-      throw new NotImplementedException();
     }
 
 
@@ -247,6 +231,30 @@ namespace CellLang {
       if (table2.count == 0 & table1.count > 0)
         table2.InitReverse(table1);
       return table2.Lookup(surr);
+    }
+
+    public Iter GetIter() {
+      return new Iter(table1.Copy());
+    }
+
+    public Iter GetIter1(long surr1) {
+      uint[] col2 = LookupByCol1((uint) surr1);
+      uint[,] entries = new uint[col2.Length, 2];
+      for (int i=0 ; i < col2.Length ; i++) {
+        entries[i, 0] = (uint) surr1;
+        entries[i, 1] = col2[i];
+      }
+      return new Iter(entries);
+    }
+
+    public Iter GetIter2(long surr2) {
+      uint[] col1 = LookupByCol2((uint) surr2);
+      uint[,] entries = new uint[col1.Length, 2];
+      for (int i=0 ; i < col1.Length ; i++) {
+        entries[i, 0] = col1[i];
+        entries[i, 1] = (uint) surr2;
+      }
+      return new Iter(entries);
     }
 
     public void Insert(uint surr1, uint surr2) {
@@ -444,8 +452,9 @@ namespace CellLang {
     public void Apply() {
       for (int i=0 ; i < deleteList.Count ; i++) {
         Tuple tuple = deleteList[i];
-        if (table.Contains(tuple.field1, tuple.field2))
+        if (table.Contains(tuple.field1, tuple.field2)) {
           table.Delete(tuple.field1, tuple.field2);
+        }
         else
           deleteList[i] = new Tuple(0xFFFFFFFF, 0xFFFFFFFF);
       }
