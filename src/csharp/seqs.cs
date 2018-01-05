@@ -111,9 +111,10 @@ namespace CellLang {
     // }
 
     override public int Hashcode() {
+      int offset = Offset();
       int hashcodesSum = 0;
-      for (int i=0 ; i < items.Length ; i++)
-        hashcodesSum += items[i].Hashcode();
+      for (int i=0 ; i < length ; i++)
+        hashcodesSum += items[offset+i].Hashcode();
       return hashcodesSum ^ items.Length;
     }
 

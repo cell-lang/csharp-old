@@ -141,13 +141,11 @@ implicit {
       "    " & updates_apply_call,
       "    " & updates_finish_code,
       "  }",
-      "  else",
-      "    " & updater_reset_call,
       "}",
       "catch {",
-      "  " & updater_reset_call,
       // "  pop_try_mode_call_info(depth);",
       "}",
+      updater_reset_call,
       "return ok;"
     );
 
@@ -175,8 +173,7 @@ implicit {
       "  " & updates_apply_call,
       "  " & updates_finish_call,
       "}",
-      "else",
-      "  " & updater_reset_call,
+      updater_reset_call,
       "return ok;"
     );
 
@@ -401,7 +398,7 @@ implicit {
     psv_str = to_c_var_ref_name(pending_state_var(var_id));
     mv_str = to_c_var_ref_name(memb_var(var_id));
     return (
-      "if (" & psv_str & " != null) {",
+      "if (!" & psv_str & ".IsBlankObj()) {",
       "  " & mv_str & " = " & psv_str & ";",
       "}"
     );
