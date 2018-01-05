@@ -166,7 +166,7 @@ namespace CellLang {
 
 
   class ValueStore : ValueStoreBase {
-    const int InitSize = 256;
+    const int InitSize = 16;
 
     int[] refCounts     = new int[InitSize];
     int[] nextFreeIdx   = new int[InitSize];
@@ -212,7 +212,7 @@ namespace CellLang {
       Array.Copy(currNextFreeIdx, nextFreeIdx, currCapacity);
 
       for (int i=currCapacity ; i < capacity ; i++)
-        currNextFreeIdx[i] = i + 1;
+        nextFreeIdx[i] = i + 1;
     }
 
     public int NextFreeIdx(int index) {
@@ -220,12 +220,12 @@ namespace CellLang {
       return index != -1 ? nextFreeIdx[index] : firstFreeIdx;
     }
 
-    // void Dump() {
-    //   for (int i=0 ; i < slots.Length ; i++)
-    //     Console.WriteLine("slots[" + i.ToString() + "] = " + (slots[i] == null ? "null" : slots[i].ToString()));
-    //   for (int i=0 ; i < slots.Length ; i++)
-    //     Console.WriteLine("nextFreeIdx[" + i.ToString() + "] = " + nextFreeIdx[i].ToString());
-    // }
+    void Dump() {
+      for (int i=0 ; i < slots.Length ; i++)
+        Console.WriteLine("slots[" + i.ToString() + "] = " + (slots[i] == null ? "null" : slots[i].ToString()));
+      for (int i=0 ; i < slots.Length ; i++)
+        Console.WriteLine("nextFreeIdx[" + i.ToString() + "] = " + nextFreeIdx[i].ToString());
+    }
   }
 
 
