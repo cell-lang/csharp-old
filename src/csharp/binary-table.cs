@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace CellLang {
   struct OneWayBinTable {
-    const int MinCapacity = 256;
+    const int MinCapacity = 16;
 
     public const uint EmptySlot      = 0xFFFFFFFF;
     public const uint MultiValueSlot = 0xFFFFFFFE;
@@ -82,10 +82,10 @@ namespace CellLang {
       int count = surrSet.Count;
       uint[] surrs = new uint[count];
       HashSet<uint>.Enumerator it = surrSet.GetEnumerator();
-      for (int i=0 ; i < count ; i++) {
-        surrs[i] = it.Current;
-        it.MoveNext();
-      }
+      int next = 0;
+      while (it.MoveNext())
+        surrs[next++] = it.Current;
+      Miscellanea.Assert(next == count);
       return surrs;
     }
 
@@ -115,6 +115,7 @@ namespace CellLang {
       else if (code != surr2) {
         column[surr1] = MultiValueSlot;
         HashSet<uint> surrs = new HashSet<uint>();
+        surrs.Add(code);
         surrs.Add(surr2);
         multimap[surr1] = surrs;
         count++;
