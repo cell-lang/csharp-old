@@ -96,5 +96,7 @@ namespace CellLang {
     public static uint Hashcode(uint n1, uint n2, uint n3) {
       return n1 ^ n2 ^ n3;
     }
+
+    public static bool debugFlag = false;
   }
 }

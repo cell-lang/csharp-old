@@ -611,7 +611,7 @@ namespace CellLang {
       string[] reprs = new string[col1.Length];
       for (int i=0 ; i < col1.Length ; i++)
         reprs[i] = col1[i].ToString() + sep + col2[i].ToString();
-      return "[" + string.Join(isMap ? ", " : "; ", reprs) + (col1.Length == 1 ? ";]" : "]");
+      return "[" + string.Join(isMap ? ", " : "; ", reprs) + (col1.Length == 1 & !isMap ? ";]" : "]");
     }
 
     override public BinRelIter GetBinRelIter() {

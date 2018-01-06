@@ -115,7 +115,7 @@ namespace CellLang {
       int hashcodesSum = 0;
       for (int i=0 ; i < length ; i++)
         hashcodesSum += items[offset+i].Hashcode();
-      return hashcodesSum ^ items.Length;
+      return hashcodesSum ^ length;
     }
 
     override protected int TypeId() {

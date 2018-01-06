@@ -302,7 +302,7 @@ namespace CellLang {
       }
       Miscellanea.Assert(next == count);
 
-      return Builder.CreateBinRel(flipped ? objs1 : objs2, flipped ? objs2 : objs1, count); //## THIS COULD BE MADE MORE EFFICIENT
+      return Builder.CreateBinRel(flipped ? objs2 : objs1, flipped ? objs1 : objs2, count); //## THIS COULD BE MADE MORE EFFICIENT
     }
 
     public uint[,] RawCopy() {

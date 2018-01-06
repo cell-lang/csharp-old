@@ -52,6 +52,7 @@ namespace CellLang {
       int hashcode = value.Hashcode();
       int idx = hashtable[hashcode % hashtable.Length];
       while (idx != -1) {
+        Miscellanea.Assert(slots[idx] != null);
         if (hashcodes[idx] == hashcode && value.IsEq(slots[idx]))
           return idx;
         idx = buckets[idx];
@@ -97,6 +98,7 @@ namespace CellLang {
 
       slots[index] = null;
       hashcodes[index] = 0; //## NOT STRICTLY NECESSARY...
+      count--;
 
       int hashtableIdx = hashcode % slots.Length;
       int idx = hashtable[hashtableIdx];
@@ -122,8 +124,6 @@ namespace CellLang {
 
     public virtual void Resize(int minCapacity) {
       if (slots != null) {
-        Miscellanea.Assert(slots.Length == count);
-
         int   currCapacity  = slots.Length;
         Obj[] currSlots     = slots;
         int[] currHashcodes = hashcodes;
@@ -162,6 +162,47 @@ namespace CellLang {
           hashtable[i] = -1;
       }
     }
+
+    public virtual void Dump() {
+      Console.WriteLine("");
+      Console.WriteLine("count = " + count.ToString());
+      WriteObjs("slots", slots);
+      WriteInts("hashcodes", hashcodes);
+      WriteInts("hashtable", hashtable);
+      WriteInts("buckets", buckets);
+    }
+
+    protected void WriteObjs(string name, Obj[] objs) {
+      Console.WriteLine(name + " = ");
+      if (objs != null) {
+        Console.Write("[");
+        for (int i=0 ; i < objs.Length ; i++) {
+          if (i > 0)
+            Console.Write(", ");
+          Obj obj = objs[i];
+          Console.Write(obj != null ? obj.ToString() : "null");
+        }
+        Console.WriteLine("]");
+      }
+      else
+        Console.WriteLine("null");
+    }
+
+    protected void WriteInts(string name, int[] ints) {
+      Console.Write(name + " = ");
+      if (ints != null) {
+        Console.Write("[");
+        for (int i=0 ; i < ints.Length ; i++) {
+          if (i > 0)
+            Console.Write(", ");
+          Console.Write(ints[i].ToString());
+        }
+        Console.WriteLine("]");
+      }
+      else
+        Console.WriteLine("null");
+    }
+
   }
 
 
@@ -182,11 +223,14 @@ namespace CellLang {
     }
 
     public void Release(uint index) {
-      int count = refCounts[index];
-      Miscellanea.Assert(count > 0);
-      refCounts[index] = count - 1;
-      if (count == 1)
+      int refCount = refCounts[index];
+      Miscellanea.Assert(refCount > 0);
+      refCounts[index] = refCount - 1;
+      if (refCount == 1) {
         Delete((int) index);
+        nextFreeIdx[index] = firstFreeIdx;
+        firstFreeIdx = (int) index;
+      }
     }
 
     override public void Insert(Obj value, int hashcode, int index) {
@@ -220,11 +264,11 @@ namespace CellLang {
       return index != -1 ? nextFreeIdx[index] : firstFreeIdx;
     }
 
-    void Dump() {
-      for (int i=0 ; i < slots.Length ; i++)
-        Console.WriteLine("slots[" + i.ToString() + "] = " + (slots[i] == null ? "null" : slots[i].ToString()));
-      for (int i=0 ; i < slots.Length ; i++)
-        Console.WriteLine("nextFreeIdx[" + i.ToString() + "] = " + nextFreeIdx[i].ToString());
+    override public void Dump() {
+      base.Dump();
+      WriteInts("refCounts", refCounts);
+      WriteInts("nextFreeIdx", nextFreeIdx);
+      Console.WriteLine("firstFreeIdx = " + firstFreeIdx.ToString());
     }
   }
 
