@@ -418,12 +418,12 @@ namespace CellLang {
       }
       Miscellanea.Assert(next == count);
 
-      return Builder.CreateTernRel(
-        idx1 == 0 ? objs1 : (idx1 == 1 ? objs2 : objs3),
-        idx2 == 0 ? objs1 : (idx2 == 1 ? objs2 : objs3),
-        idx3 == 0 ? objs1 : (idx3 == 1 ? objs2 : objs3),
-        count
-      );
+      Obj[][] cols = new Obj[3][];
+      cols[idx1] = objs1;
+      cols[idx2] = objs2;
+      cols[idx3] = objs3;
+
+      return Builder.CreateTernRel(cols[0], cols[1], cols[2], count);
     }
 
     ////////////////////////////////////////////////////////////////////////////
