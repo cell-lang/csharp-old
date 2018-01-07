@@ -624,52 +624,126 @@ namespace CellLang {
     }
 
     public bool CheckUpdates_12() {
-      throw new NotImplementedException();
+      deleteList.Sort(compare123);
+      insertList.Sort(compare123);
 
-//      Comparison<TernaryTable.Tuple> cmp = delegate(TernaryTable.Tuple t1, TernaryTable.Tuple t2) {
-//        if (t1.field1 != t2.field1)
-//          return t2.field1 - t1.field1;
-//        else if (t1.field2 != t2.field2)
-//          return t2.field2 - t1.field2;
-//        else
-//          return t2.field3 - t1.field3;
-//      };
-//
-//      deleteList.Sort(cmp);
-//      insertList.Sort(cmp);
-//
-//      int count = insertList.Count;
-//      if (count == 0)
-//        return true;
-//
-//      Tuple prev = insertList[0];
-//      if (!ContainsField1(deleteList, prev.field1))
-//        if (table.ContainsField1(prev.field1))
-//          return false;
-//
-//      for (int i=1 ; i < count ; i++) {
-//        Tuple curr = insertList[i];
-//        if (curr.field1 == prev.field1 & curr.field2 != prev.field2)
-//          return false;
-//        if (!ContainsField1(deleteList, curr.field1))
-//          if (table.ContainsField1(curr.field1))
-//            return false;
-//        prev = curr;
-//      }
-//
-//      return true;
+      int count = insertList.Count;
+      if (count == 0)
+        return true;
+
+      TernaryTable.Tuple prev = insertList[0];
+      if (!Contains12(deleteList, prev.field1OrNext, prev.field2OrEmptyMarker))
+        if (table.Contains12(prev.field1OrNext, prev.field2OrEmptyMarker))
+          return false;
+
+      for (int i=1 ; i < count ; i++) {
+        TernaryTable.Tuple curr = insertList[i];
+        if ( curr.field1OrNext == prev.field1OrNext &
+             curr.field2OrEmptyMarker == prev.field2OrEmptyMarker &
+             curr.field3 != prev.field3
+           )
+          return false;
+        if (!Contains12(deleteList, curr.field1OrNext, curr.field2OrEmptyMarker))
+          if (table.Contains12(curr.field1OrNext, curr.field2OrEmptyMarker))
+            return false;
+        prev = curr;
+      }
+
+      return true;
     }
 
     public bool CheckUpdates_12_3() {
-      throw new NotImplementedException();
+      if (!CheckUpdates_12())
+        return false;
+
+      deleteList.Sort(compare312);
+      insertList.Sort(compare312);
+
+      int count = insertList.Count;
+      if (count == 0)
+        return true;
+
+      TernaryTable.Tuple prev = insertList[0];
+      if (!Contains3(deleteList, prev.field3))
+        if (table.Contains3(prev.field3))
+          return false;
+
+      for (int i=1 ; i < count ; i++) {
+        TernaryTable.Tuple curr = insertList[i];
+        if ( curr.field3 == prev.field3 &
+             (curr.field1OrNext != prev.field1OrNext | curr.field2OrEmptyMarker != prev.field2OrEmptyMarker)
+           )
+          return false;
+        if (!Contains3(deleteList, prev.field3))
+          if (table.Contains3(prev.field3))
+        prev = curr;
+      }
+
+      return true;
     }
 
     public bool CheckUpdates_12_23() {
-      throw new NotImplementedException();
+      if (!CheckUpdates_12())
+        return false;
+
+      deleteList.Sort(compare231);
+      insertList.Sort(compare231);
+
+      int count = insertList.Count;
+      if (count == 0)
+        return true;
+
+      TernaryTable.Tuple prev = insertList[0];
+      if (!Contains23(deleteList, prev.field2OrEmptyMarker, prev.field3))
+        if (table.Contains23(prev.field2OrEmptyMarker, prev.field3))
+          return false;
+
+      for (int i=1 ; i < count ; i++) {
+        TernaryTable.Tuple curr = insertList[i];
+        if ( curr.field2OrEmptyMarker == prev.field2OrEmptyMarker &
+             curr.field3 == prev.field3 &
+             curr.field1OrNext != prev.field1OrNext
+           )
+          return false;
+        if (!Contains23(deleteList, curr.field2OrEmptyMarker, curr.field3))
+          if (table.Contains23(curr.field2OrEmptyMarker, curr.field3))
+            return false;
+        prev = curr;
+      }
+
+      return true;
     }
 
     public bool CheckUpdates_12_23_31() {
-      throw new NotImplementedException();
+      if (!CheckUpdates_12_23())
+        return false;
+
+      deleteList.Sort(compare312);
+      insertList.Sort(compare312);
+
+      int count = insertList.Count;
+      if (count == 0)
+        return true;
+
+      TernaryTable.Tuple prev = insertList[0];
+      if (!Contains31(deleteList, prev.field3, prev.field1OrNext))
+        if (table.Contains13(prev.field1OrNext, prev.field3))
+          return false;
+
+      for (int i=1 ; i < count ; i++) {
+        TernaryTable.Tuple curr = insertList[i];
+        if ( curr.field3 == prev.field3 &
+             curr.field1OrNext == prev.field1OrNext &
+             curr.field2OrEmptyMarker != prev.field2OrEmptyMarker
+           )
+          return false;
+        if (!Contains31(deleteList, curr.field3, curr.field1OrNext))
+          if (table.Contains13(curr.field1OrNext, curr.field3))
+            return false;
+        prev = curr;
+      }
+
+      return true;
     }
 
     public void Apply() {
@@ -711,16 +785,20 @@ namespace CellLang {
     }
 
 
-    static bool ContainsField1(List<TernaryTable.Tuple> tuples, uint field1) {
+    static bool Contains12(List<TernaryTable.Tuple> tuples, uint field1, uint field2) {
       int low = 0;
       int high = tuples.Count - 1;
 
       while (low <= high) {
         int mid = (int) (((long) low + (long) high) / 2);
-        uint midField1 = tuples[mid].field1OrNext;
-        if (midField1 > field1)
+        TernaryTable.Tuple tuple = tuples[mid];
+        if (tuple.field1OrNext > field1)
           high = mid - 1;
-        else if (midField1 < field1)
+        else if (tuple.field1OrNext < field1)
+          low = mid + 1;
+        else if (tuple.field2OrEmptyMarker > field2)
+          high = mid - 1;
+        else if (tuple.field2OrEmptyMarker < field2)
           low = mid + 1;
         else
           return true;
@@ -729,16 +807,20 @@ namespace CellLang {
       return false;
     }
 
-    static bool ContainsField2(List<TernaryTable.Tuple> tuples, uint field2) {
+    static bool Contains23(List<TernaryTable.Tuple> tuples, uint field2, uint field3) {
       int low = 0;
       int high = tuples.Count - 1;
 
       while (low <= high) {
         int mid = (int) (((long) low + (long) high) / 2);
-        uint midField2 = tuples[mid].field2OrEmptyMarker;
-        if (midField2 > field2)
+        TernaryTable.Tuple tuple = tuples[mid];
+        if (tuple.field2OrEmptyMarker > field2)
           high = mid - 1;
-        else if (midField2 < field2)
+        else if (tuple.field2OrEmptyMarker < field2)
+          low = mid + 1;
+        else if (tuple.field3 > field3)
+          high = mid - 1;
+        else if (tuple.field3 < field3)
           low = mid + 1;
         else
           return true;
@@ -747,7 +829,65 @@ namespace CellLang {
       return false;
     }
 
-    static bool ContainsField3(List<TernaryTable.Tuple> tuples, uint field3) {
+    static bool Contains31(List<TernaryTable.Tuple> tuples, uint field3, uint field1) {
+      int low = 0;
+      int high = tuples.Count - 1;
+
+      while (low <= high) {
+        int mid = (int) (((long) low + (long) high) / 2);
+        TernaryTable.Tuple tuple = tuples[mid];
+        if (tuple.field3 > field3)
+          high = mid - 1;
+        else if (tuple.field3 < field3)
+          low = mid + 1;
+        else if (tuple.field1OrNext > field1)
+          high = mid - 1;
+        else if (tuple.field1OrNext < field1)
+          low = mid + 1;
+        else
+          return true;
+      }
+
+      return false;
+    }
+
+//    static bool ContainsField1(List<TernaryTable.Tuple> tuples, uint field1) {
+//      int low = 0;
+//      int high = tuples.Count - 1;
+//
+//      while (low <= high) {
+//        int mid = (int) (((long) low + (long) high) / 2);
+//        uint midField1 = tuples[mid].field1OrNext;
+//        if (midField1 > field1)
+//          high = mid - 1;
+//        else if (midField1 < field1)
+//          low = mid + 1;
+//        else
+//          return true;
+//      }
+//
+//      return false;
+//    }
+
+//    static bool ContainsField2(List<TernaryTable.Tuple> tuples, uint field2) {
+//      int low = 0;
+//      int high = tuples.Count - 1;
+//
+//      while (low <= high) {
+//        int mid = (int) (((long) low + (long) high) / 2);
+//        uint midField2 = tuples[mid].field2OrEmptyMarker;
+//        if (midField2 > field2)
+//          high = mid - 1;
+//        else if (midField2 < field2)
+//          low = mid + 1;
+//        else
+//          return true;
+//      }
+//
+//      return false;
+//    }
+
+    static bool Contains3(List<TernaryTable.Tuple> tuples, uint field3) {
       int low = 0;
       int high = tuples.Count - 1;
 
@@ -764,6 +904,33 @@ namespace CellLang {
 
       return false;
     }
+
+    static Comparison<TernaryTable.Tuple> compare123 = delegate(TernaryTable.Tuple t1, TernaryTable.Tuple t2) {
+      if (t1.field1OrNext != t2.field1OrNext)
+        return (int) (t1.field1OrNext - t2.field1OrNext);
+      else if (t1.field2OrEmptyMarker != t2.field2OrEmptyMarker)
+        return (int) (t1.field2OrEmptyMarker - t2.field2OrEmptyMarker);
+      else
+        return (int) (t1.field3 - t2.field3);
+    };
+
+    static Comparison<TernaryTable.Tuple> compare231 = delegate(TernaryTable.Tuple t1, TernaryTable.Tuple t2) {
+      if (t1.field2OrEmptyMarker != t2.field2OrEmptyMarker)
+        return (int) (t1.field2OrEmptyMarker - t2.field2OrEmptyMarker);
+      else if (t1.field3 != t2.field3)
+        return (int) (t1.field3 - t2.field3);
+      else
+        return (int) (t1.field1OrNext - t2.field1OrNext);
+    };
+
+    static Comparison<TernaryTable.Tuple> compare312 = delegate(TernaryTable.Tuple t1, TernaryTable.Tuple t2) {
+      if (t1.field3 != t2.field3)
+        return (int) (t1.field3 - t2.field3);
+      if (t1.field1OrNext != t2.field1OrNext)
+        return (int) (t1.field1OrNext - t2.field1OrNext);
+      else
+        return (int) (t1.field2OrEmptyMarker - t2.field2OrEmptyMarker);
+    };
   }
 }
 
