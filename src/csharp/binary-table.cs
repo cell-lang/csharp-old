@@ -389,7 +389,7 @@ namespace CellLang {
 
     public bool CheckUpdates_1() {
       Comparison<Tuple> cmp = delegate(Tuple t1, Tuple t2) {
-        return (int) (t1.field1 != t2.field1 ? t2.field1 - t1.field1 : t2.field2 - t1.field2);
+        return (int) (t1.field1 != t2.field1 ? t1.field1 - t2.field1 : t1.field2 - t2.field2);
       };
 
       deleteList.Sort(cmp);
@@ -422,7 +422,7 @@ namespace CellLang {
         return false;
 
       Comparison<Tuple> cmp = delegate(Tuple t1, Tuple t2) {
-        return (int) (t1.field2 != t2.field2 ? t2.field2 - t1.field2 : t2.field1 - t1.field1);
+        return (int) (t1.field2 != t2.field2 ? t1.field2 - t2.field2 : t1.field1 - t2.field1);
       };
 
       deleteList.Sort(cmp);
