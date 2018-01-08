@@ -30,8 +30,7 @@ namespace CellLang {
 
     public void Insert(uint index, uint hashcode) {
       Miscellanea.Assert(buckets[index] == Empty);
-
-      //## IMPLEMENT RESIZING
+      Miscellanea.Assert(index < hashtable.Length);
 
       uint hashIdx = hashcode % (uint) hashtable.Length;
       uint head = hashtable[hashIdx];
@@ -73,6 +72,25 @@ namespace CellLang {
 
     public uint Next(uint index) {
       return buckets[index];
+    }
+
+    public void Dump() {
+      Console.Write("hashtable =");
+      if (hashtable != null)
+        for (int i=0 ; i < hashtable.Length ; i++)
+          Console.Write(" " + (hashtable[i] == Empty ? "-" : hashtable[i].ToString()));
+      else
+        Console.Write(" null");
+      Console.WriteLine("");
+
+      Console.Write("buckets   =");
+      if (hashtable != null)
+        for (int i=0 ; i < buckets.Length ; i++)
+          Console.Write(" " + (buckets[i] == Empty ? "-" : buckets[i].ToString()));
+      else
+        Console.Write(" null");
+      Console.WriteLine("");
+      Console.WriteLine("");
     }
   }
 }

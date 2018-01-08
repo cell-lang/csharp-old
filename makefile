@@ -90,7 +90,8 @@ desugar.cs: codegen.exe tests/desugar.txt $(SRC-FILES)
 desugar.exe: desugar.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 desugar.cs $(RUNTIME-FILES) -out:desugar.exe
 
-test.cs: test.cell codegen.exe $(RUNTIME-FILES)
+# test.cs: test.cell codegen.exe
+test.cs: test.cell
 	cellc -p projects/test.txt
 	mv dump-opt-code.txt test.txt
 	rm dump-*
@@ -103,7 +104,7 @@ test.exe: test.cs $(RUNTIME-FILES)
 test.cpp: test.cell
 	cellc projects/test.txt
 	mv generated.cpp test.cpp
-	rm generated.h
+	rm -f generated.h
 
 test: test.cpp
 	g++ -ggdb test.cpp -o test

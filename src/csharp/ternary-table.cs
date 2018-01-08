@@ -16,21 +16,39 @@ namespace CellLang {
         this.field2OrEmptyMarker = field2;
         this.field3 = field3;
       }
+
+      override public string ToString() {
+        return "(" + field1OrNext.ToString() + ", " + field2OrEmptyMarker.ToString() + ", " + field3.ToString() + ")";
+      }
     }
 
 
     public struct Iter {
       public enum Type {F123, F12, F13, F23, F1, F2, F3};
 
+      uint field1, field2, field3;
+
       uint index;
       Type type;
 
       TernaryTable table;
 
-      public Iter(uint index, Type type, TernaryTable table) {
+      public Iter(uint field1, uint field2, uint field3, uint index, Type type, TernaryTable table) {
+        this.field1 = field1;
+        this.field2 = field2;
+        this.field3 = field3;
         this.index = index;
         this.type = type;
         this.table = table;
+        if (index != Tuple.Empty) {
+          Tuple tuple = table.tuples[index];
+          bool ok1 = field1 == Tuple.Empty | tuple.field1OrNext == field1;
+          bool ok2 = field2 == Tuple.Empty | tuple.field2OrEmptyMarker == field2;
+          bool ok3 = field3 == Tuple.Empty | tuple.field3 == field3;
+          if ((type == Type.F123 & tuple.field2OrEmptyMarker == Tuple.Empty) | !ok1 | !ok2 | !ok3) {
+            Next();
+          }
+        }
       }
 
       public bool Done() {
@@ -72,40 +90,74 @@ namespace CellLang {
             break;
 
           case Type.F12:
-            index = table.index12.Next(index);
+            for ( ; ; ) {
+              index = table.index12.Next(index);
+              if (index == Tuple.Empty)
+                return;
+              Tuple tuple = table.tuples[index];
+              if (tuple.field1OrNext == field1 & tuple.field2OrEmptyMarker == field2)
+                return;
+            }
             break;
 
           case Type.F13:
-            index = table.index13.Next(index);
+            for ( ; ; ) {
+              index = table.index13.Next(index);
+              if (index == Tuple.Empty)
+                return;
+              Tuple tuple = table.tuples[index];
+              if (tuple.field1OrNext == field1 & tuple.field3 == field3)
+                return;
+            }
             break;
 
           case Type.F23:
-            index = table.index23.Next(index);
+            for ( ; ; ) {
+              index = table.index23.Next(index);
+              if (index == Tuple.Empty)
+                return;
+              Tuple tuple = table.tuples[index];
+              if (tuple.field2OrEmptyMarker == field2 & tuple.field3 == field3)
+                return;
+            }
             break;
 
           case Type.F1:
-            index = table.index1.Next(index);
+            do {
+              index = table.index1.Next(index);
+            } while (index != Tuple.Empty && table.tuples[index].field1OrNext != field1);
             break;
 
           case Type.F2:
-            index = table.index2.Next(index);
+            do {
+              index = table.index2.Next(index);
+            } while (index != Tuple.Empty && table.tuples[index].field2OrEmptyMarker != field2);
             break;
 
           case Type.F3:
-            index = table.index3.Next(index);
+            do {
+              index = table.index3.Next(index);
+            } while (index != Tuple.Empty && table.tuples[index].field3 != field3);
             break;
         }
+      }
+
+      public void Dump() {
+        Console.WriteLine("fields = ({0}, {1}, {2})", field1, field2, field3);
+        Console.WriteLine("index  = {0}", index);
+        Console.WriteLine("type   = {0}", type);
+        Console.WriteLine("Done() = {0}", Done());
       }
     }
 
 
-    const int MinSize = 256;
+    const int MinSize = 32;
 
     Tuple[] tuples = new Tuple[MinSize];
     uint count = 0;
     uint firstFree = 0;
 
-    Index index123, index12, index13, index23, index1, index2, index3;
+    public Index index123, index12, index13, index23, index1, index2, index3;
 
     public ValueStore store1, store2, store3;
 
@@ -132,6 +184,7 @@ namespace CellLang {
       uint hashcode = Miscellanea.Hashcode(field1, field2, field3);
 
       // Making sure the tuple has not been inserted yet
+      //## CAN'T I JUST CALL Contains() HERE?
       for (uint idx = index123.Head(hashcode) ; idx != Tuple.Empty ; idx = index123.Next(idx)) {
         Tuple tuple = tuples[idx];
         if (tuple.field1OrNext == field1 & tuple.field2OrEmptyMarker == field2 & tuple.field3 == field3)
@@ -161,17 +214,17 @@ namespace CellLang {
 
       // Updating the indexes
       index123.Insert(index, hashcode);
-      index12.Insert(index, hashcode);
+      index12.Insert(index, Miscellanea.Hashcode(field1, field2));
       if (!index13.IsBlank())
-        index13.Insert(index, hashcode);
+        index13.Insert(index, Miscellanea.Hashcode(field1, field3));
       if (!index23.IsBlank())
-        index23.Insert(index, hashcode);
+        index23.Insert(index, Miscellanea.Hashcode(field2, field3));
       if (!index1.IsBlank())
-        index1.Insert(index, hashcode);
+        index1.Insert(index, Miscellanea.Hashcode(field1));
       if (!index2.IsBlank())
-        index2.Insert(index, hashcode);
+        index2.Insert(index, Miscellanea.Hashcode(field2));
       if (!index3.IsBlank())
-        index3.Insert(index, hashcode);
+        index3.Insert(index, Miscellanea.Hashcode(field3));
 
       // Updating the reference count in the value stores
       store1.AddRef(field1);
@@ -354,47 +407,47 @@ namespace CellLang {
     }
 
     public Iter GetIter() {
-      return new Iter(0, Iter.Type.F123, this);
+      return new Iter(Tuple.Empty, Tuple.Empty, Tuple.Empty, 0, Iter.Type.F123, this);
     }
 
     public Iter GetIter12(long field1, long field2) {
       uint hashcode = Miscellanea.Hashcode((uint) field1, (uint) field2);
-      return new Iter(index12.Head(hashcode), Iter.Type.F12, this);
+      return new Iter((uint) field1, (uint) field2, Tuple.Empty, index12.Head(hashcode), Iter.Type.F12, this);
     }
 
     public Iter GetIter13(long field1, long field3) {
       if (index13.IsBlank())
         BuildIndex13();
       uint hashcode = Miscellanea.Hashcode((uint) field1, (uint) field3);
-      return new Iter(index13.Head(hashcode), Iter.Type.F13, this);
+      return new Iter((uint) field1, Tuple.Empty, (uint) field3, index13.Head(hashcode), Iter.Type.F13, this);
     }
 
     public Iter GetIter23(long field2, long field3) {
       if (index23.IsBlank())
         BuildIndex23();
       uint hashcode = Miscellanea.Hashcode((uint) field2, (uint) field3);
-      return new Iter(index23.Head(hashcode), Iter.Type.F23, this);
+      return new Iter(Tuple.Empty, (uint) field2, (uint) field3, index23.Head(hashcode), Iter.Type.F23, this);
     }
 
     public Iter GetIter1(long field1) {
       if (index1.IsBlank())
         BuildIndex1();
       uint hashcode = Miscellanea.Hashcode((uint) field1);
-      return new Iter(index1.Head(hashcode), Iter.Type.F1, this);
+      return new Iter((uint) field1, Tuple.Empty, Tuple.Empty, index1.Head(hashcode), Iter.Type.F1, this);
     }
 
     public Iter GetIter2(long field2) {
       if (index2.IsBlank())
         BuildIndex2();
       uint hashcode = Miscellanea.Hashcode((uint) field2);
-      return new Iter(index2.Head(hashcode), Iter.Type.F2, this);
+      return new Iter(Tuple.Empty, (uint) field2, Tuple.Empty, index2.Head(hashcode), Iter.Type.F2, this);
     }
 
     public Iter GetIter3(long field3) {
       if (index3.IsBlank())
         BuildIndex3();
       uint hashcode = Miscellanea.Hashcode((uint) field3);
-      return new Iter(index3.Head(hashcode), Iter.Type.F3, this);
+      return new Iter(Tuple.Empty, Tuple.Empty, (uint) field3, index3.Head(hashcode), Iter.Type.F3, this);
     }
 
     public Obj Copy(int idx1, int idx2, int idx3) {
@@ -442,17 +495,17 @@ namespace CellLang {
 
       // Updating the indexes
       index123.Delete(index, hashcode);
-      index12.Delete(index, hashcode);
+      index12.Delete(index, Miscellanea.Hashcode(tuple.field1OrNext, tuple.field2OrEmptyMarker));
       if (!index13.IsBlank())
-        index13.Delete(index, hashcode);
+        index13.Delete(index, Miscellanea.Hashcode(tuple.field1OrNext, tuple.field3));
       if (!index23.IsBlank())
-        index23.Delete(index, hashcode);
+        index23.Delete(index, Miscellanea.Hashcode(tuple.field2OrEmptyMarker, tuple.field3));
       if (!index1.IsBlank())
-        index1.Delete(index, hashcode);
+        index1.Delete(index, Miscellanea.Hashcode(tuple.field1OrNext));
       if (!index2.IsBlank())
-        index2.Delete(index, hashcode);
+        index2.Delete(index, Miscellanea.Hashcode(tuple.field2OrEmptyMarker));
       if (!index3.IsBlank())
-        index3.Delete(index, hashcode);
+        index3.Delete(index, Miscellanea.Hashcode(tuple.field3));
 
       // Updating the reference count in the value stores
       store1.Release(tuple.field1OrNext);
@@ -475,8 +528,10 @@ namespace CellLang {
       uint len = (uint) tuples.Length;
       for (uint i=0 ; i < len ; i++) {
         Tuple tuple = tuples[i];
-        if (tuple.field2OrEmptyMarker != Tuple.Empty)
-          index23.Insert(i, Miscellanea.Hashcode(tuple.field2OrEmptyMarker, tuple.field3));
+        if (tuple.field2OrEmptyMarker != Tuple.Empty) {
+          uint hashcode = Miscellanea.Hashcode(tuple.field2OrEmptyMarker, tuple.field3);
+          index23.Insert(i, hashcode);
+        }
       }
     }
 
