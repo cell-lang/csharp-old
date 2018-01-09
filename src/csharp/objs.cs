@@ -628,8 +628,8 @@ namespace CellLang {
       if (revIdxs == null)
         revIdxs = Algs.SortedIndexes(col2, col1);
       int first;
-      int count = Algs.BinSearchRange(col2, 0, col2.Length, obj, out first);
-      return new BinRelIter(col1, col2, first, first+count-1);
+      int count = Algs.BinSearchRange(revIdxs, col2, obj, out first);
+      return new BinRelIter(col1, col2, revIdxs, first, first+count-1);
     }
 
     override public Obj Lookup(Obj key) {
