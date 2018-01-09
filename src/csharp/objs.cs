@@ -693,6 +693,30 @@ namespace CellLang {
     int[] idxs231;
     int[] idxs312;
 
+    public void Dump() {
+      if (idxs231 == null)
+        idxs231 = Algs.SortedIndexes(col2, col3, col1);
+      if (idxs312 == null)
+        idxs312 = Algs.SortedIndexes(col3, col1, col2);
+
+      Console.WriteLine("");
+
+      for (int i=0 ; i < col1.Length ; i++)
+        Console.WriteLine("({0}, {1}, {2}", col1[i], col2[i], col3[i]);
+      Console.WriteLine("");
+
+      for (int i=0 ; i < idxs231.Length ; i++) {
+        int idx = idxs231[i];
+        Console.WriteLine("({0}, {1}, {2})", col1[idx], col2[idx], col3[idx]);
+      }
+      Console.WriteLine("");
+
+      for (int i=0 ; i < idxs312.Length ; i++) {
+        int idx = idxs312[i];
+        Console.WriteLine("({0}, {1}, {2})", col1[idx], col2[idx], col3[idx]);
+      }
+    }
+
     public NeTernRelObj(Obj[] col1, Obj[] col2, Obj[] col3) {
       Miscellanea.Assert(col1 != null && col2 != null && col3 != null);
       Miscellanea.Assert(col1.Length == col2.Length && col1.Length == col3.Length);
@@ -759,7 +783,7 @@ namespace CellLang {
         idxs312 = Algs.SortedIndexes(col3, col1, col2);
       int first;
       int count = Algs.BinSearchRange(idxs312, col3, val, out first);
-      return new TernRelIter(col1, col2, col3, idxs312, first, first+count+1);
+      return new TernRelIter(col1, col2, col3, idxs312, first, first+count-1);
     }
 
     override public TernRelIter GetTernRelIterByCol12(Obj val1, Obj val2) {
