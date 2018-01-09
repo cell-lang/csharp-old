@@ -264,13 +264,13 @@ namespace CellLang {
       int lower_bound = low;
       int upper_bound = high;
 
-
       while (low <= high) {
         int mid = (int) (((long) low + (long) high) / 2);
-        int mid_idx = idxs[mid];
-        int res = major[mid_idx].Cmp(majorVal);
-        if (res == 0)
-          res = minor[mid_idx].Cmp(minorVal);
+        int midIdx = idxs[mid];
+        int res = major[midIdx].Cmp(majorVal);
+        if (res == 0) {
+          res = minor[midIdx].Cmp(minorVal);
+        }
         switch (res) {
           case -1:
             // major[mid] > majorVal | (major[mid] == majorVal & minor[mid] > minorVal)
@@ -280,8 +280,8 @@ namespace CellLang {
           case 0:
             bool isFirst = mid == offset;
             if (!isFirst) {
-              int prev_idx = idxs[mid-1];
-              isFirst = !major[mid-1].IsEq(majorVal) || !minor[mid-1].IsEq(minorVal);
+              int prevIdx = idxs[mid-1];
+              isFirst = !major[prevIdx].IsEq(majorVal) || !minor[prevIdx].IsEq(minorVal);
             }
             if (isFirst) {
               first = mid;
@@ -306,10 +306,10 @@ namespace CellLang {
     Next:
       while (low <= high) {
         int mid = (int) (((long) low + (long) high) / 2);
-        int mid_idx = idxs[mid];
-        int res = major[mid_idx].Cmp(majorVal);
+        int midIdx = idxs[mid];
+        int res = major[midIdx].Cmp(majorVal);
         if (res == 0)
-          res = minor[mid_idx].Cmp(minorVal);
+          res = minor[midIdx].Cmp(minorVal);
         switch (res) {
           case -1:
             // major[mid] > majorVal | (major[mid] == majorVal & minor[mid] > minorVal)
@@ -319,8 +319,8 @@ namespace CellLang {
           case 0:
             bool isLast = mid == upper_bound;
             if (!isLast) {
-              int next_idx = idxs[mid+1];
-              isLast = !major[next_idx].IsEq(majorVal) || !minor[next_idx].IsEq(minorVal);
+              int nextIdx = idxs[mid+1];
+              isLast = !major[nextIdx].IsEq(majorVal) || !minor[nextIdx].IsEq(minorVal);
             }
             if (isLast) {
               return mid - first + 1;

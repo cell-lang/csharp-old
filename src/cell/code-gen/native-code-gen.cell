@@ -496,7 +496,7 @@ implicit {
       (nothing,   just(a1?), nothing)     = native_method_call(var, src, "GetTernRelIterByCol2",  (a1)),
       (nothing,   nothing,   just(a2?))   = native_method_call(var, src, "GetTernRelIterByCol3",  (a2)),
       (just(a0?), just(a1?), nothing)     = native_method_call(var, src, "GetTernRelIterByCol12", (a0, a1)),
-      (just(a0?), nothing,   just(a2?))   = native_method_call(var, src, "GetTernRelIterByCol13", (a2, a0)),
+      (just(a0?), nothing,   just(a2?))   = native_method_call(var, src, "GetTernRelIterByCol13", (a0, a2)),
       (nothing,   just(a1?), just(a2?))   = native_method_call(var, src, "GetTernRelIterByCol23", (a1, a2));
 
 
