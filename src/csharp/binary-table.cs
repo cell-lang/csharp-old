@@ -353,8 +353,8 @@ namespace CellLang {
       Miscellanea.Assert(insertList.Count == 0);
       BinRelIter it = value.GetBinRelIter();
       while (!it.Done()) {
-        Obj val1 = it.Get1();
-        Obj val2 = it.Get2();
+        Obj val1 = flipped ? it.Get2() : it.Get1();
+        Obj val2 = flipped ? it.Get1() : it.Get2();
         int surr1 = store1.LookupValueEx(val1);
         if (surr1 == -1)
           surr1 = store1.Insert(val1);
@@ -486,6 +486,39 @@ namespace CellLang {
     public void Reset() {
       deleteList.Clear();
       insertList.Clear();
+    }
+
+    public void Dump() {
+      Console.Write("deleteList =");
+      for (int i=0 ; i < deleteList.Count ; i++)
+        Console.Write(" {0}", deleteList[i]);
+      Console.WriteLine("");
+
+      Console.Write("insertList =");
+      for (int i=0 ; i < insertList.Count ; i++)
+        Console.Write(" {0}", insertList[i]);
+      Console.WriteLine("\n");
+
+      Console.Write("deleteList =");
+      for (int i=0 ; i < deleteList.Count ; i++) {
+        Tuple tuple = deleteList[i];
+        Obj obj1 = store1.LookupSurrogateEx(tuple.field1);
+        Obj obj2 = store2.LookupSurrogateEx(tuple.field2);
+        Console.Write(" ({0}, {1})", obj1, obj2);
+      }
+      Console.WriteLine("");
+
+      Console.Write("insertList =");
+      for (int i=0 ; i < insertList.Count ; i++) {
+        Tuple tuple = insertList[i];
+        Obj obj1 = store1.LookupSurrogateEx(tuple.field1);
+        Obj obj2 = store2.LookupSurrogateEx(tuple.field2);
+        Console.Write(" ({0}, {1})", obj1, obj2);
+      }
+      Console.WriteLine("\n\n{0}\n\n", table.Copy(true));
+
+      store1.Dump();
+      store2.Dump();
     }
 
     static bool ContainsField1(List<Tuple> tuples, uint field1) {

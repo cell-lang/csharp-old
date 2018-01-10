@@ -22,7 +22,10 @@ namespace CellLang {
       }
 
       public void Next() {
-        throw new NotImplementedException();
+        int size = 64 * table.bitmap.Length;
+        do {
+          index++;
+        } while (index < size && !table.Contains(index));
       }
     }
 
@@ -47,18 +50,28 @@ namespace CellLang {
       return new Iter(0, this);
     }
 
-    public void Insert(uint surr) {
-      if (surr >= 64 * bitmap.Length) {
-        throw new NotImplementedException();
+    uint LiveCount() {
+      uint liveCount = 0;
+      for (int i=0 ; i < bitmap.Length ; i++) {
+        ulong mask = bitmap[i];
+        for (int j=0 ; j < 64 ; j++)
+          if (((mask >> j) & 1) != 0)
+            liveCount++;
       }
+      return liveCount;
+    }
+
+    public void Insert(uint surr) {
+      Miscellanea.Assert(surr < 64 * bitmap.Length);
 
       uint widx = surr / 64;
       int bidx = (int) (surr % 64);
       ulong mask = bitmap[widx];
       if (((mask >> bidx) & 1) == 0) {
-        bitmap[widx] = mask | (ulong) (1 << bidx);
+        bitmap[widx] = mask | (1UL << bidx);
         count++;
       }
+      Miscellanea.Assert(count == LiveCount());
     }
 
     public void Delete(uint surr) {
@@ -73,6 +86,7 @@ namespace CellLang {
           count--;
         }
       }
+      Miscellanea.Assert(count == LiveCount());
     }
 
     public Obj Copy() {
@@ -89,6 +103,28 @@ namespace CellLang {
       Miscellanea.Assert(next == count);
       return Builder.CreateSet(objs, objs.Length);
     }
+
+//    public static string IntToBinaryString(int number) {
+//      string binStr = "";
+//      while (number != 0) {
+//        binStr = (number & 1) + binStr;
+//        number = number >> 1;
+//      }
+//      if (binStr == "")
+//        binStr = "0";
+//      return binStr;
+//    }
+//
+//    public static string IntToBinaryString(ulong number) {
+//      string binStr = "";
+//      while (number > 0) {
+//        binStr = (number & 1) + binStr;
+//        number = number >> 1;
+//      }
+//      if (binStr == "")
+//        binStr = "0";
+//      return binStr;
+//    }
   }
 
 

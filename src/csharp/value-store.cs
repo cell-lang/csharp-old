@@ -173,7 +173,7 @@ namespace CellLang {
     }
 
     protected void WriteObjs(string name, Obj[] objs) {
-      Console.WriteLine(name + " = ");
+      Console.Write(name + " = ");
       if (objs != null) {
         Console.Write("[");
         for (int i=0 ; i < objs.Length ; i++) {
@@ -260,8 +260,12 @@ namespace CellLang {
     }
 
     public int NextFreeIdx(int index) {
-      Miscellanea.Assert(index == -1 || (slots[index] == null & nextFreeIdx[index] != -1));
-      return index != -1 ? nextFreeIdx[index] : firstFreeIdx;
+      Miscellanea.Assert(index == -1 || index >= slots.Length || (slots[index] == null & nextFreeIdx[index] != -1));
+      if (index == -1)
+        return firstFreeIdx;
+      if (index >= nextFreeIdx.Length)
+        return index + 1;
+      return nextFreeIdx[index];
     }
 
     override public void Dump() {
@@ -341,6 +345,19 @@ namespace CellLang {
       if (index == -1)
         return -1;
       return surrogates[index];
+    }
+
+    public Obj LookupSurrogateEx(uint surr) {
+      Obj obj1 = LookupSurrogate(surr);
+      if (obj1 != null)
+        return obj1;
+      return store.LookupSurrogate(surr);
+    }
+
+    override public void Dump() {
+      base.Dump();
+      WriteInts("surrogates", surrogates);
+      Console.WriteLine("lastSurrogate = {0}", lastSurrogate);
     }
   }
 }
