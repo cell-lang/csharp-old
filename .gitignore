@@ -21,3 +21,8 @@ chat-server.exe
 regression.cs
 regression.exe
 test.cell
+generated.h
+test-small.cell
+test.cs
+test.exe
+test.txt
