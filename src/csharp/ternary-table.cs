@@ -604,9 +604,9 @@ namespace CellLang {
       Clear();
       TernRelIter it = value.GetTernRelIter();
       while (!it.Done()) {
-        Obj val1 = it.Get1();
-        Obj val2 = it.Get2();
-        Obj val3 = it.Get3();
+        Obj val1 = idx1 == 0 ? it.Get1() : (idx1 == 1 ? it.Get2() : it.Get3());
+        Obj val2 = idx1 == 1 ? it.Get1() : (idx2 == 1 ? it.Get2() : it.Get3());
+        Obj val3 = idx1 == 2 ? it.Get1() : (idx3 == 1 ? it.Get2() : it.Get3());
         int surr1 = store1.LookupValueEx(val1);
         if (surr1 == -1)
           surr1 = store1.Insert(val1);

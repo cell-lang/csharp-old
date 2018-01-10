@@ -140,15 +140,18 @@ namespace CellLang {
         Array.Copy(currSlots, slots, currCapacity);
         Array.Copy(currHashcodes, hashcodes, currCapacity);
 
-        for (int i=0 ; i < newCapacity ; i++)
+        for (int i=0 ; i < newCapacity ; i++) {
           hashtable[i] = -1;
-
-        for (int i=0 ; i < currCapacity ; i++) {
-          int slotIdx = hashcodes[i] % newCapacity;
-          int head = hashtable[slotIdx];
-          hashtable[slotIdx] = i;
-          buckets[i] = head;
+          buckets[i] = -1;
         }
+
+        for (int i=0 ; i < currCapacity ; i++)
+          if (slots[i] != null) {
+            int slotIdx = hashcodes[i] % newCapacity;
+            int head = hashtable[slotIdx];
+            hashtable[slotIdx] = i;
+            buckets[i] = head;
+          }
       }
       else {
         const int MinCapacity = 32;
@@ -158,8 +161,10 @@ namespace CellLang {
         hashtable = new int[MinCapacity];
         buckets   = new int[MinCapacity];
 
-        for (int i=0 ; i < MinCapacity ; i++)
+        for (int i=0 ; i < MinCapacity ; i++) {
           hashtable[i] = -1;
+          buckets[i] = -1;
+        }
       }
     }
 

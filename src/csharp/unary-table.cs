@@ -82,7 +82,7 @@ namespace CellLang {
         ulong mask = bitmap[widx];
         int bidx = (int) surr % 64;
         if (((mask >> bidx) & 1) == 1) {
-          bitmap[widx] = mask & (ulong) ~(1 << bidx);
+          bitmap[widx] = mask & ~(1UL << bidx);
           count--;
         }
       }
