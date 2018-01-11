@@ -62,16 +62,25 @@ namespace CellLang {
     }
 
     public void Insert(uint surr) {
-      Miscellanea.Assert(surr < 64 * bitmap.Length);
-
       uint widx = surr / 64;
       int bidx = (int) (surr % 64);
+
+      int len = bitmap.Length;
+      if (widx >= len) {
+        int newLen = 2 * len;
+        while (widx >= newLen)
+          newLen *= 2;
+        ulong[] newBitmap = new ulong[newLen];
+        Array.Copy(bitmap, newBitmap, len);
+        bitmap = newBitmap;
+      }
+
       ulong mask = bitmap[widx];
       if (((mask >> bidx) & 1) == 0) {
         bitmap[widx] = mask | (1UL << bidx);
         count++;
       }
-      Miscellanea.Assert(count == LiveCount());
+      // Miscellanea.Assert(count == LiveCount());
     }
 
     public void Delete(uint surr) {
@@ -86,7 +95,7 @@ namespace CellLang {
           count--;
         }
       }
-      Miscellanea.Assert(count == LiveCount());
+      // Miscellanea.Assert(count == LiveCount());
     }
 
     public Obj Copy() {

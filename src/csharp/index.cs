@@ -10,12 +10,18 @@ namespace CellLang {
     public uint[] buckets;
 
     public void Init(uint size) {
+      Miscellanea.Assert(hashtable == null & buckets == null);
       hashtable = new uint[size];
       buckets   = new uint[size];
       for (int i=0 ; i < size ; i++) {
         hashtable[i] = Empty;
         buckets[i] = Empty;
       }
+    }
+
+    public void Reset() {
+      hashtable = null;
+      buckets = null;
     }
 
     public void Clear() {

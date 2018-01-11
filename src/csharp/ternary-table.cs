@@ -181,15 +181,8 @@ namespace CellLang {
     }
 
     public void Insert(uint field1, uint field2, uint field3) {
-      uint hashcode = Miscellanea.Hashcode(field1, field2, field3);
-
-      // Making sure the tuple has not been inserted yet
-      //## CAN'T I JUST CALL Contains() HERE?
-      for (uint idx = index123.Head(hashcode) ; idx != Tuple.Empty ; idx = index123.Next(idx)) {
-        Tuple tuple = tuples[idx];
-        if (tuple.field1OrNext == field1 & tuple.field2OrEmptyMarker == field2 & tuple.field3 == field3)
-          return;
-      }
+      if (Contains(field1, field2, field3))
+        return;
 
       // Increasing the size of the table if need be
       if (firstFree >= tuples.Length) {
@@ -204,6 +197,14 @@ namespace CellLang {
           Miscellanea.Assert(newTuples[i].field2OrEmptyMarker == Tuple.Empty);
         }
         tuples = newTuples;
+        index123.Reset();
+        index12.Reset();
+        index13.Reset();
+        index1.Reset();
+        index2.Reset();
+        index3.Reset();
+        BuildIndex123();
+        BuildIndex12();
       }
 
       // Inserting the new tuple
@@ -213,7 +214,7 @@ namespace CellLang {
       count++;
 
       // Updating the indexes
-      index123.Insert(index, hashcode);
+      index123.Insert(index, Miscellanea.Hashcode(field1, field2, field3));
       index12.Insert(index, Miscellanea.Hashcode(field1, field2));
       if (!index13.IsBlank())
         index13.Insert(index, Miscellanea.Hashcode(field1, field3));
@@ -261,70 +262,6 @@ namespace CellLang {
         }
       }
     }
-
-    // public void Delete12(uint field1, uint field2) {
-    //   uint hashcode = Miscellanea.Hashcode(field1, field2);
-    //   for (uint idx = index12.Head(hashcode) ; idx != Tuple.Empty ; idx = index12.Next(idx)) {
-    //     Tuple tuple = tuples[idx];
-    //     if (tuple.field1OrNext == field1 & tuple.field2OrEmptyMarker == field2)
-    //       DeleteAt(idx, Miscellanea.Hashcode(tuple.field1OrNext, tuple.field2OrEmptyMarker, tuple.field3));
-    //   }
-    // }
-
-    // public void Delete13(uint field1, uint field3) {
-    //   uint hashcode = Miscellanea.Hashcode(field1, field3);
-    //   if (index13.IsBlank())
-    //     BuildIndex13();
-    //   for (uint idx = index13.Head(hashcode) ; idx != Tuple.Empty ; idx = index13.Next(idx)) {
-    //     Tuple tuple = tuples[idx];
-    //     if (tuple.field1OrNext == field1 & tuple.field3 == field3)
-    //       DeleteAt(idx, Miscellanea.Hashcode(tuple.field1OrNext, tuple.field2OrEmptyMarker, tuple.field3));
-    //  }
-    //}
-
-    // public void Delete23(uint field2, uint field3) {
-    //   uint hashcode = Miscellanea.Hashcode(field2, field3);
-    //   if (index23.IsBlank())
-    //     BuildIndex23();
-    //   for (uint idx = index23.Head(hashcode) ; idx != Tuple.Empty ; idx = index23.Next(idx)) {
-    //     Tuple tuple = tuples[idx];
-    //     if (tuple.field2OrEmptyMarker == field2 & tuple.field3 == field3)
-    //       DeleteAt(idx, Miscellanea.Hashcode(tuple.field1OrNext, tuple.field2OrEmptyMarker, tuple.field3));
-    //   }
-    // }
-
-    // public void Delete1(uint field1) {
-    //   uint hashcode = Miscellanea.Hashcode(field1);
-    //   if (index1.IsBlank())
-    //     BuildIndex1();
-    //   for (uint idx = index1.Head(hashcode) ; idx != Tuple.Empty ; idx = index1.Next(idx)) {
-    //     Tuple tuple = tuples[idx];
-    //     if (tuple.field1OrNext == field1)
-    //       DeleteAt(idx, Miscellanea.Hashcode(tuple.field1OrNext, tuple.field2OrEmptyMarker, tuple.field3));
-    //   }
-    // }
-
-    // public void Delete2(uint field2) {
-    //   uint hashcode = Miscellanea.Hashcode(field2);
-    //   if (index2.IsBlank())
-    //     BuildIndex2();
-    //   for (uint idx = index2.Head(hashcode) ; idx != Tuple.Empty ; idx = index2.Next(idx)) {
-    //     Tuple tuple = tuples[idx];
-    //     if (tuple.field2OrEmptyMarker == field2)
-    //       DeleteAt(idx, Miscellanea.Hashcode(tuple.field1OrNext, tuple.field2OrEmptyMarker, tuple.field3));
-    //   }
-    // }
-
-    // public void Delete3(uint field3) {
-    //   uint hashcode = Miscellanea.Hashcode(field3);
-    //   if (index3.IsBlank())
-    //     BuildIndex3();
-    //   for (uint idx = index3.Head(hashcode) ; idx != Tuple.Empty ; idx = index3.Next(idx)) {
-    //     Tuple tuple = tuples[idx];
-    //     if (tuple.field3 == field3)
-    //       DeleteAt(idx, Miscellanea.Hashcode(tuple.field1OrNext, tuple.field2OrEmptyMarker, tuple.field3));
-    //   }
-    // }
 
     public bool Contains(long field1, long field2, long field3) {
       uint hashcode = Miscellanea.Hashcode((uint) field1, (uint) field2, (uint) field3);
@@ -513,9 +450,29 @@ namespace CellLang {
       store3.Release(tuple.field3);
     }
 
-    void BuildIndex13() {
-      index13.Init(IndexInitSize());
+    void BuildIndex123() {
       uint len = (uint) tuples.Length;
+      index123.Init(len);
+      for (uint i=0 ; i < len ; i++) {
+        Tuple tuple = tuples[i];
+        if (tuple.field2OrEmptyMarker != Tuple.Empty)
+          index123.Insert(i, Miscellanea.Hashcode(tuple.field1OrNext, tuple.field2OrEmptyMarker, tuple.field3));
+      }
+    }
+
+    void BuildIndex12() {
+      uint len = (uint) tuples.Length;
+      index12.Init(len);
+      for (uint i=0 ; i < len ; i++) {
+        Tuple tuple = tuples[i];
+        if (tuple.field2OrEmptyMarker != Tuple.Empty)
+          index12.Insert(i, Miscellanea.Hashcode(tuple.field1OrNext, tuple.field2OrEmptyMarker));
+      }
+    }
+
+    void BuildIndex13() {
+      uint len = (uint) tuples.Length;
+      index13.Init(len);
       for (uint i=0 ; i < len ; i++) {
         Tuple tuple = tuples[i];
         if (tuple.field2OrEmptyMarker != Tuple.Empty)
@@ -524,8 +481,8 @@ namespace CellLang {
     }
 
     void BuildIndex23() {
-      index23.Init(IndexInitSize());
       uint len = (uint) tuples.Length;
+      index23.Init(len);
       for (uint i=0 ; i < len ; i++) {
         Tuple tuple = tuples[i];
         if (tuple.field2OrEmptyMarker != Tuple.Empty) {
@@ -536,8 +493,8 @@ namespace CellLang {
     }
 
     void BuildIndex1() {
-      index1.Init(IndexInitSize());
       uint len = (uint) tuples.Length;
+      index1.Init(len);
       for (uint i=0 ; i < len ; i++) {
         Tuple tuple = tuples[i];
         if (tuple.field2OrEmptyMarker != Tuple.Empty)
@@ -546,8 +503,8 @@ namespace CellLang {
     }
 
     void BuildIndex2() {
-      index2.Init(IndexInitSize());
       uint len = (uint) tuples.Length;
+      index2.Init(len);
       for (uint i=0 ; i < len ; i++) {
         Tuple tuple = tuples[i];
         if (tuple.field2OrEmptyMarker != Tuple.Empty)
@@ -556,20 +513,13 @@ namespace CellLang {
     }
 
     void BuildIndex3() {
-      index3.Init(IndexInitSize());
       uint len = (uint) tuples.Length;
+      index3.Init(len);
       for (uint i=0 ; i < len ; i++) {
         Tuple tuple = tuples[i];
         if (tuple.field2OrEmptyMarker != Tuple.Empty)
           index3.Insert(i, Miscellanea.Hashcode(tuple.field3));
       }
-    }
-
-    uint IndexInitSize() {
-      uint size = MinSize;
-      while (size < tuples.Length)
-        size *= 2;
-      return size;
     }
   }
 
