@@ -13,33 +13,33 @@ NeType internal_type(AtomicInterType) =
 
 String input_arg_type(BasicInterType) =
   bool        = "bool ",
-  integer     = "long long ",
+  integer     = "long ",
   float       = "double ",
   symbol      |
   string      |
-  generic     = "const char *";
+  generic     = "string ";
 
 
 String constructor_function(InterType) =
-  bool        = "make_bool",
-  integer     = "make_int",
-  float       = "make_float",
-  symbol      = "extern_str_to_symb",
-  string      = "str_to_obj",
-  generic     = "convert_text";
+  bool        = "SymbObj.Get",
+  integer     = "IntObj.Get",
+  float       = "new FloatObj",
+  symbol      = "Conversions.StringToSymbol",
+  string      = "Conversions.StringToObj",
+  generic     = "Conversions.Parse";
 
 
 String return_value_type(InterType) =
   bool        = "bool ",
-  integer     = "long long ",
+  integer     = "long ",
   float       = "double ",
-  symbol      = "const char *",
-  string      = "std::string ",
-  tuple(ts?)  = "std::tuple<" & append((return_value_type(t) : t <- ts), ", ") & "> ",
+  symbol      = "string ",
+  string      = "string ",
+  tuple(ts?)  = "Tuple<" & append((return_value_type(t) : t <- ts), ", ") & "> ",
   seq(t?)     |
-  set(t?)     = "std::vector<" & return_value_type(t) & "> ",
+  set(t?)     = return_value_type(t) & "[] ",
   tagged(t?)  = if t != :generic then return_value_type(t) else return_value_type(:generic),
-  generic     = "std::unique_ptr<cell::Value> ";
+  generic     = "Value ";
 
 
 String conversion_trait(InterType) =
@@ -56,16 +56,16 @@ String conversion_trait(InterType) =
 
 
 String export_expr(InterType it, String expr) =
-  bool        = "get_bool(" & expr & ")",
-  integer     = "get_int(" & expr & ")",
-  float       = "get_float(" & expr & ")",
-  symbol      = "symb_to_raw_str(" & expr & ")",
-  string      = "export_as_std_string(" & expr & ")",
-  tuple(ts?)  = "make_tuple(" & append((export_expr(t, "at(" & expr & ", " & printed(i) & ")") : t @ i <- ts), ", ") & ")",
+  bool        = expr & ".GetBool()",
+  integer     = expr & ".GetLong()",
+  float       = expr & ".GetFloat()",
+  symbol      = expr & ".ToString()",
+  string      = expr & ".GetString()",
+  tuple(ts?)  = "new Tuple(" & append((export_expr(t, "at(" & expr & ", " & printed(i) & ")") : t @ i <- ts), ", ") & ")",
   seq(t?)     |
-  set(t?)     = "export_as_vector<" & conversion_trait(t) & ">(" & expr & ")",
-  tagged(t?)  = if t != :generic then export_expr(t, "get_inner_obj(" & expr & ")") else export_expr(:generic, expr),
-  generic     = "export_as_value(" & expr & ")";
+  set(t?)     = "Conversions.ToArray<" & conversion_trait(t) & ">(" & expr & ")",
+  tagged(t?)  = if t != :generic then export_expr(t, expr & ".GetInnerObj()") else export_expr(:generic, expr),
+  generic     = "Conversions.ToValue(" & expr & ")";
 
 ////////////////////////////////////////////////////////////////////////////////
 

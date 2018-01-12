@@ -200,6 +200,10 @@ namespace CellLang {
       return SymbTable.Get(id);
     }
 
+    public static SymbObj Get(bool b) {
+      return SymbTable.Get(b ? SymbTable.TrueSymbId : SymbTable.FalseSymbId);
+    }
+
     override public bool IsSymb() {
       return true;
     }

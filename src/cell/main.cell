@@ -24,11 +24,17 @@ Main(String* args) {
     return;
   ;
 
-  cs_code = compile_to_cs(prg, false);
+  cs_code, docs = compile_to_cs(prg, false);
 
   text = append(cs_code, "\n");
   ok = FileWrite("generated.cs", chars(text));
   fail if not ok;
+
+  if docs != ():
+    text = append(docs, "\n");
+    ok = FileWrite("interfaces.txt", chars(text));
+    fail if not ok;
+  ;
 }
 
 

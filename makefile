@@ -77,6 +77,14 @@ chat-server.cs: codegen.exe
 chat-server.exe: chat-server.cs
 	mcs -nowarn:162,168,219,414 chat-server.cs $(RUNTIME-FILES) -out:chat-server.exe
 
+chat-server-mixed.cs: codegen.exe
+	./codegen.exe tests/chat-server-mixed.txt
+	mv generated.cs chat-server-mixed.cs
+	mv interfaces.txt chat-server-interface.cs
+
+chat-server-mixed.exe: chat-server-mixed.cs ../download/examples/chat-server/main.cs $(RUNTIME-FILES)
+	mcs -nowarn:162,168,219,414 chat-server-mixed.cs ../download/examples/chat-server/main.cs $(RUNTIME-FILES) -out:chat-server-mixed.exe
+
 tests/desugar.txt: $(SRC-FILES)
 	cellc -p projects/desugar.txt
 	mv dump-opt-code.txt tests/desugar.txt
@@ -186,5 +194,6 @@ soft-clean:
 	@rm -f test.txt test.cs test.exe test.cpp test
 	@rm -f regression.cs regression.exe
 	@rm -f generated.cpp generated.h
+	@rm -f chat-server-mixed.cs chat-server-interface.cs
 	@rm debug/*
 	@touch debug/stack_trace.txt
