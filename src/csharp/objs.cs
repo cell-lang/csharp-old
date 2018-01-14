@@ -121,6 +121,8 @@ namespace CellLang {
     public virtual int CmpNeTernRel(Obj[] c1, Obj[] c2, Obj[] c3) {throw new NotImplementedException();}
     public virtual int CmpTaggedObj(int tag, Obj obj)             {throw new NotImplementedException();}
 
+    public virtual Value GetValue()                               {throw new NotImplementedException();}
+
     public abstract int Hashcode();
 
     protected abstract int TypeId();
@@ -244,6 +246,10 @@ namespace CellLang {
       return id; //## BAD HASHCODE, IT'S NOT STABLE
     }
 
+    override public Value GetValue() {
+      return new SymbValue(id);
+    }
+
     override protected int TypeId() {
       return 0;
     }
@@ -290,6 +296,10 @@ namespace CellLang {
 
     override public int Hashcode() {
       return ((int) (value >> 32)) ^ ((int) value);
+    }
+
+    override public Value GetValue() {
+      return new IntValue(value);
     }
 
     override protected int TypeId() {
@@ -340,6 +350,10 @@ namespace CellLang {
     override public int Hashcode() {
       long longVal = BitConverter.DoubleToInt64Bits(value);
       return ((int) (longVal >> 32)) ^ ((int) longVal);
+    }
+
+    override public Value GetValue() {
+      return new FloatValue(value);
     }
 
     override protected int TypeId() {
@@ -458,6 +472,10 @@ namespace CellLang {
       return 0; //## FIND BETTER VALUE
     }
 
+    override public Value GetValue() {
+      return new EmptyRelValue();
+    }
+
     override protected int TypeId() {
       return 4;
     }
@@ -522,6 +540,14 @@ namespace CellLang {
       for (int i=0 ; i < elts.Length ; i++)
         hashcodesSum += elts[i].Hashcode();
       return hashcodesSum ^ elts.Length;
+    }
+
+    override public Value GetValue() {
+      int size = elts.Length;
+      Value[] values = new Value[size];
+      for (int i=0 ; i < size ; i++)
+        values[i] = elts[i].GetValue();
+      return new NeSetValue(values);
     }
 
     override protected int TypeId() {
@@ -660,6 +686,16 @@ namespace CellLang {
       for (int i=0 ; i < col1.Length ; i++)
         hashcodesSum += col1[i].Hashcode() + col2[i].Hashcode();
       return hashcodesSum ^ col1.Length;
+    }
+
+    override public Value GetValue() {
+      int size = col1.Length;
+      Value[,] values = new Value[size, 2];
+      for (int i=0 ; i < size ; i++) {
+        values[i, 0] = col1[i].GetValue();
+        values[i, 1] = col2[i].GetValue();
+      }
+      return new NeBinRelValue(values, isMap);
     }
 
     override protected int TypeId() {
@@ -819,6 +855,17 @@ namespace CellLang {
       return hashcodesSum ^ col1.Length;
     }
 
+    override public Value GetValue() {
+      int size = col1.Length;
+      Value[,] values = new Value[size, 3];
+      for (int i=0 ; i < size ; i++) {
+        values[i, 0] = col1[i].GetValue();
+        values[i, 1] = col2[i].GetValue();
+        values[i, 2] = col3[i].GetValue();
+      }
+      return new NeTernRelValue(values);
+    }
+
     override protected int TypeId() {
       return 7;
     }
@@ -944,6 +991,10 @@ namespace CellLang {
 
     override public int Hashcode() {
       return tag ^ obj.Hashcode();
+    }
+
+    override public Value GetValue() {
+      return new TaggedValue(tag, obj.GetValue());
     }
 
     override protected int TypeId() {

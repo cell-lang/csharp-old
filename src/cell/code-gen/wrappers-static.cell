@@ -118,8 +118,24 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     //   docs = (docs | "  bool lookup_" & base_name & "(" & in_type & ", " & out_type & "&);");
     // ;
 
-    sgn = "public Tuple<" & append(ret_types, ", ") & ">[] get_" & base_name & "()";
-    code = (code | "", sgn & " {", "  throw new NotImplementedException();", "}");
+    types_str = append(ret_types, ", ");
+    sgn = "public Tuple<" & types_str & ">[] get_" & base_name & "()";
+    body = (
+      "int size = automaton." & rel_name & ".Size();",
+      "Tuple<" & types_str & ">[] copy = new Tuple<" & types_str & ">[size];",
+      "BinaryTable.Iter it = automaton." & rel_name & ".GetIter();",
+      "int next = 0;",
+      "while (!it.Done()) {",
+      "  " & ret_types(0) & "field1 = " & export_expr(input_types(0), "automaton." & rel_name & ".store1.LookupSurrogate(it.GetField1())") & ";",
+      "  " & ret_types(1) & "field2 = " & export_expr(input_types(1), "automaton." & rel_name & ".store2.LookupSurrogate(it.GetField2())") & ";",
+      "  copy[next++] = new Tuple<" & types_str & ">(field1, field2);",
+      "  it.Next();",
+      "}",
+      "Miscellanea.Assert(next == size);",
+      "return copy;"
+    );
+
+    code = (code | "", sgn & " {") & indent_lines(body) & ("}");
     docs = (docs | sgn & ";");
 
     return (code, docs);

@@ -702,7 +702,7 @@ namespace CellLang {
     ////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////
 
-    static bool parse(byte[] text, out Obj var, out long error_offset) {
+    public static bool parse(byte[] text, out Obj var, out long error_offset) {
       uint size = (uint) text.Length;
 
       long count = tokenize(text, size, null);

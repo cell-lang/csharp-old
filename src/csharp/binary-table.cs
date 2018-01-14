@@ -210,6 +210,10 @@ namespace CellLang {
       this.store2 = store2;
     }
 
+    public int Size() {
+      return table1.count;
+    }
+
     public bool Contains(long surr1, long surr2) {
       return table1.Contains((uint) surr1, (uint) surr2);
     }

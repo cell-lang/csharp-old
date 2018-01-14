@@ -5,7 +5,7 @@
   c_code = ("const ushort " & symb_idx_name(s) & " = " & printed(i) & ";" : s @ i <- symbs) & 4 * ("");
 
   symb_strs  = ("  \"" & _str_(bare_obj(s)) & "\"," : s <- symbs);
-  c_code     = c_code & ("static string[] EmbeddedSymbols = {") & symb_strs & ("};") & 4 * ("");
+  c_code     = c_code & ("public static string[] EmbeddedSymbols = {") & symb_strs & ("};") & 4 * ("");
 
   cls_defs = cls_defs(prg);
 
@@ -90,7 +90,6 @@
 
     indent_lines(indent_lines(c_code & proc_code & int_seqs_defs & ("", "") & wrappers)),
 
-    indent_lines(indent_lines(runtime_callbacks(|symbs|))),
     indent_lines(indent_lines(c_main_fn)) if (p <- prg.procs : p.name == proc_symbol(:main)),
 
     ("  }", "}", ""),
@@ -710,28 +709,10 @@ String native_new_call(Encodable res, String obj_type, Encodable* args) =
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-String* runtime_callbacks(Nat symbs_count) = ();
-// String* runtime_callbacks(Nat symbs_count) = (
-//   "",
-//   "const char *symb_repr(uint16 idx) {",
-//   "  return generated::map_symb_to_str[idx];",
-//   "}",
-//   "",
-//   "uint32 embedded_symbs_count() {",
-//   "  return " & printed(symbs_count) & ";",
-//   "}"
-// );
-
-
 String* c_main_fn = (
   "",
   "",
   "static int Main(string[] args) {",
-  "  for (int i=0 ; i < EmbeddedSymbols.Length ; i++) {",
-  "    int idx = SymbTable.StrToIdx(EmbeddedSymbols[i]);",
-  "    Miscellanea.Assert(idx == i);", //## REMOVE ONCE DONE
-  "  }",
-
   "  Obj[] cell_args = new Obj[args.Length];",
   "  for (int i=0 ; i < args.Length ; i++)",
   "    cell_args[i] = Miscellanea.StrToObj(args[i]);",

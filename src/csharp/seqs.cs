@@ -118,6 +118,14 @@ namespace CellLang {
       return hashcodesSum ^ length;
     }
 
+    override public Value GetValue() {
+      Value[] values = new Value[length];
+      int offset = Offset();
+      for (int i=0 ; i < length ; i++)
+        values[i] = items[offset+i].GetValue();
+      return new SeqValue(values);
+    }
+
     override protected int TypeId() {
       return 3;
     }

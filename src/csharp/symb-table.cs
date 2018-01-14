@@ -36,6 +36,11 @@ namespace CellLang {
         symbMap.Add(str, i);
         symbObjs.Add(new SymbObj(i));
       }
+
+      for (int i=0 ; i < Generated.EmbeddedSymbols.Length ; i++) {
+        int idx = SymbTable.StrToIdx(Generated.EmbeddedSymbols[i]);
+        Miscellanea.Assert(idx == i);
+      }
     }
 
     internal static SymbObj Get(int id) {
