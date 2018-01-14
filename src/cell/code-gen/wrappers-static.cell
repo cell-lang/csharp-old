@@ -98,25 +98,34 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     code = ("", "public bool in_" & base_name & "(" & append(args_decls, ", ") & ") {", body_instr, "}");
     docs = ("", "bool in_" & base_name & "(" & append(args_types, ", ") & ");");
 
-    // if maybe_key_col != nothing:
-    //   key_col = value(maybe_key_col);
-    //   assert key_col == 0;
-    //   non_key_col = match (key_col) 0 = 1, 1 = 0;
-    //   key_col, non_key_col = (non_key_col, key_col) if flipped;
-    //   in_type = args_types(key_col);
-    //   out_type = ret_types(non_key_col);
+    if maybe_key_col != nothing:
+      key_col = value(maybe_key_col);
+      assert key_col == 0;
+      non_key_col = match (key_col) 0 = 1, 1 = 0;
+      key_col, non_key_col = (non_key_col, key_col) if flipped;
+      in_type = args_types(key_col);
+      out_type = ret_types(non_key_col);
 
-    //   impls = impls & (
-    //     "",
-    //     "bool " & db_class_name & "::lookup_" & base_name & "(" & in_type & "in_arg, " & out_type & "&out_arg) {",
-    //     ptr_def_instr,
-    //     "  return lookup_by_left_col<" & conv_traits(non_key_col) & ">(self->" &
-    //       rel_name & ", " & vs_names & ", " & ctor_fns(key_col) & "(in_arg), out_arg);",
-    //     "}"
-    //   );
+      code = code & (
+        "",
+        "bool lookup_" & base_name & "(" & in_type & "inArg, out " & out_type & "outArg) {",
+        "  int surr1 = automaton." & rel_name & ".store1.LookupValue(" & ctor_fns(key_col) & "(inArg));",
+        "  if (int == -1)",
+        "    return false;",
+        "  BinaryTable.Iter it = automaton.GetIter1((uint) surr1);",
+        "  if (it.Done())",
+        "    return false;",
+        "  Miscellanea.Assert(it.GetField1() == surr1);",
+        "  uint surr2 = it.GetField2();",
+        "  outArg = " & export_expr(output_types(non_key_col), "automaton.rel_0_B.store2.LookupSurrogate(surr2)") & ";",
+        "  it.Next();",
+        "  Miscellanea.Assert(it.Done());",
+        "  return true;",
+        "}"
+      );
 
-    //   docs = (docs | "  bool lookup_" & base_name & "(" & in_type & ", " & out_type & "&);");
-    // ;
+      docs = (docs | "bool lookup_" & base_name & "(" & in_type & ", out " & out_type & ");");
+    ;
 
     types_str = append(ret_types, ", ");
     sgn = "public Tuple<" & types_str & ">[] get_" & base_name & "()";
