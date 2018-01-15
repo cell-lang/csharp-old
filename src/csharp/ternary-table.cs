@@ -180,6 +180,10 @@ namespace CellLang {
       index12.Init(MinSize);
     }
 
+    public int Size() {
+      return (int) count;
+    }
+
     public void Insert(uint field1, uint field2, uint field3) {
       if (Contains(field1, field2, field3))
         return;

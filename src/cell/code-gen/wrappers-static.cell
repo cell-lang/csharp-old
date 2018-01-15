@@ -168,33 +168,56 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     input_types = (input_interface_type(t) : t <- types);
     output_types = (output_interface_type(t) : t <- types);
 
-    ret_types = append((return_value_type(t) : t <- output_types), ", ");
+    ret_types = (return_value_type(t) : t <- output_types);
+    ret_types_str = append(ret_types, ", ");
+
     args_types = (input_arg_type(t) : t <- input_types);
     ctor_fns = (constructor_function(it) : it <- input_types);
+
+    rel_name = to_c_var_decl_name(relvar);
     base_name = external_name(relvar);
 
     conv_traits = append((conversion_trait(it) : it <- output_types), ", ");
     args_decls = append((t & "arg" & printed(i) : t @ i <- args_types), ", ");
-    fixed_args = append(("self->" & to_c_var_decl_name(vs_id) : vs_id <- (relvar) & value_store_ids), ", ");
     cols_perm_args = append((printed(i) : i <- rev_perm), ", ");
-    args_convs = append((ctor_fns(i) & "(arg" & printed(i) & ")" : i <- applied_perm), ", ");
+    args_convs = (ctor_fns(i) & "(arg" & printed(i) & ")" : i <- applied_perm);
 
     code = (
       "",
       "bool in_" & base_name & "(" & args_decls & ") {",
-      ptr_def_instr,
-      "  return table_contains(" & fixed_args & ", " & args_convs & ");",
+      "  int surr1 = automaton." & rel_name & ".store1.LookupValue(" & args_convs(0) & ");",
+      "  if (surr1 == -1)",
+      "    return false;",
+      "  int surr2 = automaton." & rel_name & ".store2.LookupValue(" & args_convs(1) & ");",
+      "  if (surr2 == -1)",
+      "    return false;",
+      "  int surr3 = automaton." & rel_name & ".store3.LookupValue(" & args_convs(2) & ");",
+      "  if (surr3 == -1)",
+      "    return false;",
+      "  return automaton." & rel_name & ".Contains((uint) surr1, (uint) surr2, (uint) surr3);",
       "}",
       "",
-      "std::vector<std::tuple<" & ret_types & "> > " & db_class_name & "::get_" & base_name & "() {",
-      ptr_def_instr,
-      "  return get_ternary_rel<" & conv_traits & ">(" & fixed_args & ", " & cols_perm_args & ");",
+      "Tuple<" & ret_types_str & ">[] " & "get_" & base_name & "() {",
+      "  int size = automaton." & rel_name & ".Size();",
+      "  Tuple<" & ret_types_str & ">[] copy = new Tuple<" & ret_types_str & ">[size];",
+      "  TernaryTable.Iter it = automaton." & rel_name & ".GetIter();",
+      "  int next = 0;",
+      "  while (!it.Done()) {",
+      "    " & ret_types(0) & "field1 = " & export_expr(input_types(0), "automaton." & rel_name & ".store1.LookupSurrogate(it.GetField1())") & ";",
+      "    " & ret_types(1) & "field2 = " & export_expr(input_types(1), "automaton." & rel_name & ".store2.LookupSurrogate(it.GetField2())") & ";",
+      "    " & ret_types(2) & "field3 = " & export_expr(input_types(2), "automaton." & rel_name & ".store3.LookupSurrogate(it.GetField3())") & ";",
+      "    copy[next++] = new Tuple<" & ret_types_str & ">(field1, field2, field3);",
+      "    it.Next();",
+      " }",
+      "  Miscellanea.Assert(next == size);",
+      "  return copy;",
       "}"
     );
 
     docs = (
-      "  bool in_" & base_name & "(" & append(args_types, ", ") & ");",
-      "  std::vector<std::tuple<" & ret_types & "> > get_" & base_name & "();"
+      "",
+      "bool in_" & base_name & "(" & args_decls & ") {",
+      "Tuple<" & ret_types_str & ">[] " & "get_" & base_name & "()"
     );
 
     return (code, docs);
