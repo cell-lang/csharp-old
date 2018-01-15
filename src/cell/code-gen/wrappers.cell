@@ -26,7 +26,7 @@ String constructor_function(InterType) =
   float       = "new FloatObj",
   symbol      = "Conversions.StringToSymbol",
   string      = "Conversions.StringToObj",
-  generic     = "Conversions.Parse";
+  generic     = "Conversions.ConvertText";
 
 
 String return_value_type(InterType) =
@@ -65,7 +65,7 @@ String export_expr(InterType it, String expr) =
   seq(t?)     |
   set(t?)     = "Conversions.ToArray<" & conversion_trait(t) & ">(" & expr & ")",
   tagged(t?)  = if t != :generic then export_expr(t, expr & ".GetInnerObj()") else export_expr(:generic, expr),
-  generic     = "Conversions.ToValue(" & expr & ")";
+  generic     = "Conversions.ExportAsValue(" & expr & ")";
 
 ////////////////////////////////////////////////////////////////////////////////
 

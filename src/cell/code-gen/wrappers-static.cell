@@ -44,28 +44,35 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     ret_elem_type = return_value_type(output_type);
     arg_type = input_arg_type(input_type);
     ctor_fn = constructor_function(input_type);
-    conv_trait = conversion_trait(output_type);
 
-    decls = (
+    code = (
       "",
-      "  bool in_" & base_name & "(" & arg_type & ");",
-      "  std::vector<" & ret_elem_type & "> get_" & base_name & "();"
-    );
-
-    impls = (
-      "",
-      "bool " & db_class_name & "::in_" & base_name & "(" & arg_type & " value) {",
-      ptr_def_instr,
-      "  return table_contains(self->" & rel_name & ", self->" & val_store_name & ", " & ctor_fn & "(value));",
+      "bool in_" & base_name & "(" & arg_type & " value) {",
+      "  int surr = automaton." & rel_name & ".store.LookupValue(" & ctor_fn & "(value));",
+      "  return surr != -1 && automaton." & rel_name & ".Contains((uint) surr);",
       "}",
       "",
-      "std::vector<" & ret_elem_type & "> " & db_class_name & "::get_" & base_name & "() {",
-      ptr_def_instr,
-      "  return get_unary_rel<" & conv_trait & ">(self->" & rel_name & ", self->" & val_store_name & ");",
+      ret_elem_type & "[] " & "get_" & base_name & "() {",
+      "  uint size = automaton." & rel_name & ".Size();",
+      "  " & ret_elem_type & "[] copy = new " & ret_elem_type & "[size];",
+      "  UnaryTable.Iter it = automaton." & rel_name & ".GetIter();",
+      "  int next = 0;",
+      "  while (!it.Done()) {",
+      "    copy[next++] = " & export_expr(output_type, "automaton." & rel_name & ".store.LookupSurrogate(it.Get())") & ";",
+      "    it.Next();",
+      "  }",
+      "  Miscellanea.Assert(next == size);",
+      "  return copy;",
       "}"
     );
 
-    return (decls, impls);
+    docs = (
+      "",
+      "bool in_" & base_name & "(" & arg_type & ");",
+      ret_elem_type & "[] get_" & base_name & "();"
+    );
+
+    return (code, docs);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -90,7 +97,6 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     ret_types = (return_value_type(t) : t <- output_types);
     args_types = (input_arg_type(t) : t <- input_types);
     args_decls = (t & "arg" & printed(i) : t @ i <- args_types);
-    conv_traits = (conversion_trait(it) : it <- output_types);
     ctor_fns = (constructor_function(it) : it <- input_types);
     args_convs = flip_pair_if((f & "(arg" & printed(i) & ")" : f @ i <- ctor_fns), flipped);
 
@@ -108,23 +114,22 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
       code = code & (
         "",
-        "bool lookup_" & base_name & "(" & in_type & "inArg, out " & out_type & "outArg) {",
-        "  int surr1 = automaton." & rel_name & ".store1.LookupValue(" & ctor_fns(key_col) & "(inArg));",
-        "  if (int == -1)",
-        "    return false;",
-        "  BinaryTable.Iter it = automaton.GetIter1((uint) surr1);",
+        out_type & " lookup_" & base_name & "(" & in_type & "key) {",
+        "  int surr1 = automaton." & rel_name & ".store1.LookupValue(" & ctor_fns(key_col) & "(key));",
+        "  if (surr1 == -1)",
+        "    throw new KeyNotFoundException();",
+        "  BinaryTable.Iter it = automaton." & rel_name & ".GetIter1((uint) surr1);",
         "  if (it.Done())",
-        "    return false;",
+        "    throw new KeyNotFoundException();",
         "  Miscellanea.Assert(it.GetField1() == surr1);",
         "  uint surr2 = it.GetField2();",
-        "  outArg = " & export_expr(output_types(non_key_col), "automaton.rel_0_B.store2.LookupSurrogate(surr2)") & ";",
         "  it.Next();",
         "  Miscellanea.Assert(it.Done());",
-        "  return true;",
+        "  return " & export_expr(output_types(non_key_col), "automaton." & rel_name & ".store2.LookupSurrogate(surr2)") & ";",
         "}"
       );
 
-      docs = (docs | "bool lookup_" & base_name & "(" & in_type & ", out " & out_type & ");");
+      docs = (docs | out_type & " lookup_" & base_name & "(" & in_type & "); // Throws KeyNotFoundException() if no corresponding tuple is found");
     ;
 
     types_str = append(ret_types, ", ");

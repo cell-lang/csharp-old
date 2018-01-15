@@ -41,6 +41,10 @@ namespace CellLang {
       this.store = store;
     }
 
+    public uint Size() {
+      return count;
+    }
+
     public bool Contains(uint surr) {
       uint widx = surr / 64;
       return widx < bitmap.Length && ((bitmap[widx] >> (int) (surr % 64) & 1) != 0);
