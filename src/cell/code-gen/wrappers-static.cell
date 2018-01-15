@@ -3,12 +3,6 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     append((sentence_case(bare_id(v)) : v <- (db_var_chain | var)), "_");
 
   String db_class_name = upper_camel_case(bare_id(root_block_name));
-
-  String ptr_def_instr {
-    expr = "(" & to_c_name(root_block_name) & " *) ptr";
-    expr = "&(" & expr & ")->" & append((to_c_var_decl_name(v) : v <- db_var_chain), ".") if db_var_chain != ();
-    return "  " & to_c_name(block_name) & " *self = " & expr & ";";
-  }
 }
 
 
@@ -20,17 +14,14 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     var_name = to_c_var_decl_name(var);
     ret_type = return_value_type(inter_type);
 
-    decl = "  " & ret_type & meth_name & "();";
-
-    impl = (
+    code = (
       "",
-      ret_type & db_class_name & "::" & meth_name & "() {",
-      ptr_def_instr,
-      "  return " & export_expr(inter_type, "self->" & var_name) & ";",
+      ret_type & meth_name & "() {",
+      "  return " & export_expr(inter_type, "automaton." & var_name) & ";",
       "}"
     );
 
-    return ((decl), impl);
+    return (code, (ret_type & meth_name & "();"));
   }
 
   //////////////////////////////////////////////////////////////////////////////
