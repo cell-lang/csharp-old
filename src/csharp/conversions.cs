@@ -33,29 +33,76 @@ namespace CellLang {
 
     ////////////////////////////////////////////////////////////////////////////
 
-
-    public static bool[] ToBoolArray(Obj obj, bool stripTag) {
-      throw new NotImplementedException();
+    public static bool[] ToBoolArray(Obj obj) {
+      int size = obj.GetSize();
+      bool[] array = new bool[size];
+      SeqOrSetIter it = obj.GetSeqOrSetIter();
+      int idx = 0;
+      while (!it.Done()) {
+        array[idx++] = it.Get().GetBool();
+        it.Next();
+      }
+      return array;
     }
 
-    public static long[] ToLongArray(Obj obj, bool stripTag) {
-      throw new NotImplementedException();
+    public static long[] ToLongArray(Obj obj) {
+      int size = obj.GetSize();
+      long[] array = new long[size];
+      SeqOrSetIter it = obj.GetSeqOrSetIter();
+      int idx = 0;
+      while (!it.Done()) {
+        array[idx++] = it.Get().GetLong();
+        it.Next();
+      }
+      return array;
     }
 
-    public static double[] ToDoubleArray(Obj obj, bool stripTag) {
-      throw new NotImplementedException();
+    public static double[] ToDoubleArray(Obj obj) {
+      int size = obj.GetSize();
+      double[] array = new double[size];
+      SeqOrSetIter it = obj.GetSeqOrSetIter();
+      int idx = 0;
+      while (!it.Done()) {
+        array[idx++] = it.Get().GetDouble();
+        it.Next();
+      }
+      return array;
     }
 
-    public static string[] ToSymbArray(Obj obj, bool stripTag) {
-      throw new NotImplementedException();
+    public static string[] ToSymbArray(Obj obj) {
+      int size = obj.GetSize();
+      string[] array = new string[size];
+      SeqOrSetIter it = obj.GetSeqOrSetIter();
+      int idx = 0;
+      while (!it.Done()) {
+        array[idx++] = it.Get().ToString();
+        it.Next();
+      }
+      return array;
     }
 
-    public static string[] ToStringArray(Obj obj, bool stripTag) {
-      throw new NotImplementedException();
+    public static string[] ToStringArray(Obj obj) {
+      int size = obj.GetSize();
+      string[] array = new string[size];
+      SeqOrSetIter it = obj.GetSeqOrSetIter();
+      int idx = 0;
+      while (!it.Done()) {
+        array[idx++] = it.Get().GetString();
+        it.Next();
+      }
+      return array;
     }
 
     public static Value[] ToValueArray(Obj obj) {
-      throw new NotImplementedException();
+      int size = obj.GetSize();
+      Value[] array = new Value[size];
+      SeqOrSetIter it = obj.GetSeqOrSetIter();
+      int idx = 0;
+      while (!it.Done()) {
+        array[idx++] = it.Get().GetValue();
+        it.Next();
+      }
+      return array;
     }
   }
 }

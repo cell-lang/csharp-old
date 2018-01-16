@@ -36,7 +36,7 @@ namespace CellLang {
     public virtual int    GetSymbId()                             {throw new NotImplementedException();}
     public virtual bool   GetBool()                               {throw new NotImplementedException();}
     public virtual long   GetLong()                               {throw new NotImplementedException();}
-    public virtual double GetFloat()                              {throw new NotImplementedException();}
+    public virtual double GetDouble()                             {throw new NotImplementedException();}
     public virtual int    GetSize()                               {throw new NotImplementedException();}
     public virtual Obj    GetItem(long i)                         {throw new NotImplementedException();}
     public virtual int    GetTagId()                              {throw new NotImplementedException();}
@@ -335,7 +335,7 @@ namespace CellLang {
       return this.value == value;
     }
 
-    override public double GetFloat() {
+    override public double GetDouble() {
       return value;
     }
 
@@ -361,7 +361,7 @@ namespace CellLang {
     }
 
     override protected int InternalCmp(Obj other) {
-      double other_value = other.GetFloat();
+      double other_value = other.GetDouble();
       return value == other_value ? 0 : (value < other_value ? 1 : -1);
     }
   }

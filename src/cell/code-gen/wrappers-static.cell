@@ -15,7 +15,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     ret_type = return_value_type(inter_type);
 
     body = export_code(inter_type, "automaton." & var_name, "return ");
-    code = ("", ret_type & meth_name & "() {") & indent_lines(body) & ("}");
+    code = ("", ret_type & " " & meth_name & "() {") & indent_lines(body) & ("}");
 
     return (code, (ret_type & meth_name & "();"));
   }
@@ -46,7 +46,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
       "  int next = 0;",
       "  while (!it.Done()) {"
     ) & indent_lines(indent_lines(
-      export_code(output_type, "automaton." & rel_name & ".store.LookupSurrogate(it.Get())", "copy[next++]")
+      export_code(output_type, "automaton." & rel_name & ".store.LookupSurrogate(it.Get())", "copy[next++] = ")
     )) & (
       "    it.Next();",
       "  }",
@@ -134,11 +134,11 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     ) & export_code(
       input_types(0),
       "automaton." & rel_name & ".store1.LookupSurrogate(it.GetField1())",
-      "  " & ret_types(0) & "field1 = "
+      "  " & ret_types(0) & " field1 = "
     ) & export_code(
       input_types(1),
       "automaton." & rel_name & ".store2.LookupSurrogate(it.GetField2())",
-      "  " & ret_types(1) & "field2 = "
+      "  " & ret_types(1) & " field2 = "
     ) & (
       "  copy[next++] = new Tuple<" & types_str & ">(field1, field2);",
       "  it.Next();",
@@ -203,15 +203,15 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
       ) & export_code(
         input_types(0),
         "automaton." & rel_name & ".store1.LookupSurrogate(it.GetField1())",
-        "    " & ret_types(0) & "field1 = "
+        "    " & ret_types(0) & " field1 = "
       ) & export_code(
         input_types(1),
         "automaton." & rel_name & ".store2.LookupSurrogate(it.GetField2())",
-        "    " & ret_types(1) & "field2 = "
+        "    " & ret_types(1) & " field2 = "
       ) & export_code(
         input_types(2),
         "automaton." & rel_name & ".store3.LookupSurrogate(it.GetField3())",
-        "    " & ret_types(2) & "field3 = "
+        "    " & ret_types(2) & " field3 = "
       ) & (
       "    copy[next++] = new Tuple<" & ret_types_str & ">(field1, field2, field3);",
       "    it.Next();",

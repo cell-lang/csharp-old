@@ -30,22 +30,22 @@ String constructor_function(InterType) =
 
 
 String return_value_type(InterType) =
-  bool        = "bool ",
-  integer     = "long ",
-  float       = "double ",
-  symbol      = "string ",
-  string      = "string ",
-  tuple(ts?)  = "Tuple<" & append((return_value_type(t) : t <- ts), ", ") & "> ",
+  bool        = "bool",
+  integer     = "long",
+  float       = "double",
+  symbol      = "string",
+  string      = "string",
+  tuple(ts?)  = "Tuple<" & append((return_value_type(t) : t <- ts), ", ") & ">",
   seq(t?)     |
-  set(t?)     = return_value_type(t) & "[] ",
+  set(t?)     = return_value_type(t) & "[]",
   tagged(t?)  = if t != :generic then return_value_type(t) else return_value_type(:generic),
-  generic     = "Value ";
+  generic     = "Value";
 
 
 String* export_code(InterType it, String expr, String action_prefix) =
   bool        = (action_prefix & expr & ".GetBool();"),
   integer     = (action_prefix & expr & ".GetLong();"),
-  float       = (action_prefix & expr & ".GetFloat();"),
+  float       = (action_prefix & expr & ".GetDouble();"),
   symbol      = (action_prefix & expr & ".ToString();"),
   string      = (action_prefix & expr & ".GetString();"),
   tuple(ts?)  = tuple_export_code(ts, expr, action_prefix),
@@ -54,7 +54,7 @@ String* export_code(InterType it, String expr, String action_prefix) =
   tagged(t?)  = if t != :generic
                 then export_code(t, expr & ".GetInnerObj()", action_prefix)
                 else export_code(:generic, expr, action_prefix),
-  generic     = (action_prefix & " = " & "Conversions.ExportAsValue(" & expr & ")");
+  generic     = (action_prefix & "Conversions.ExportAsValue(" & expr & ");");
 
 
 String* tuple_export_code(InterType+ types, String expr, String action_prefix) {
@@ -63,7 +63,57 @@ String* tuple_export_code(InterType+ types, String expr, String action_prefix) {
 
 
 String* array_export_code(InterType elem_type, String expr, String action_prefix) {
-  fail;
+  return match (elem_type)
+    bool        = (action_prefix & "Conversions.ToBoolArray(" & expr & ");"),
+    integer     = (action_prefix & "Conversions.ToLongArray(" & expr & ");"),
+    float       = (action_prefix & "Conversions.ToDoubleArray(" & expr & ");"),
+    symbol      = (action_prefix & "Conversions.ToSymbolArray(" & expr & ");"),
+    string      = (action_prefix & "Conversions.ToStringArray(" & expr & ");"),
+    generic     = (action_prefix & "Conversions.ToValueArray(" & expr & ");"),
+    tuple(ts?)  = array_of_tuples_export_code(ts, expr, action_prefix),
+    seq(t?)     |
+    set(t?)     = array_of_array_export_code(elem_type, expr, action_prefix),
+    tagged(t?)  = if t != :generic
+                    then array_of_tagged_values_export_code(t, expr, action_prefix)
+                    else array_export_code(:generic, expr, action_prefix);
+
+
+  String* array_of_array_export_code(<seq(InterType), set(InterType)> elem_type, String expr, String action_prefix) {
+    unique_id = printed(_counter_(:any_value_will_do));
+    expr_var = "expr" & unique_id;
+    size_var = "size" & unique_id;
+    array_var = "array" & unique_id;
+    iter_var = "iter" & unique_id;
+    idx_var = "idx" & unique_id;
+    array_of_arrays_type = return_value_type(untag(elem_type));
+    return (
+      "Obj " & expr_var & " = " & expr & ";",
+      "int " & size_var & " = " & expr_var & ".GetSize();",
+      array_of_arrays_type & "[][] " & array_var & " = new " & array_new_expr(elem_type, size_var) & ";",
+      "SeqOrSetIter " & iter_var & " = " & expr_var & ".GetSeqOrSetIter();",
+      "int " & idx_var & " = 0;",
+      "while (!" & iter_var & ".Done()) {"
+    ) & indent_lines(export_code(elem_type, iter_var & ".Get()", array_var & "[" & idx_var & "++] = ")) & (
+      "  " & iter_var & ".Next();",
+      "}",
+      "Miscellanea.Assert(" & idx_var & " == " & size_var & ");",
+      action_prefix & array_var & ";"
+    );
+  }
+
+
+  String* array_of_tuples_export_code(InterType+ types, String expr, String action_prefix) {
+    fail;
+  }
+
+
+  String* array_of_tagged_values_export_code(InterType type, String expr, String action_prefix) {
+    fail;
+  }
+
+  String array_new_expr(InterType elem_type, String size_expr) =
+    seq(t?) | set(t?) = array_new_expr(t, size_expr) & "[]",
+    _                 = return_value_type(elem_type) & "[" & size_expr & "]";
 }
 
 
@@ -83,7 +133,7 @@ String* array_export_code(InterType elem_type, String expr, String action_prefix
 // String export_expr(InterType it, String expr) =
 //   bool        = expr & ".GetBool()",
 //   integer     = expr & ".GetLong()",
-//   float       = expr & ".GetFloat()",
+//   float       = expr & ".GetDouble()",
 //   symbol      = expr & ".ToString()",
 //   string      = expr & ".GetString()",
 //   tuple(ts?)  = "new Tuple(" & append((export_expr(t, "at(" & expr & ", " & printed(i) & ")") : t @ i <- ts), ", ") & ")",

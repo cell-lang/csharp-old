@@ -23,7 +23,7 @@ String to_c_expr(NatObjOp expr) =
   get_curr_arg()      = get_curr_arg_to_c_expr(expr.var, expr.arg);
 
 
-String unboxed_float(AtomicExpr e) = to_c_expr(e, true) & ".GetFloat()";
+String unboxed_float(AtomicExpr e) = to_c_expr(e, true) & ".GetDouble()";
 
 String to_c_expr(FloatExpr expr) =
   float_lit()           = to_c_float_literal(expr),
@@ -192,7 +192,7 @@ String to_nary_op(String op, AnyTypeExpr+ exprs, Bool parentesised) {
 }
 
 String to_float_op(String op, ObjExpr expr1, ObjExpr expr2, Bool parentesised) {
-  expr = to_c_expr(expr1, false) & ".GetFloat() " & op & to_c_expr(expr2, false) & ".GetFloat()";
+  expr = to_c_expr(expr1, false) & ".GetDouble() " & op & to_c_expr(expr2, false) & ".GetDouble()";
   expr = "(" & expr & ")" if parentesised;
   return expr;
 }
