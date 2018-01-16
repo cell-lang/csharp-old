@@ -58,7 +58,19 @@ String* export_code(InterType it, String expr, String action_prefix) =
 
 
 String* tuple_export_code(InterType+ types, String expr, String action_prefix) {
-  fail;
+  unique_id = printed(_counter_(:any_value_will_do));
+  expr_var = "expr" & unique_id;
+
+  field_vars = ("field" & printed(i) & "_" & unique_id : t @ i <- types);
+  fields_code = join((
+    export_code(t, expr & ".GetItem(" & printed(i) & ")", return_value_type(t) & " " & field_vars(i) & " = ")
+    : t @ i <- types
+  ));
+
+  tuple_instr = action_prefix & "new Tuple<" & append((return_value_type(t) : t <- types), ", ") &
+                ">(" & append(field_vars, ", ") & ");";
+
+  return (fields_code | tuple_instr);
 }
 
 
