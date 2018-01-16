@@ -42,30 +42,79 @@ String return_value_type(InterType) =
   generic     = "Value ";
 
 
-String conversion_trait(InterType) =
-  bool        = "bool_conv",
-  integer     = "int_conv",
-  float       = "float_conv",
-  symbol      = "symb_conv",
-  string      = "string_conv",
-  tuple(ts?)  = "tuple_" & printed(|ts|) & "_conv<" & append((conversion_trait(t) : t <- ts), ", ") & "> ",
+String* export_code(InterType it, String expr, String action_prefix) =
+  bool        = (action_prefix & expr & ".GetBool();"),
+  integer     = (action_prefix & expr & ".GetLong();"),
+  float       = (action_prefix & expr & ".GetFloat();"),
+  symbol      = (action_prefix & expr & ".ToString();"),
+  string      = (action_prefix & expr & ".GetString();"),
+  tuple(ts?)  = tuple_export_code(ts, expr, action_prefix),
   seq(t?)     |
-  set(t?)     = "vector_conv<" & conversion_trait(t) & "> ",
-  tagged(t?)  = if t != :generic then "tagged_conv<" & conversion_trait(t) & "> " else conversion_trait(:generic),
-  generic     = "generic_conv";
+  set(t?)     = array_export_code(t, expr, action_prefix),
+  tagged(t?)  = if t != :generic
+                then export_code(t, expr & ".GetInnerObj()", action_prefix)
+                else export_code(:generic, expr, action_prefix),
+  generic     = (action_prefix & " = " & "Conversions.ExportAsValue(" & expr & ")");
 
 
-String export_expr(InterType it, String expr) =
-  bool        = expr & ".GetBool()",
-  integer     = expr & ".GetLong()",
-  float       = expr & ".GetFloat()",
-  symbol      = expr & ".ToString()",
-  string      = expr & ".GetString()",
-  tuple(ts?)  = "new Tuple(" & append((export_expr(t, "at(" & expr & ", " & printed(i) & ")") : t @ i <- ts), ", ") & ")",
-  seq(t?)     |
-  set(t?)     = "Conversions.ToArray<" & conversion_trait(t) & ">(" & expr & ")",
-  tagged(t?)  = if t != :generic then export_expr(t, expr & ".GetInnerObj()") else export_expr(:generic, expr),
-  generic     = "Conversions.ExportAsValue(" & expr & ")";
+String* tuple_export_code(InterType+ types, String expr, String action_prefix) {
+  fail;
+}
+
+
+String* array_export_code(InterType elem_type, String expr, String action_prefix) {
+  fail;
+}
+
+
+// String conversion_trait(InterType) =
+//   bool        = "bool_conv",
+//   integer     = "int_conv",
+//   float       = "float_conv",
+//   symbol      = "symb_conv",
+//   string      = "string_conv",
+//   tuple(ts?)  = "tuple_" & printed(|ts|) & "_conv<" & append((conversion_trait(t) : t <- ts), ", ") & "> ",
+//   seq(t?)     |
+//   set(t?)     = "vector_conv<" & conversion_trait(t) & "> ",
+//   tagged(t?)  = if t != :generic then "tagged_conv<" & conversion_trait(t) & "> " else conversion_trait(:generic),
+//   generic     = "generic_conv";
+
+
+// String export_expr(InterType it, String expr) =
+//   bool        = expr & ".GetBool()",
+//   integer     = expr & ".GetLong()",
+//   float       = expr & ".GetFloat()",
+//   symbol      = expr & ".ToString()",
+//   string      = expr & ".GetString()",
+//   tuple(ts?)  = "new Tuple(" & append((export_expr(t, "at(" & expr & ", " & printed(i) & ")") : t @ i <- ts), ", ") & ")",
+//   seq(t?)     |
+//   set(t?)     = array_export_expr(t, expr, false),
+//   tagged(t?)  = if t != :generic then export_expr(t, expr & ".GetInnerObj()") else export_expr(:generic, expr),
+//   generic     = "Conversions.ExportAsValue(" & expr & ")";
+
+
+// String array_export_expr(InterType elem_type, String expr, Bool strip_tag) =
+//   bool        = "Conversions.ToBoolArray(" & expr & ", " & printed(strip_tag) & ")",
+//   integer     = "Conversions.ToLongArray(" & expr & ", " & printed(strip_tag) & ")",
+//   float       = "Conversions.ToDoubleArray(" & expr & ", " & printed(strip_tag) & ")",
+//   symbol      = "Conversions.ToSymbArray(" & expr & ", " & printed(strip_tag) & ")",
+//   string      = "Conversions.ToStringArray(" & expr & ", " & printed(strip_tag) & ")",
+//   tuple(ts?)  = tuple_array_export_expr(ts, expr),
+//   seq(t?)     |
+//   set(t?)     = "Conversions.ToValueArray(" & expr & ")",
+//   tagged(t?)  = if t != :generic and not strip_tag
+//                   then array_export_expr(t, expr, true)
+//                   else array_export_expr(:generic, expr, false),
+//   generic     = "Conversions.ToValueArray(" & expr & ")";
+
+
+// String tuple_array_export_expr(InterType+ types, String expr) {
+//   output_types = (return_value_type(t) : t <- types);
+//   output_types_str = append(output_types, ", ");
+//   lambda_expr = "";
+//   args_str = expr & ", " & lambda_expr;
+//   return "Conversions.ToTupleArray" & printed(|types|) & "<" & output_types_str & ">(" & args_str & ")";
+// }
 
 ////////////////////////////////////////////////////////////////////////////////
 

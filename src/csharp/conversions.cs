@@ -30,5 +30,32 @@ namespace CellLang {
     public static Obj StringToObj(string str) {
       throw new NotImplementedException();
     }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+
+    public static bool[] ToBoolArray(Obj obj, bool stripTag) {
+      throw new NotImplementedException();
+    }
+
+    public static long[] ToLongArray(Obj obj, bool stripTag) {
+      throw new NotImplementedException();
+    }
+
+    public static double[] ToDoubleArray(Obj obj, bool stripTag) {
+      throw new NotImplementedException();
+    }
+
+    public static string[] ToSymbArray(Obj obj, bool stripTag) {
+      throw new NotImplementedException();
+    }
+
+    public static string[] ToStringArray(Obj obj, bool stripTag) {
+      throw new NotImplementedException();
+    }
+
+    public static Value[] ToValueArray(Obj obj) {
+      throw new NotImplementedException();
+    }
   }
 }
