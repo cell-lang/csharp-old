@@ -326,10 +326,10 @@ implicit typedefs : [TypeName -> NeType] {
       "  public void SetState(String text) {",
       "    Obj obj = Conversions.ConvertText(text);",
       "    if (!" & to_c_fn_name(root_block.state_memb_pred) & "(obj))",
-      "      throw new Exception();",
+      "      throw new Exception(\"Invalid state\");",
       "    bool " & native_method_call("ok", "automaton", set_state_entry_point_name(root_block.name), ("obj", "updater")),
       "    if (!ok)",
-      "      throw new Exception();",
+      "      throw new Exception(\"Invalid state\");",
       "  }"
     );
 
@@ -339,10 +339,12 @@ implicit typedefs : [TypeName -> NeType] {
         "  public void Execute(String text) {",
         "    Obj msg = Conversions.ConvertText(text);",
         "    if (!" & to_c_fn_name(value_unsafe(root_block.msg_memb_pred)) & "(msg))",
-        "      throw new Exception();",
+        "      throw new Exception(\"Invalid message\");",
         "    bool " & native_method_call("ok", "automaton", update_entry_point_name(root_block.name), ("msg", "updater", "env")),
-        "    if (!ok)",
-        "      throw new Exception();",
+        "    if (!ok) {",
+        "      env = new Env();",
+        "      throw new Exception(\"Update failed\");",
+        "    }",
         "  }"
       );
     ;
