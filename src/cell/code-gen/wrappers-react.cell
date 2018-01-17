@@ -391,21 +391,17 @@ implicit typedefs : [TypeName -> NeType] {
     mono_args = ((i, only(ts)) : ts @ i <- args_types_by_pos, |ts| == 1);
     poly_args = isort([i : ts @ i <~ args_types_by_pos, |ts| != 1]);
 
-    decl = "  " & ret_val_str & "call_" & base_name & "(" & args_types_str & ");";
-
-    impl = (
+    code = (
       "",
-      ret_val_str & class_name & "::call_" & base_name & "(" & args_decls & ") {",
-      "  ENV env;",
-      "  " & to_c_name(block_name) & " *self = (" & to_c_name(block_name) & " *) ptr;"
+      ret_val_str & " Call_" & base_name & "(" & args_decls & ") {"
     ) & (
-      "  OBJ obj" & printed(i) & " = " & constructor_function(it) & "(arg" & printed(i) & ");"
+      "  Obj objArg" & printed(i) & " = " & constructor_function(it) & "(arg" & printed(i) & ");"
       : it @ i <- args_inter_types
     );
 
-    conds = (to_c_fn_name(p) & "(obj" & printed(i) & ")" : i, p <- mono_args);
+    conds = (to_c_fn_name(p) & "(objArg" & printed(i) & ")" : i, p <- mono_args);
     if poly_args != ():
-      poly_conds = ((to_c_fn_name(ps(i)) & "(obj" & printed(i) & ")" : i <- poly_args) : ps <- isort(memb_preds));
+      poly_conds = ((to_c_fn_name(ps(i)) & "(objArg" & printed(i) & ")" : i <- poly_args) : ps <- isort(memb_preds));
       anded_conds = ({
           c = append(cs, " && ");
           c = "(" & c & ")" if |cs| > 1;
@@ -419,23 +415,20 @@ implicit typedefs : [TypeName -> NeType] {
     cond = append(conds, " && ");
     cond = "(" & cond & ")" if |conds| > 1;
 
-    if cond != "":
-      release_stmts = ("    release(obj" & printed(i) & ");" : i < arity);
-      impl = impl & ("  if (!" & cond & ") {") & release_stmts & ("    throw 0LL;", "  }");
-    ;
+    code = code & (
+      "  if (!" & cond & ")",
+      "    throw new Exception(\"Invalid argument type\");"
+    ) if cond != "";
 
-    impl = impl & (
-      "  memset(&env, 0, sizeof(ENV));",
-      "  OBJ res_obj = " & user_def_method_name(block_name, method_id) &
-        "(self, " & append((("obj" & printed(i) : i < arity) | "env"), ", ") & ");"
-    ) & (
-      "  release(obj" & printed(i) & ");" : i < arity
-    ) & export_code(inter_ret_type, "res_obj", "  " & ret_val_str & "result = ") & (
-      "  release(res_obj);",
-      "  return result;",
+    code = code & (
+      "  Obj resObj = automaton." & user_def_method_name(block_name, method_id) &
+        "(" & append((("objArg" & printed(i) : i < arity) | "env"), ", ") & ");"
+    ) & indent_lines(export_code(inter_ret_type, "resObj", "return ")) & (
       "}"
     );
 
-    return ((decl), impl);
+    docs = ret_val_str & " Call_" & base_name & "(" & args_types_str & ");";
+
+    return (code, (docs));
   }
 }

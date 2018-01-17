@@ -10,14 +10,14 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
   (String*, String*) state_var_accessor(MembVar var, NeType var_type) {
     inter_type = output_interface_type(var_type);
     base_name = external_name(var);
-    meth_name = "get_" & base_name;
+    meth_name = "Get_" & base_name;
     var_name = to_c_var_decl_name(var);
     ret_type = return_value_type(inter_type);
 
     body = export_code(inter_type, "automaton." & var_name, "return ");
     code = ("", ret_type & " " & meth_name & "() {") & indent_lines(body) & ("}");
 
-    return (code, (ret_type & meth_name & "();"));
+    return (code, (ret_type & " " & meth_name & "();"));
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -34,12 +34,12 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
     code = (
       "",
-      "bool in_" & base_name & "(" & arg_type & " value) {",
+      "bool In_" & base_name & "(" & arg_type & " value) {",
       "  int surr = automaton." & rel_name & ".store.LookupValue(" & ctor_fn & "(value));",
       "  return surr != -1 && automaton." & rel_name & ".Contains((uint) surr);",
       "}",
       "",
-      ret_elem_type & "[] " & "get_" & base_name & "() {",
+      ret_elem_type & "[] " & "Get_" & base_name & "() {",
       "  uint size = automaton." & rel_name & ".Size();",
       "  " & ret_elem_type & "[] copy = new " & ret_elem_type & "[size];",
       "  UnaryTable.Iter it = automaton." & rel_name & ".GetIter();",
@@ -57,8 +57,8 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
     docs = (
       "",
-      "bool in_" & base_name & "(" & arg_type & ");",
-      ret_elem_type & "[] get_" & base_name & "();"
+      "bool In_" & base_name & "(" & arg_type & ");",
+      ret_elem_type & "[] Get_" & base_name & "();"
     );
 
     return (code, docs);
@@ -85,13 +85,13 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     rel_name = to_c_var_decl_name(relvar);
     ret_types = (return_value_type(t) : t <- output_types);
     args_types = (input_arg_type(t) : t <- input_types);
-    args_decls = (t & "arg" & printed(i) : t @ i <- args_types);
+    args_decls = (t & " arg" & printed(i) : t @ i <- args_types);
     ctor_fns = (constructor_function(it) : it <- input_types);
     args_convs = flip_pair_if((f & "(arg" & printed(i) & ")" : f @ i <- ctor_fns), flipped);
 
     body_instr = "  return WrappingUtils.TableContains(automaton." & rel_name & ", " & append(args_convs, ", ") & ");";
-    code = ("", "public bool in_" & base_name & "(" & append(args_decls, ", ") & ") {", body_instr, "}");
-    docs = ("", "bool in_" & base_name & "(" & append(args_types, ", ") & ");");
+    code = ("", "public bool In_" & base_name & "(" & append(args_decls, ", ") & ") {", body_instr, "}");
+    docs = ("", "bool In_" & base_name & "(" & append(args_types, ", ") & ");");
 
     if maybe_key_col != nothing:
       key_col = value(maybe_key_col);
@@ -103,7 +103,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
       code = code & (
         "",
-        out_type & " lookup_" & base_name & "(" & in_type & "key) {",
+        out_type & " Lookup_" & base_name & "(" & in_type & " key) {",
         "  int surr1 = automaton." & rel_name & ".store1.LookupValue(" & ctor_fns(key_col) & "(key));",
         "  if (surr1 == -1)",
         "    throw new KeyNotFoundException();",
@@ -120,11 +120,11 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
             "return "
       ) & ("}");
 
-      docs = (docs | out_type & " lookup_" & base_name & "(" & in_type & "); // Throws KeyNotFoundException() if no corresponding tuple is found");
+      docs = (docs | out_type & " Lookup_" & base_name & "(" & in_type & "); // Throws KeyNotFoundException() if no corresponding tuple is found");
     ;
 
     types_str = append(ret_types, ", ");
-    sgn = "public Tuple<" & types_str & ">[] get_" & base_name & "()";
+    sgn = "public Tuple<" & types_str & ">[] Get_" & base_name & "()";
     body = (
       "int size = automaton." & rel_name & ".Size();",
       "Tuple<" & types_str & ">[] copy = new Tuple<" & types_str & ">[size];",
@@ -175,13 +175,13 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     rel_name = to_c_var_decl_name(relvar);
     base_name = external_name(relvar);
 
-    args_decls = append((t & "arg" & printed(i) : t @ i <- args_types), ", ");
+    args_decls = append((t & " arg" & printed(i) : t @ i <- args_types), ", ");
     cols_perm_args = append((printed(i) : i <- rev_perm), ", ");
     args_convs = (ctor_fns(i) & "(arg" & printed(i) & ")" : i <- applied_perm);
 
     code = (
       "",
-      "bool in_" & base_name & "(" & args_decls & ") {",
+      "bool In_" & base_name & "(" & args_decls & ") {",
       "  int surr1 = automaton." & rel_name & ".store1.LookupValue(" & args_convs(0) & ");",
       "  if (surr1 == -1)",
       "    return false;",
@@ -194,7 +194,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
       "  return automaton." & rel_name & ".Contains((uint) surr1, (uint) surr2, (uint) surr3);",
       "}",
       "",
-      "Tuple<" & ret_types_str & ">[] " & "get_" & base_name & "() {",
+      "Tuple<" & ret_types_str & ">[] " & "Get_" & base_name & "() {",
       "  int size = automaton." & rel_name & ".Size();",
       "  Tuple<" & ret_types_str & ">[] copy = new Tuple<" & ret_types_str & ">[size];",
       "  TernaryTable.Iter it = automaton." & rel_name & ".GetIter();",
@@ -223,8 +223,8 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
     docs = (
       "",
-      "bool in_" & base_name & "(" & args_decls & ") {",
-      "Tuple<" & ret_types_str & ">[] " & "get_" & base_name & "()"
+      "bool In_" & base_name & "(" & args_decls & ") {",
+      "Tuple<" & ret_types_str & ">[] " & "Get_" & base_name & "()"
     );
 
     return (code, docs);

@@ -12,12 +12,12 @@ NeType internal_type(AtomicInterType) =
 
 
 String input_arg_type(BasicInterType) =
-  bool        = "bool ",
-  integer     = "long ",
-  float       = "double ",
+  bool        = "bool",
+  integer     = "long",
+  float       = "double",
   symbol      |
   string      |
-  generic     = "string ";
+  generic     = "string";
 
 
 String constructor_function(InterType) =
