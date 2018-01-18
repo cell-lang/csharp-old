@@ -28,3 +28,6 @@ test.exe
 test.txt
 interfaces.cs
 interfaces.txt
+water-sensor-mixed.cs
+water-sensor-mixed.exe
+water-sensor-mixed-interface.cs

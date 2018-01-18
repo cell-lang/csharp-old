@@ -54,9 +54,7 @@
   );
 
   let typedefs = prg.typedefs:
-    //auto_wrappers_decls, auto_wrappers_impls = unzip(isort([react_auto_wrapper(block=b) : b <- prg.react_blocks]));
-    auto_wrappers_docs = ();
-    auto_wrappers = ();
+    auto_wrappers, auto_wrappers_docs = unzip(isort([react_auto_wrapper(block=b) : b <- prg.react_blocks]));
     static_blocks = [b.name -> b : b <- prg.static_blocks];
     db_wrappers, db_wrappers_docs = unzip((static_auto_wrapper(b, static_blocks) : b <- ord_static_blocks));
   ;

@@ -130,6 +130,10 @@ namespace CellLang {
     public virtual void Print(StreamWriter writer) {
       writer.Write(Printed());
     }
+
+    override public string ToString() {
+      return Printed();
+    }
   }
 
 

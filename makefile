@@ -85,6 +85,14 @@ chat-server-mixed.cs: codegen.exe
 chat-server-mixed.exe: chat-server-mixed.cs ../download/examples/chat-server/main.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 chat-server-mixed.cs ../download/examples/chat-server/main.cs $(RUNTIME-FILES) -out:chat-server-mixed.exe
 
+water-sensor-mixed.cs: codegen.exe
+	./codegen.exe tests/water-sensor-mixed.txt
+	mv generated.cs water-sensor-mixed.cs
+	mv interfaces.txt water-sensor-mixed-interface.cs
+
+water-sensor-mixed.exe: water-sensor-mixed.cs ../download/examples/water-sensor-mixed/main.cs $(RUNTIME-FILES)
+	mcs -nowarn:162,168,219,414 water-sensor-mixed.cs ../download/examples/water-sensor-mixed/main.cs $(RUNTIME-FILES) -out:water-sensor-mixed.exe
+
 tests/desugar.txt: $(SRC-FILES)
 	cellc -p projects/desugar.txt
 	mv dump-opt-code.txt tests/desugar.txt
