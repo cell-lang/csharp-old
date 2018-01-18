@@ -169,9 +169,9 @@ String to_c_expr(NatIntOp expr, Bool parentesised) =
   rand_nat(e?)          = "Miscellanea.RandNat(" & to_c_expr(e) & ")",
   lookup_value()        = native_method_call_expr(expr.store, "LookupValue", (expr.value)),
   lookup_value_ex()     = native_method_call_expr(aux_struct_var_ref_name(expr.store), "LookupValueEx", (expr.value)),
-  get_tuple_field()     = { field_num = if expr.iter.arity > 1 then printed(expr.field+1) else "";
-                            return to_c_var_ref_name(expr.iter) & ".GetField" & field_num & "()";
-                          },
+  get_tuple_field()     = if expr.iter.arity == 1
+                            then to_c_var_ref_name(expr.iter) & ".Get()"
+                            else to_c_var_ref_name(expr.iter) & ".GetField" & printed(expr.field+1) & "()",
   unique_nat            = "Miscellanea.UniqueNat()",
   ticks                 = "Miscellanea.GetTickCount()";
 

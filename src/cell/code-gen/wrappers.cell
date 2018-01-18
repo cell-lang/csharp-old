@@ -24,7 +24,7 @@ String constructor_function(InterType) =
   bool        = "SymbObj.Get",
   integer     = "IntObj.Get",
   float       = "new FloatObj",
-  symbol      = "Conversions.StringToSymbol",
+  symbol      = "Conversions.ConvertText",
   string      = "Conversions.StringToObj",
   generic     = "Conversions.ConvertText";
 
@@ -61,9 +61,10 @@ String* tuple_export_code(InterType+ types, String expr, String action_prefix) {
   expr_var = "expr" & unique_id;
 
   field_vars = ("field" & printed(i) & "_" & unique_id : t @ i <- types);
-  fields_code = join((
-    export_code(t, expr & ".GetItem(" & printed(i) & ")", return_value_type(t) & " " & field_vars(i) & " = ")
-    : t @ i <- types
+  fields_code = join(({
+      asgnm_text = return_value_type(t) & " " & field_vars(i) & " = ";
+      return export_code(t, expr & ".GetItem(" & printed(i) & ")", asgnm_text);
+    } : t @ i <- types
   ));
 
   tuple_instr = action_prefix & "new Tuple<" & append((return_value_type(t) : t <- types), ", ") &
@@ -96,6 +97,7 @@ String* array_export_code(InterType elem_type, String expr, String action_prefix
     iter_var = "iter" & unique_id;
     idx_var = "idx" & unique_id;
     out_elem_type = return_value_type(elem_type);
+
     return (
       "Obj " & expr_var & " = " & expr & ";",
       "int " & size_var & " = " & expr_var & ".GetSize();",

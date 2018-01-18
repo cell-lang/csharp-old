@@ -69,7 +69,7 @@ namespace CellLang {
       return array;
     }
 
-    public static string[] ToSymbArray(Obj obj) {
+    public static string[] ToSymbolArray(Obj obj) {
       int size = obj.GetSize();
       string[] array = new string[size];
       SeqOrSetIter it = obj.GetSeqOrSetIter();

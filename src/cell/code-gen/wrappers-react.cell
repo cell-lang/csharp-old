@@ -18,12 +18,12 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
 
     code = (
       "",
-      "void " & auto_class_name & "::set_" & name & "(" & input_type & " value" & ") {",
-      "  " & auto_class_name & "_internal_set_input(ptr, " & uc_name & ", " & ctor_fn & "(value));",
+      "void Set_" & name & "(" & input_type & " value" & ") {",
+      "  InternalSetInput(Input." & uc_name & ", " & ctor_fn & "(value));",
       "}"
     );
 
-    docs = "  void set_" & name & "(" & input_type & ");";
+    docs = "  void Set_" & name & "(" & input_type & ");";
 
     return (code, (docs));
   }
@@ -63,7 +63,7 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
   (String*, String*) auto_method_wrapper(MethodId method_id, CompiledMethod method) {
     return ((), ()) if method_id.id?;
     base_name = sentence_case(bare_id(method_id.symbol));
-    return method_wrapper(method_id, method, block.name, base_name, auto_class_name);
+    return method_wrapper(method_id, method, block.name, base_name, auto_class_name, "automaton.");
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -157,7 +157,7 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
       "",
       "public " & apply_ret_type & " Apply() {",
       "  automaton.Apply(env);",
-      "  return automaton.elapsed_time == 0;",
+      "  return automaton.elapsed_time == 0;" if is_time_sensitive,
       "}",
       "",
       "public Value ReadState() {",
@@ -260,7 +260,7 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
 
 implicit typedefs : [TypeName -> NeType] {
   (String*, String*) method_wrapper(MethodId method_id, CompiledMethod method,
-    <AutoSymbol, DBSymbol> block_name, String base_name, String class_name) {
+    <AutoSymbol, DBSymbol> block_name, String base_name, String class_name, String method_path) {
     args_inter_types = (input_interface_type(t) : t <- method.args_types);
     inter_ret_type = output_interface_type(method.ret_type);
     args_types_str = append((input_arg_type(it) : it <- args_inter_types), ", ");
@@ -304,7 +304,7 @@ implicit typedefs : [TypeName -> NeType] {
 
     code = code & (
       "  try {",
-      "    Obj resObj = automaton." & user_def_method_name(block_name, method_id) &
+      "    Obj resObj = " & method_path & user_def_method_name(block_name, method_id) &
         "(" & append((("objArg" & printed(i) : i < arity) | "env"), ", ") & ");"
       ) & indent_lines(indent_lines(export_code(inter_ret_type, "resObj", "return "))) & (
       "  }",

@@ -115,7 +115,7 @@ test.cs: test.cell
 	mv generated.cs test.cs
 
 test.exe: test.cs $(RUNTIME-FILES)
-	mcs -nowarn:162,168,219,414 main.cs test.cs $(RUNTIME-FILES) -out:test.exe
+	mcs -nowarn:162,168,219,414 test.cs $(RUNTIME-FILES) -out:test.exe
 
 test.cpp: test.cell
 	cellc projects/test.txt
@@ -203,5 +203,6 @@ soft-clean:
 	@rm -f regression.cs regression.exe
 	@rm -f generated.cpp generated.h
 	@rm -f chat-server-mixed.cs chat-server-interface.cs
+	@rm -f water-sensor-mixed*
 	@rm debug/*
 	@touch debug/stack_trace.txt
