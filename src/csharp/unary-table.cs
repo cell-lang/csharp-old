@@ -9,8 +9,14 @@ namespace CellLang {
       UnaryTable table;
 
       public Iter(uint index, UnaryTable table) {
-        this.index = index;
         this.table = table;
+        if (table.count == 0)
+          this.index = (uint) (64 * table.bitmap.Length);
+        else {
+          this.index = index;
+          if (!table.Contains(0))
+            Next();
+        }
       }
 
       public uint Get() {
