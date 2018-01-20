@@ -19,7 +19,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     ret_type = return_value_type(inter_type);
 
     body = export_code(inter_type, full_path(var), "return ");
-    code = ("", ret_type & " " & meth_name & "() {") & indent_lines(body) & ("}");
+    code = ("", "public " & ret_type & " " & meth_name & "() {") & indent_lines(body) & ("}");
 
     return (code, (ret_type & " " & meth_name & "();"));
   }
@@ -39,14 +39,14 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
     code = (
       "",
-      "bool In_" & base_name & "(" & arg_type & " value) {",
+      "public bool In_" & base_name & "(" & arg_type & " value) {",
       "  int surr = " & relvar_path & ".store.LookupValue(" & ctor_fn & "(value));",
       "  return surr != -1 && " & relvar_path & ".Contains((uint) surr);",
       "}",
       "",
-      ret_elem_type & "[] " & "Get_" & base_name & "() {",
+      "public " & ret_elem_type & "[] " & "Get_" & base_name & "() {",
       "  uint size = " & relvar_path & ".Size();",
-      "  " & ret_elem_type & "[] copy = new " & ret_elem_type & "[size];",
+      "  " & ret_elem_type & "[] copy = new " & array_new_expr(output_type, "size") & ";",
       "  UnaryTable.Iter it = " & relvar_path & ".GetIter();",
       "  int next = 0;",
       "  while (!it.Done()) {"
@@ -109,7 +109,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
       code = code & (
         "",
-        out_type & " Lookup_" & base_name & "(" & in_type & " key) {",
+        "public " & out_type & " Lookup_" & base_name & "(" & in_type & " key) {",
         "  int surr1 = " & relvar_path & ".store1.LookupValue(" & ctor_fns(key_col) & "(key));",
         "  if (surr1 == -1)",
         "    throw new KeyNotFoundException();",
@@ -188,7 +188,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
     code = (
       "",
-      "bool In_" & base_name & "(" & args_decls & ") {",
+      "public bool In_" & base_name & "(" & args_decls & ") {",
       "  int surr1 = " & relvar_path & ".store1.LookupValue(" & args_convs(0) & ");",
       "  if (surr1 == -1)",
       "    return false;",
@@ -201,7 +201,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
       "  return " & relvar_path & ".Contains((uint) surr1, (uint) surr2, (uint) surr3);",
       "}",
       "",
-      "Tuple<" & ret_types_str & ">[] " & "Get_" & base_name & "() {",
+      "public Tuple<" & ret_types_str & ">[] " & "Get_" & base_name & "() {",
       "  int size = " & relvar_path & ".Size();",
       "  Tuple<" & ret_types_str & ">[] copy = new Tuple<" & ret_types_str & ">[size];",
       "  TernaryTable.Iter it = " & relvar_path & ".GetIter();",

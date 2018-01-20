@@ -112,12 +112,12 @@ String* array_export_code(InterType elem_type, String expr, String action_prefix
       action_prefix & array_var & ";"
     );
   }
-
-
-  String array_new_expr(InterType elem_type, String size_expr) =
-    seq(t?) | set(t?) = array_new_expr(t, size_expr) & "[]",
-    _                 = return_value_type(elem_type) & "[" & size_expr & "]";
 }
+
+
+String array_new_expr(InterType elem_type, String size_expr) =
+  seq(t?) | set(t?) = array_new_expr(t, size_expr) & "[]",
+  _                 = return_value_type(elem_type) & "[" & size_expr & "]";
 
 ////////////////////////////////////////////////////////////////////////////////
 

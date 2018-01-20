@@ -31,3 +31,6 @@ interfaces.txt
 water-sensor-mixed.cs
 water-sensor-mixed.exe
 water-sensor-mixed-interface.cs
+regression-mixed-interfaces.cs
+regression-mixed.cs
+regression-mixed.exe

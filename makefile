@@ -56,6 +56,14 @@ regression.cs: codegen.exe
 regression.exe: regression.cs
 	mcs -nowarn:162,168,219,414 regression.cs $(RUNTIME-FILES) -out:regression.exe
 
+regression-mixed.cs: codegen.exe
+	./codegen.exe tests/regression-mixed.txt
+	mv generated.cs regression-mixed.cs
+	mv interfaces.txt regression-mixed-interfaces.cs
+
+regression-mixed.exe: regression-mixed.cs ../regression-tests/mixed/tr-auto-A.cs
+	mcs -nowarn:162,168,219,414 ../regression-tests/mixed/tr-auto-A.cs regression-mixed.cs $(RUNTIME-FILES) -out:regression-mixed.exe
+
 water-sensor.cs: codegen.exe
 	./codegen.exe tests/water-sensor.txt
 	mv generated.cs water-sensor.cs
@@ -204,5 +212,7 @@ soft-clean:
 	@rm -f generated.cpp generated.h
 	@rm -f chat-server-mixed.cs chat-server-interface.cs
 	@rm -f water-sensor-mixed*
+	@rm -f regression-mixed*
+	@rm -f interfaces.txt
 	@rm debug/*
 	@touch debug/stack_trace.txt

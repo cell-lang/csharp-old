@@ -275,7 +275,7 @@ implicit typedefs : [TypeName -> NeType] {
 
     code = (
       "",
-      ret_val_str & " Call_" & base_name & "(" & args_decls & ") {"
+      "public " & ret_val_str & " Call_" & base_name & "(" & args_decls & ") {"
     ) & (
       "  Obj objArg" & printed(i) & " = " & constructor_function(it) & "(arg" & printed(i) & ");"
       : it @ i <- args_inter_types
