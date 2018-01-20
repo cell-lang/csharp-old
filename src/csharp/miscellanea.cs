@@ -97,6 +97,17 @@ namespace CellLang {
       return n1 ^ n2 ^ n3;
     }
 
+    public static int[] CodePoints(string str) {
+      int len = str.Length;
+      List<int> cps = new List<int>(len);
+      for (int i=0 ; i < len ; i++) {
+        cps.Add(Char.ConvertToUtf32(str, i));
+        if (Char.IsHighSurrogate(str[i]))
+          i++;
+      }
+      return cps.ToArray();
+    }
+
     public static bool debugFlag = false;
   }
 }

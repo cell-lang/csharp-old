@@ -454,6 +454,10 @@ namespace CellLang {
       return new string(chars);
     }
 
+    override public Value Lookup(string field) {
+      return value.Lookup(field);
+    }
+
     override public string Printed() {
       if (IsString()) {
         StringBuilder builder = new StringBuilder();

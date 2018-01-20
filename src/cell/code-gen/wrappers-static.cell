@@ -129,6 +129,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
       docs = (docs | out_type & " Lookup_" & base_name & "(" & in_type & "); // Throws KeyNotFoundException() if no corresponding tuple is found");
     ;
 
+    phys_idxs = flip_pair_if(("1", "2"), flipped);
     types_str = append(ret_types, ", ");
     sgn = "public Tuple<" & types_str & ">[] Get_" & base_name & "()";
     body = (
@@ -139,11 +140,11 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
       "while (!it.Done()) {"
     ) & export_code(
       output_types(0),
-      relvar_path & ".store1.LookupSurrogate(it.GetField1())",
+      relvar_path & ".store" & phys_idxs(0) & ".LookupSurrogate(it.GetField" & phys_idxs(0) & "())",
       "  " & ret_types(0) & " field1 = "
     ) & export_code(
       output_types(1),
-      relvar_path & ".store2.LookupSurrogate(it.GetField2())",
+      relvar_path & ".store" & phys_idxs(1) & ".LookupSurrogate(it.GetField" & phys_idxs(1) & "())",
       "  " & ret_types(1) & " field2 = "
     ) & (
       "  copy[next++] = new Tuple<" & types_str & ">(field1, field2);",

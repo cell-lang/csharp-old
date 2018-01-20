@@ -17,7 +17,6 @@ namespace CellLang {
       long error_offset;
       bool ok = Parser.parse(bytes, out obj, out error_offset);
       if (!ok) {
-        Console.WriteLine(text);
         throw new Exception("Syntax error at offset " + error_offset.ToString());
       }
       return obj;
@@ -28,7 +27,12 @@ namespace CellLang {
     }
 
     public static Obj StringToObj(string str) {
-      throw new NotImplementedException();
+      int[] cps = Miscellanea.CodePoints(str);
+      int len = cps.Length;
+      Obj[] objs = new Obj[len];
+      for (int i=0 ; i < len ; i++)
+        objs[i] = IntObj.Get(cps[i]);
+      return new TaggedObj(SymbTable.StringSymbId, new MasterSeqObj(objs));
     }
 
     ////////////////////////////////////////////////////////////////////////////
