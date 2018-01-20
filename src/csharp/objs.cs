@@ -123,7 +123,7 @@ namespace CellLang {
 
     public virtual Value GetValue()                               {throw new NotImplementedException();}
 
-    public abstract int Hashcode();
+    public abstract uint Hashcode();
 
     protected abstract int TypeId();
     protected abstract int InternalCmp(Obj o);
@@ -142,7 +142,7 @@ namespace CellLang {
       return "Blank";
     }
 
-    override public int Hashcode() {
+    override public uint Hashcode() {
       throw new NotImplementedException();
     }
 
@@ -171,7 +171,7 @@ namespace CellLang {
       return "Null";
     }
 
-    override public int Hashcode() {
+    override public uint Hashcode() {
       throw new NotImplementedException();
     }
 
@@ -242,8 +242,8 @@ namespace CellLang {
       return SymbTable.IdxToStr(id);
     }
 
-    override public int Hashcode() {
-      return id; //## BAD HASHCODE, IT'S NOT STABLE
+    override public uint Hashcode() {
+      return (uint) id; //## BAD HASHCODE, IT'S NOT STABLE
     }
 
     override public Value GetValue() {
@@ -294,8 +294,8 @@ namespace CellLang {
       return value.ToString();
     }
 
-    override public int Hashcode() {
-      return ((int) (value >> 32)) ^ ((int) value);
+    override public uint Hashcode() {
+      return ((uint) (value >> 32)) ^ ((uint) value);
     }
 
     override public Value GetValue() {
@@ -347,9 +347,9 @@ namespace CellLang {
       return value.ToString();
     }
 
-    override public int Hashcode() {
+    override public uint Hashcode() {
       long longVal = BitConverter.DoubleToInt64Bits(value);
-      return ((int) (longVal >> 32)) ^ ((int) longVal);
+      return ((uint) (longVal >> 32)) ^ ((uint) longVal);
     }
 
     override public Value GetValue() {
@@ -468,7 +468,7 @@ namespace CellLang {
       return SeqObj.Empty();
     }
 
-    override public int Hashcode() {
+    override public uint Hashcode() {
       return 0; //## FIND BETTER VALUE
     }
 
@@ -535,11 +535,11 @@ namespace CellLang {
       return new MasterSeqObj(elts);
     }
 
-    override public int Hashcode() {
-      int hashcodesSum = 0;
+    override public uint Hashcode() {
+      uint hashcodesSum = 0;
       for (int i=0 ; i < elts.Length ; i++)
         hashcodesSum += elts[i].Hashcode();
-      return hashcodesSum ^ elts.Length;
+      return hashcodesSum ^ (uint) elts.Length;
     }
 
     override public Value GetValue() {
@@ -681,11 +681,11 @@ namespace CellLang {
       throw new InvalidOperationException();
     }
 
-    override public int Hashcode() {
-      int hashcodesSum = 0;
+    override public uint Hashcode() {
+      uint hashcodesSum = 0;
       for (int i=0 ; i < col1.Length ; i++)
         hashcodesSum += col1[i].Hashcode() + col2[i].Hashcode();
-      return hashcodesSum ^ col1.Length;
+      return hashcodesSum ^ (uint) col1.Length;
     }
 
     override public Value GetValue() {
@@ -848,11 +848,11 @@ namespace CellLang {
       return new TernRelIter(col1, col2, col3, idxs231, first, first+count-1);
     }
 
-    override public int Hashcode() {
-      int hashcodesSum = 0;
+    override public uint Hashcode() {
+      uint hashcodesSum = 0;
       for (int i=0 ; i < col1.Length ; i++)
         hashcodesSum += col1[i].Hashcode() + col2[i].Hashcode() + col3[i].Hashcode();
-      return hashcodesSum ^ col1.Length;
+      return hashcodesSum ^ (uint) col1.Length;
     }
 
     override public Value GetValue() {
@@ -989,8 +989,8 @@ namespace CellLang {
       return new string(chars);
     }
 
-    override public int Hashcode() {
-      return tag ^ obj.Hashcode();
+    override public uint Hashcode() {
+      return ((uint) tag) ^ obj.Hashcode();
     }
 
     override public Value GetValue() {

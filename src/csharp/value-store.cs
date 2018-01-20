@@ -3,11 +3,11 @@ using System;
 
 namespace CellLang {
   class ValueStoreBase {
-    protected Obj[] slots;
-    protected int[] hashcodes;
-    protected int[] hashtable;
-    protected int[] buckets;
-    protected int   count = 0;
+    protected Obj[]  slots;
+    protected uint[] hashcodes;
+    protected int[]  hashtable;
+    protected int[]  buckets;
+    protected int    count = 0;
 
     protected ValueStoreBase() {
 
@@ -15,7 +15,7 @@ namespace CellLang {
 
     protected ValueStoreBase(int initSize) {
       slots     = new Obj[initSize];
-      hashcodes = new int[initSize];
+      hashcodes = new uint[initSize];
       hashtable = new int[initSize];
       buckets   = new int[initSize];
 
@@ -49,7 +49,7 @@ namespace CellLang {
     public int LookupValue(Obj value) {
       if (count == 0)
         return -1;
-      int hashcode = value.Hashcode();
+      uint hashcode = value.Hashcode();
       int idx = hashtable[hashcode % hashtable.Length];
       while (idx != -1) {
         Miscellanea.Assert(slots[idx] != null);
@@ -73,7 +73,7 @@ namespace CellLang {
       Insert(value, value.Hashcode(), slotIdx);
     }
 
-    public virtual void Insert(Obj value, int hashcode, int slotIdx) {
+    public virtual void Insert(Obj value, uint hashcode, int slotIdx) {
       Miscellanea.Assert(slots != null && slotIdx < slots.Length);
       Miscellanea.Assert(slots[slotIdx] == null);
       Miscellanea.Assert(hashcode == value.Hashcode());
@@ -82,7 +82,7 @@ namespace CellLang {
       hashcodes[slotIdx] = hashcode;
 
       //## DOES IT MAKE ANY DIFFERENCE HERE TO USE int INSTEAD OF uint?
-      int hashtableIdx = hashcode % slots.Length;
+      uint hashtableIdx = hashcode % (uint) slots.Length;
       int head = hashtable[hashtableIdx];
       hashtable[hashtableIdx] = slotIdx;
       buckets[slotIdx] = head;
@@ -94,13 +94,13 @@ namespace CellLang {
       Miscellanea.Assert(slots != null && index < slots.Length);
       Miscellanea.Assert(slots[index] != null);
 
-      int hashcode = hashcodes[index];
+      uint hashcode = hashcodes[index];
 
       slots[index] = null;
       hashcodes[index] = 0; //## NOT STRICTLY NECESSARY...
       count--;
 
-      int hashtableIdx = hashcode % slots.Length;
+      uint hashtableIdx = hashcode % (uint) slots.Length;
       int idx = hashtable[hashtableIdx];
       Miscellanea.Assert(idx != -1);
 
@@ -124,16 +124,16 @@ namespace CellLang {
 
     public virtual void Resize(int minCapacity) {
       if (slots != null) {
-        int   currCapacity  = slots.Length;
-        Obj[] currSlots     = slots;
-        int[] currHashcodes = hashcodes;
+        uint   currCapacity  = (uint) slots.Length;
+        Obj[]  currSlots     = slots;
+        uint[] currHashcodes = hashcodes;
 
-        int newCapacity = 2 * currCapacity;
+        uint newCapacity = 2 * currCapacity;
         while (newCapacity < minCapacity)
           newCapacity = 2 * newCapacity;
 
         slots     = new Obj[newCapacity];
-        hashcodes = new int[newCapacity];
+        hashcodes = new uint[newCapacity];
         hashtable = new int[newCapacity];
         buckets   = new int[newCapacity];
 
@@ -147,7 +147,7 @@ namespace CellLang {
 
         for (int i=0 ; i < currCapacity ; i++)
           if (slots[i] != null) {
-            int slotIdx = hashcodes[i] % newCapacity;
+            uint slotIdx = hashcodes[i] % newCapacity;
             int head = hashtable[slotIdx];
             hashtable[slotIdx] = i;
             buckets[i] = head;
@@ -157,7 +157,7 @@ namespace CellLang {
         const int MinCapacity = 32;
 
         slots     = new Obj[MinCapacity];
-        hashcodes = new int[MinCapacity];
+        hashcodes = new uint[MinCapacity];
         hashtable = new int[MinCapacity];
         buckets   = new int[MinCapacity];
 
@@ -208,6 +208,20 @@ namespace CellLang {
         Console.WriteLine("null");
     }
 
+    protected void WriteInts(string name, uint[] ints) {
+      Console.Write(name + " = ");
+      if (ints != null) {
+        Console.Write("[");
+        for (int i=0 ; i < ints.Length ; i++) {
+          if (i > 0)
+            Console.Write(", ");
+          Console.Write(ints[i].ToString());
+        }
+        Console.WriteLine("]");
+      }
+      else
+        Console.WriteLine("null");
+    }
   }
 
 
@@ -238,7 +252,7 @@ namespace CellLang {
       }
     }
 
-    override public void Insert(Obj value, int hashcode, int index) {
+    override public void Insert(Obj value, uint hashcode, int index) {
       Miscellanea.Assert(firstFreeIdx == index);
       Miscellanea.Assert(nextFreeIdx[index] != -1);
       base.Insert(value, hashcode, index);

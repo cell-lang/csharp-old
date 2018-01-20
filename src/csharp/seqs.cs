@@ -110,12 +110,12 @@ namespace CellLang {
     //   return new MasterSeqObj(newItems, minLen);
     // }
 
-    override public int Hashcode() {
+    override public uint Hashcode() {
       int offset = Offset();
-      int hashcodesSum = 0;
+      uint hashcodesSum = 0;
       for (int i=0 ; i < length ; i++)
         hashcodesSum += items[offset+i].Hashcode();
-      return hashcodesSum ^ length;
+      return hashcodesSum ^ (uint) length;
     }
 
     override public Value GetValue() {
@@ -375,12 +375,12 @@ namespace CellLang {
 //    override public Obj ConcatMany() {
 //    }
 
-    override public int Hashcode() {
+    override public uint Hashcode() {
       BuildArray();
-      int hashcodesSum = 0;
+      uint hashcodesSum = 0;
       for (int i=0 ; i < length ; i++)
         hashcodesSum += array[i].Hashcode();
-      return hashcodesSum ^ length;
+      return hashcodesSum ^ (uint) length;
     }
 
     override protected int TypeId() {
