@@ -125,6 +125,9 @@ test.cs: test.cell
 test.exe: test.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 test.cs $(RUNTIME-FILES) -out:test.exe
 
+test-mixed.exe: main.cs test.cs $(RUNTIME-FILES)
+	mcs -nowarn:162,168,219,414 main.cs test.cs $(RUNTIME-FILES) -out:test-mixed.exe
+
 test.cpp: test.cell
 	cellc projects/test.txt
 	mv generated.cpp test.cpp

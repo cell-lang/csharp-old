@@ -187,6 +187,8 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     cols_perm_args = append((printed(i) : i <- rev_perm), ", ");
     args_convs = (ctor_fns(i) & "(arg" & printed(i) & ")" : i <- applied_perm);
 
+    perm_idxs = (printed(i+1) : i <- rev_perm);
+
     code = (
       "",
       "public bool In_" & base_name & "(" & args_decls & ") {",
@@ -210,15 +212,15 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
       "  while (!it.Done()) {"
       ) & export_code(
         output_types(0),
-        relvar_path & ".store1.LookupSurrogate(it.GetField1())",
+        relvar_path & ".store" & perm_idxs(0) & ".LookupSurrogate(it.GetField" & perm_idxs(0) & "())",
         "    " & ret_types(0) & " field1 = "
       ) & export_code(
         output_types(1),
-        relvar_path & ".store2.LookupSurrogate(it.GetField2())",
+        relvar_path & ".store" & perm_idxs(1) & ".LookupSurrogate(it.GetField" & perm_idxs(1) & "())",
         "    " & ret_types(1) & " field2 = "
       ) & export_code(
         output_types(2),
-        relvar_path & ".store3.LookupSurrogate(it.GetField3())",
+        relvar_path & ".store" & perm_idxs(2) & ".LookupSurrogate(it.GetField" & perm_idxs(2) & "())",
         "    " & ret_types(2) & " field3 = "
       ) & (
       "    copy[next++] = new Tuple<" & ret_types_str & ">(field1, field2, field3);",
