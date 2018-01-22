@@ -47,18 +47,40 @@ namespace CellLang {
         case 4: // Non-hashed 16-slot block
           return InsertWithNonHashed16Block(payload, value, handle);
 
-        case 5:
+        case 5: // Hashed 16-slot block
           InsertIntoHashedBlock(payload, value, Hashcode(value));
           return handle;
 
         default:
           Miscellanea.Assert(false);
-          throw new NotImplementedException();
+          throw new NotImplementedException(); // Control flow cannot get here
       }
     }
 
     public uint Delete(uint handle, uint value) {
-      throw new NotImplementedException();
+      uint tag = handle >> 29;
+      uint blockIdx = handle & 0x1FFFFFFFU;
+
+      switch (tag) {
+        case 1: // 2-slots block
+          return DeleteFrom2Block(blockIdx, value, handle);
+
+        case 2: // 4-slot block
+          return DeleteFrom4Block(blockIdx, value, handle);
+
+        case 3: // 8-slot block
+          return DeleteFrom8Block(blockIdx, value, handle);
+
+        case 4: // Non-hashed 16-slot block
+          return DeleteFromNonHashed16Block(blockIdx, value, handle);
+
+        case 5: // Hashed 16-slot block
+          return DeleteFromHashedBlock(blockIdx, value, handle, Hashcode(value));
+
+        default:
+          Miscellanea.Assert(false);
+          throw new NotImplementedException(); // Control flow cannot get here
+      }
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -78,6 +100,17 @@ namespace CellLang {
       slots[blockIdx+1] = value1;
 
       return blockIdx | 0x10000000U;
+    }
+
+    uint DeleteFrom2Block(uint blockIdx, uint value, uint handle) {
+      uint value0 = slots[blockIdx];
+      uint value1 = slots[blockIdx+1];
+
+      if (value != value0 & value != value1)
+        return handle;
+
+      Release2Block(blockIdx);
+      return value == value0 ? value1 : value0;
     }
 
     uint InsertWith2Block(uint block2Idx, uint value, uint handle) {
@@ -104,10 +137,58 @@ namespace CellLang {
       return block4Idx | 0x20000000U;
     }
 
+    uint DeleteFrom4Block(uint blockIdx, uint value, uint handle) {
+      uint value0 = slots[blockIdx];
+      uint value1 = slots[blockIdx+1];
+      uint value2 = slots[blockIdx+2];
+      uint value3 = slots[blockIdx+3];
+
+      if (value == value3)
+        slots[blockIdx+3] = 0xFFFFFFFFU;
+
+      else if (value == value2)
+        if (value3 == 0xFFFFFFFFU) {
+          slots[blockIdx+2] = 0xFFFFFFFFU;
+        }
+        else {
+          slots[blockIdx+2] = value3;
+          slots[blockIdx+3] = 0xFFFFFFFFU;
+        }
+
+      else if (value == value1)
+        if (value2 == 0xFFFFFFFFU) {
+          Release4Block(blockIdx);
+          return value0;
+        }
+        else if (value3 == 0xFFFFFFFFU) {
+          slots[blockIdx+1] = value2;
+          slots[blockIdx+2] = 0xFFFFFFFFU;
+        }
+        else {
+          slots[blockIdx+1] = value3;
+          slots[blockIdx+3] = 0xFFFFFFFFU;
+        }
+
+      else if (value == value0)
+        if (value2 == 0xFFFFFFFFU) {
+          Release4Block(blockIdx);
+          return value1;
+        }
+        else if (value3 == 0xFFFFFFFFU) {
+          slots[blockIdx]   = value2;
+          slots[blockIdx+2] = 0xFFFFFFFFU;
+        }
+        else {
+          slots[blockIdx]   = value3;
+          slots[blockIdx+3] = 0xFFFFFFFFU;
+        }
+
+      return handle;
+    }
+
     uint InsertWith4Block(uint block4Idx, uint value, uint handle) {
-      // The entry contains either three or four values already
-      // If it's three, the last one is set to 0xFFFFFFFFU
-      // The payload contains the index of the 4-block
+      // The entry contains between two and four values already
+      // The unused slots are at the end, and they are set to 0xFFFFFFFFU
 
       uint value0 = slots[block4Idx];
       uint value1 = slots[block4Idx+1];
@@ -121,6 +202,11 @@ namespace CellLang {
         // Easy case: the last slot is available
         // We store the new value there, and return the same handle
         slots[block4Idx+3] = value;
+        return handle;
+      }
+      else if (value2 == 0xFFFFFFFFU) {
+        // Another easy case: the last but one slot is available
+        slots[block4Idx+2] = value;
         return handle;
       }
       else {
@@ -144,10 +230,47 @@ namespace CellLang {
       }
     }
 
+    //## BAD BAD: THE IMPLEMENTATION IS ALMOST THE SAME AS THAT OF DeleteFromNonHashed16Block()
+    uint DeleteFrom8Block(uint blockIdx, uint value, uint handle) {
+      uint lastValue = 0xFFFFFFFFU;
+      int targetIdx = -1;
+
+      int idx = 0;
+      while (idx < 8) {
+        uint valueI = slots[blockIdx + idx];
+        if (valueI == value)
+          targetIdx = idx;
+        else if (valueI == 0xFFFFFFFFU)
+          break;
+        else
+          lastValue = value;
+        idx++;
+      }
+
+      // <idx> is now the index of the first free block,
+      // or <8> if the slot is full. It's also the number
+      // of values in the block before the deletion
+      Miscellanea.Assert(idx >= 4);
+
+      if (targetIdx == -1)
+        return handle;
+
+      if (targetIdx != idx)
+        slots[blockIdx + targetIdx] = lastValue;
+      slots[idx-1] = 0xFFFFFFFFU;
+
+      if (idx == 4) {
+        // We are down to 3 elements, so we release the upper half of the block
+        Release8BlockUpperHalf(blockIdx);
+        return blockIdx | 0x20000000U;
+      }
+
+      return handle;
+    }
+
     uint InsertWith8Block(uint block8Idx, uint value, uint handle) {
-      // The block contains between 5 and 8 values already
+      // The block contains between 4 and 8 values already
       // The unused ones are at the end, and they are set to 0xFFFFFFFFU
-      // and the payload contains the index of the block
 
       uint value0 = slots[block8Idx];
       uint value1 = slots[block8Idx+1];
@@ -162,6 +285,11 @@ namespace CellLang {
                          (value == value4 | value == value5 | value == value6 | value == value7);
       if (isDuplicate)
         return handle;
+
+      if (value4 == 0xFFFFFFFFU) {
+        slots[block8Idx+4] = value;
+        return handle;
+      }
 
       if (value5 == 0xFFFFFFFFU) {
         slots[block8Idx+5] = value;
@@ -196,8 +324,46 @@ namespace CellLang {
       return block16Idx | 0x40000000U;
     }
 
+    //## BAD BAD: THE IMPLEMENTATION IS ALMOST THE SAME AS THAT OF DeleteFrom8Block()
+    uint DeleteFromNonHashed16Block(uint blockIdx, uint value, uint handle) {
+      uint lastValue = 0xFFFFFFFFU;
+      int targetIdx = -1;
+
+      int idx = 0;
+      while (idx < 16) {
+        uint valueI = slots[blockIdx + idx];
+        if (valueI == value)
+          targetIdx = idx;
+        else if (valueI == 0xFFFFFFFFU)
+          break;
+        else
+          lastValue = value;
+        idx++;
+      }
+
+      // <idx> is now the index of the first free block,
+      // or <16> if the slot is full. It's also the number
+      // of values in the block before the deletion
+      Miscellanea.Assert(idx >= 7);
+
+      if (targetIdx == -1)
+        return handle;
+
+      if (targetIdx != idx)
+        slots[blockIdx + targetIdx] = lastValue;
+      slots[idx-1] = 0xFFFFFFFFU;
+
+      if (idx == 7) {
+        // We are down to 7 elements, so we release the upper half of the block
+        Release16BlockUpperHalf(blockIdx);
+        return blockIdx | 0x30000000U;
+      }
+
+      return handle;
+    }
+
     uint InsertWithNonHashed16Block(uint blockIdx, uint value, uint handle) {
-      // a 16-slot standard block, which can contain between 9 and 16 entries
+      // a 16-slot standard block, which can contain between 7 and 16 entries
       uint value15 = slots[blockIdx+15];
       if (value15 == 0xFFFFFFFFU) {
         // The slot still contains some empty space
@@ -242,11 +408,39 @@ namespace CellLang {
       return hashedBlockIdx | 0x50000000U;
     }
 
-    void InsertIntoHashedBlock(uint blockIdx, uint value, uint hashcode) {
+    uint DeleteFromHashedBlock(uint blockIdx, uint value, uint handle, uint hashcode) {
       uint slotIdx = blockIdx + hashcode % 16;
       uint content = slots[slotIdx];
       if (content == 0xFFFFFFFFU)
+        return handle;
+      uint tag = content >> 29;
+      Miscellanea.Assert(tag <= 5);
+      if (tag == 0) {
+        if (content == value)
+          slots[slotIdx] = 0xFFFFFFFFU;
+        else
+          return handle;
+      }
+      else if (tag < 5) {
+        slots[slotIdx] = Delete(content, value);
+      }
+      else {
+        uint nestedBlockIdx = content & 0x1FFFFFFFU;
+        slots[slotIdx] = DeleteFromHashedBlock(nestedBlockIdx, value, content, hashcode/16);
+      }
+
+      //## TODO: IMPLEMENT REALLOCATION HERE IF USAGE IS TOO LOW...
+
+      return handle;
+    }
+
+    void InsertIntoHashedBlock(uint blockIdx, uint value, uint hashcode) {
+      uint slotIdx = blockIdx + hashcode % 16;
+      uint content = slots[slotIdx];
+      if (content == 0xFFFFFFFFU) {
         slots[slotIdx] = value;
+        return;
+      }
       uint tag = content >> 29;
       Miscellanea.Assert(tag <= 5);
       if (tag < 5)
@@ -287,11 +481,19 @@ namespace CellLang {
       throw new NotImplementedException();
     }
 
+    void Release8BlockUpperHalf(uint blockIdx) {
+      throw new NotImplementedException();
+    }
+
     uint Alloc16Block() {
       throw new NotImplementedException();
     }
 
     void Release16Block(uint blockIdx) {
+      throw new NotImplementedException();
+    }
+
+    void Release16BlockUpperHalf(uint blockIdx) {
       throw new NotImplementedException();
     }
   }
