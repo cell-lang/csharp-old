@@ -30,7 +30,23 @@ namespace CellLang {
       }
     }
 
+
     const int MinSize = 32;
+
+    const uint EmptyMarker  = 0xFFFFFFFFU;
+    const uint EndMarker    = 0xEFFFFFFFU;
+
+    const uint PayloadMask  = 0x1FFFFFFFU;
+
+    const uint InlineTag            = 0;
+    const uint Block2Tag            = 1;
+    const uint Block4Tag            = 2;
+    const uint Block8Tag            = 3;
+    const uint NonHashedBlock16Tag  = 4;
+    const uint HashedBlockTag       = 5;
+    const uint AvailableTag         = 6;
+    const uint Unused               = 7;
+
 
     uint[] slots;
     uint head2;
@@ -40,17 +56,19 @@ namespace CellLang {
 
     public void Init() {
       slots = new uint[MinSize];
-      uint idxLast = MinSize - 16;
-      for (uint i=0 ; i < idxLast ; i += 16)
-        slots[i] = i + 16;
-      slots[idxLast] = 0xFFFFFFFFU;
-      head2 = head4 = head8 = 0xFFFFFFFFU;
+      for (uint i=0 ; i < MinSize ; i += 16) {
+        slots[i]   = (i - 16) | AvailableTag;
+        slots[i+1] = (i + 16) | AvailableTag;
+      }
+      slots[0] = EndMarker;
+      slots[MinSize-16+1] = EndMarker;
+      head2 = head4 = head8 = EmptyMarker;
       head16 = 0;
     }
 
     public uint Insert(uint handle, uint value) {
       uint tag = handle >> 29;
-      uint payload = handle & 0x1FFFFFFFU;
+      uint payload = handle & PayloadMask;
       Miscellanea.Assert(((tag << 29) | payload) == handle);
 
       switch (tag) {
@@ -86,7 +104,7 @@ namespace CellLang {
 
     public uint Delete(uint handle, uint value) {
       uint tag = handle >> 29;
-      uint blockIdx = handle & 0x1FFFFFFFU;
+      uint blockIdx = handle & PayloadMask;
       Miscellanea.Assert(((tag << 29) | blockIdx) == handle);
 
       switch (tag) {
@@ -113,7 +131,7 @@ namespace CellLang {
 
     public bool In(uint value, uint handle) {
       uint tag = handle >> 29;
-      uint blockIdx = handle & 0x1FFFFFFFU;
+      uint blockIdx = handle & PayloadMask;
       Miscellanea.Assert(((tag << 29) | blockIdx) == handle);
 
       switch (tag) {
@@ -140,7 +158,7 @@ namespace CellLang {
 
     public uint Count(uint handle) {
       uint tag = handle >> 29;
-      uint blockIdx = handle & 0x1FFFFFFFU;
+      uint blockIdx = handle & PayloadMask;
       Miscellanea.Assert(((tag << 29) | blockIdx) == handle);
 
       switch (tag) {
@@ -170,7 +188,7 @@ namespace CellLang {
 
     public Iter GetIter(uint handle) {
       uint tag = handle >> 29;
-      uint blockIdx = handle & 0x1FFFFFFFU;
+      uint blockIdx = handle & PayloadMask;
       Miscellanea.Assert(((tag << 29) | blockIdx) == handle);
 
       switch (tag) {
@@ -205,7 +223,7 @@ namespace CellLang {
         uint content = slots[blockIdx+i];
         if (content == value)
           return true;
-        if (content == 0xFFFFFFFFU)
+        if (content == EmptyMarker)
           return false;
       }
       return false;
@@ -216,7 +234,7 @@ namespace CellLang {
       uint content = slots[slotIdx];
       if (content == value)
         return true;
-      if (content == 0xFFFFFFFFU)
+      if (content == EmptyMarker)
         return false;
       uint tag = content >> 29;
       Miscellanea.Assert(tag <= 5);
@@ -225,14 +243,14 @@ namespace CellLang {
       else if (tag < 5)
         return In(value, content);
       else
-        return InHashedBlock(value, content & 0x1FFFFFFFU, hashcode/16);
+        return InHashedBlock(value, content & PayloadMask, hashcode/16);
     }
 
     ////////////////////////////////////////////////////////////////////////////
 
     uint CountFrom(uint offset, uint max) {
       for (uint i=0 ; i < max ; i++)
-        if (slots[offset+i] == 0xFFFFFFFFU)
+        if (slots[offset+i] == EmptyMarker)
           return i;
       return max;
     }
@@ -241,7 +259,7 @@ namespace CellLang {
       uint count = 0;
       for (int i=0 ; i < 16 ; i++) {
         uint content = slots[blockIdx+i];
-        if (content != 0xFFFFFFFFU)
+        if (content != EmptyMarker)
           count += Count(content);
       }
       return count;
@@ -261,7 +279,7 @@ namespace CellLang {
     void CopyHashedBlock(uint blockIdx, uint[] dest, ref int next) {
       for (int i=0 ; i < 16 ; i++) {
         uint content = slots[blockIdx+i];
-        if (content != 0xFFFFFFFFU) {
+        if (content != EmptyMarker) {
           uint tag = content >> 29;
           if (tag == 0)
             dest[next++] = content;
@@ -273,7 +291,7 @@ namespace CellLang {
 
     void Copy(uint handle, uint[] dest, ref int next) {
       uint tag = handle >> 29;
-      uint blockIdx = handle & 0x1FFFFFFFU;
+      uint blockIdx = handle & PayloadMask;
       Miscellanea.Assert(((tag << 29) | blockIdx) == handle);
 
       switch (tag) {
@@ -310,7 +328,7 @@ namespace CellLang {
     void CopyNonEmpty(uint offset, uint max, uint[] dest, ref int next) {
       for (int i=0 ; i < max ; i++) {
         uint content = slots[offset + i];
-        if (content == 0xFFFFFFFFU)
+        if (content == EmptyMarker)
           return;
         dest[next++] = content;
       }
@@ -365,7 +383,7 @@ namespace CellLang {
       slots[block4Idx]   = value0;
       slots[block4Idx+1] = value1;
       slots[block4Idx+2] = value;
-      slots[block4Idx+3] = 0xFFFFFFFFU;
+      slots[block4Idx+3] = EmptyMarker;
 
       return block4Idx | 0x20000000U;
     }
@@ -377,43 +395,43 @@ namespace CellLang {
       uint value3 = slots[blockIdx+3];
 
       if (value == value3)
-        slots[blockIdx+3] = 0xFFFFFFFFU;
+        slots[blockIdx+3] = EmptyMarker;
 
       else if (value == value2)
-        if (value3 == 0xFFFFFFFFU) {
-          slots[blockIdx+2] = 0xFFFFFFFFU;
+        if (value3 == EmptyMarker) {
+          slots[blockIdx+2] = EmptyMarker;
         }
         else {
           slots[blockIdx+2] = value3;
-          slots[blockIdx+3] = 0xFFFFFFFFU;
+          slots[blockIdx+3] = EmptyMarker;
         }
 
       else if (value == value1)
-        if (value2 == 0xFFFFFFFFU) {
+        if (value2 == EmptyMarker) {
           Release4Block(blockIdx);
           return value0;
         }
-        else if (value3 == 0xFFFFFFFFU) {
+        else if (value3 == EmptyMarker) {
           slots[blockIdx+1] = value2;
-          slots[blockIdx+2] = 0xFFFFFFFFU;
+          slots[blockIdx+2] = EmptyMarker;
         }
         else {
           slots[blockIdx+1] = value3;
-          slots[blockIdx+3] = 0xFFFFFFFFU;
+          slots[blockIdx+3] = EmptyMarker;
         }
 
       else if (value == value0)
-        if (value2 == 0xFFFFFFFFU) {
+        if (value2 == EmptyMarker) {
           Release4Block(blockIdx);
           return value1;
         }
-        else if (value3 == 0xFFFFFFFFU) {
+        else if (value3 == EmptyMarker) {
           slots[blockIdx]   = value2;
-          slots[blockIdx+2] = 0xFFFFFFFFU;
+          slots[blockIdx+2] = EmptyMarker;
         }
         else {
           slots[blockIdx]   = value3;
-          slots[blockIdx+3] = 0xFFFFFFFFU;
+          slots[blockIdx+3] = EmptyMarker;
         }
 
       return handle;
@@ -431,13 +449,13 @@ namespace CellLang {
       if (value == value0 | value == value1 | value == value2 | value == value3)
         return handle;
 
-      if (value3 == 0xFFFFFFFFU) {
+      if (value3 == EmptyMarker) {
         // Easy case: the last slot is available
         // We store the new value there, and return the same handle
         slots[block4Idx+3] = value;
         return handle;
       }
-      else if (value2 == 0xFFFFFFFFU) {
+      else if (value2 == EmptyMarker) {
         // Another easy case: the last but one slot is available
         slots[block4Idx+2] = value;
         return handle;
@@ -455,9 +473,9 @@ namespace CellLang {
         slots[block8Idx+2] = value2;
         slots[block8Idx+3] = value3;
         slots[block8Idx+4] = value;
-        slots[block8Idx+5] = 0xFFFFFFFFU;
-        slots[block8Idx+6] = 0xFFFFFFFFU;
-        slots[block8Idx+7] = 0xFFFFFFFFU;
+        slots[block8Idx+5] = EmptyMarker;
+        slots[block8Idx+6] = EmptyMarker;
+        slots[block8Idx+7] = EmptyMarker;
 
         return block8Idx | 0x30000000U;
       }
@@ -465,7 +483,7 @@ namespace CellLang {
 
     //## BAD BAD: THE IMPLEMENTATION IS ALMOST THE SAME AS THAT OF DeleteFromNonHashed16Block()
     uint DeleteFrom8Block(uint blockIdx, uint value, uint handle) {
-      uint lastValue = 0xFFFFFFFFU;
+      uint lastValue = EmptyMarker;
       int targetIdx = -1;
 
       int idx = 0;
@@ -473,7 +491,7 @@ namespace CellLang {
         uint valueI = slots[blockIdx + idx];
         if (valueI == value)
           targetIdx = idx;
-        else if (valueI == 0xFFFFFFFFU)
+        else if (valueI == EmptyMarker)
           break;
         else
           lastValue = value;
@@ -490,7 +508,7 @@ namespace CellLang {
 
       if (targetIdx != idx)
         slots[blockIdx + targetIdx] = lastValue;
-      slots[idx-1] = 0xFFFFFFFFU;
+      slots[idx-1] = EmptyMarker;
 
       if (idx == 4) {
         // We are down to 3 elements, so we release the upper half of the block
@@ -519,22 +537,22 @@ namespace CellLang {
       if (isDuplicate)
         return handle;
 
-      if (value4 == 0xFFFFFFFFU) {
+      if (value4 == EmptyMarker) {
         slots[block8Idx+4] = value;
         return handle;
       }
 
-      if (value5 == 0xFFFFFFFFU) {
+      if (value5 == EmptyMarker) {
         slots[block8Idx+5] = value;
         return handle;
       }
 
-      if (value6 == 0xFFFFFFFFU) {
+      if (value6 == EmptyMarker) {
         slots[block8Idx+6] = value;
         return handle;
       }
 
-      if (value7 == 0xFFFFFFFFU) {
+      if (value7 == EmptyMarker) {
         slots[block8Idx+7] = value;
         return handle;
       }
@@ -552,14 +570,14 @@ namespace CellLang {
       slots[block16Idx+7] = value7;
       slots[block16Idx+8] = value;
       for (int i=9 ; i < 16 ; i++)
-        slots[block16Idx+i] = 0xFFFFFFFFU;
+        slots[block16Idx+i] = EmptyMarker;
 
       return block16Idx | 0x40000000U;
     }
 
     //## BAD BAD: THE IMPLEMENTATION IS ALMOST THE SAME AS THAT OF DeleteFrom8Block()
     uint DeleteFromNonHashed16Block(uint blockIdx, uint value, uint handle) {
-      uint lastValue = 0xFFFFFFFFU;
+      uint lastValue = EmptyMarker;
       int targetIdx = -1;
 
       int idx = 0;
@@ -567,7 +585,7 @@ namespace CellLang {
         uint valueI = slots[blockIdx + idx];
         if (valueI == value)
           targetIdx = idx;
-        else if (valueI == 0xFFFFFFFFU)
+        else if (valueI == EmptyMarker)
           break;
         else
           lastValue = value;
@@ -584,7 +602,7 @@ namespace CellLang {
 
       if (targetIdx != idx)
         slots[blockIdx + targetIdx] = lastValue;
-      slots[idx-1] = 0xFFFFFFFFU;
+      slots[idx-1] = EmptyMarker;
 
       if (idx == 7) {
         // We are down to 7 elements, so we release the upper half of the block
@@ -598,13 +616,13 @@ namespace CellLang {
     uint InsertWithNonHashed16Block(uint blockIdx, uint value, uint handle) {
       // a 16-slot standard block, which can contain between 7 and 16 entries
       uint value15 = slots[blockIdx+15];
-      if (value15 == 0xFFFFFFFFU) {
+      if (value15 == EmptyMarker) {
         // The slot still contains some empty space
         for (int i=0 ; i < 16 ; i++) {
           uint valueI = slots[blockIdx+i];
           if (value == valueI)
             return handle;
-          if (valueI == 0xFFFFFFFFU) {
+          if (valueI == EmptyMarker) {
             slots[blockIdx+i] = value;
             return handle;
           }
@@ -623,7 +641,7 @@ namespace CellLang {
       // Allocating and initializing the hashed block
       uint hashedBlockIdx = Alloc16Block();
       for (int i=0 ; i < 16 ; i++)
-        slots[hashedBlockIdx] = 0xFFFFFFFFU;
+        slots[hashedBlockIdx] = EmptyMarker;
 
       // Transferring the existing values
       for (int i=0 ; i < 16 ; i++) {
@@ -644,13 +662,13 @@ namespace CellLang {
     uint DeleteFromHashedBlock(uint blockIdx, uint value, uint handle, uint hashcode) {
       uint slotIdx = blockIdx + hashcode % 16;
       uint content = slots[slotIdx];
-      if (content == 0xFFFFFFFFU)
+      if (content == EmptyMarker)
         return handle;
       uint tag = content >> 29;
       Miscellanea.Assert(tag <= 5);
       if (tag == 0) {
         if (content == value)
-          slots[slotIdx] = 0xFFFFFFFFU;
+          slots[slotIdx] = EmptyMarker;
         else
           return handle;
       }
@@ -658,7 +676,7 @@ namespace CellLang {
         slots[slotIdx] = Delete(content, value);
       }
       else {
-        uint nestedBlockIdx = content & 0x1FFFFFFFU;
+        uint nestedBlockIdx = content & PayloadMask;
         slots[slotIdx] = DeleteFromHashedBlock(nestedBlockIdx, value, content, hashcode/16);
       }
 
@@ -670,7 +688,7 @@ namespace CellLang {
     void InsertIntoHashedBlock(uint blockIdx, uint value, uint hashcode) {
       uint slotIdx = blockIdx + hashcode % 16;
       uint content = slots[slotIdx];
-      if (content == 0xFFFFFFFFU) {
+      if (content == EmptyMarker) {
         slots[slotIdx] = value;
         return;
       }
@@ -679,7 +697,7 @@ namespace CellLang {
       if (tag < 5)
         slots[slotIdx] = Insert(content, value);
       else
-        InsertIntoHashedBlock(content & 0x1FFFFFFFU, value, hashcode / 16);
+        InsertIntoHashedBlock(content & PayloadMask, value, hashcode / 16);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -691,11 +709,43 @@ namespace CellLang {
     ////////////////////////////////////////////////////////////////////////////
 
     uint Alloc2Block() {
-      throw new NotImplementedException();
+      if (head2 != EmptyMarker) {
+        Miscellanea.Assert(slots[head2] == EndMarker);
+        Miscellanea.Assert(slots[head2 + 1] >> 29 == AvailableTag);
+
+        uint blockIdx = head2;
+        RemoveBlockFromChain(blockIdx, EndMarker, ref head2);
+        return blockIdx;
+      }
+      else {
+        uint block4Idx = Alloc4Block();
+        Miscellanea.Assert(slots[block4Idx] == EndMarker);
+        Miscellanea.Assert((slots[block4Idx+1] >> 29) == AvailableTag);
+        slots[block4Idx]   = EndMarker;
+        slots[block4Idx+1] = EndMarker;
+        head2 = block4Idx;
+        return block4Idx + 2;
+      }
     }
 
     void Release2Block(uint blockIdx) {
-      throw new NotImplementedException();
+      Miscellanea.Assert((blockIdx & 1) == 0);
+
+      bool isFirst = (blockIdx & 3) == 0;
+      uint otherBlockIdx = (uint) (blockIdx + (isFirst ? 2 : -2));
+      uint otherBlockSlot0 = slots[otherBlockIdx];
+
+      if (otherBlockSlot0 >> 29 == AvailableTag) {
+        // The matching block is available, so we release both at once as a 4-slot block
+        // But first we have to remove the matching block from the 2-slot block chain
+        RemoveBlockFromChain(blockIdx + 2, otherBlockSlot0, ref head2);
+        Release4Block(isFirst ? blockIdx : otherBlockIdx);
+      }
+      else {
+        // The matching block is not available, so we
+        // just add the new one to the 2-slot block chain
+        AddBlockToChain(blockIdx, ref head2);
+      }
     }
 
     uint Alloc4Block() {
@@ -728,6 +778,64 @@ namespace CellLang {
 
     void Release16BlockUpperHalf(uint blockIdx) {
       throw new NotImplementedException();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    void RemoveBlockFromChain(uint blockIdx, uint slot0, ref uint head) {
+      uint slot1 = slots[blockIdx + 1];
+
+      if (slot0 != EndMarker) {
+        // Not the first block in the chain
+        Miscellanea.Assert(head != blockIdx);
+        uint prevBlockIdx = slot0 & PayloadMask;
+
+        if (slot1 != EndMarker) {
+          // The block is in the middle of the chain
+          // The previous and next blocks must be repointed to each other
+          uint nextBlockIdx = slot1 & PayloadMask;
+          slots[prevBlockIdx+1] = slot1;
+          slots[nextBlockIdx]   = slot0;
+        }
+        else {
+          // Last block in a chain with multiple blocks
+          // The 'next' field of the previous block must be cleared
+          slots[prevBlockIdx+1] = EndMarker;
+        }
+      }
+      else {
+        // First slot in the chain, must be the one pointed to by head2
+        Miscellanea.Assert(head == blockIdx);
+
+        if (slot1 != EndMarker) {
+          // The head must be repointed at the next block,
+          // whose 'previous' field must now be cleared
+          uint nextBlockIdx = slot1 & PayloadMask;
+          head = nextBlockIdx;
+          slots[nextBlockIdx] = EndMarker;
+        }
+        else {
+          // No 'previous' nor 'next' slots, it must be the only one
+          // Just resetting the head of the 2-slot block chain
+          head = EmptyMarker;
+        }
+      }
+    }
+
+    void AddBlockToChain(uint blockIdx, ref uint head) {
+      // The 'previous' field of the newly released block must be cleared
+      slots[blockIdx] = EndMarker;
+      if (head != EmptyMarker) {
+        // If the list of blocks is not empty, we link the first two blocks
+        slots[blockIdx+1] = head & AvailableTag;
+        slots[head] = blockIdx & AvailableTag;
+      }
+      else {
+        // Otherwise we just clear then 'next' field of the newly released block
+        slots[blockIdx+1] = EndMarker;
+      }
+      // The new block becomes the head one
+      head = blockIdx;
     }
   }
 }
