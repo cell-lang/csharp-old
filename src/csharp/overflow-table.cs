@@ -4,6 +4,32 @@ using System.Collections.Generic;
 
 namespace CellLang {
   struct OverflowTable {
+    public struct Iter {
+      uint[] values;
+      uint   next;
+      uint   end;
+
+      public Iter(uint[] values, uint first, uint count) {
+        this.values = values;
+        this.next   = first;
+        this.end    = first + count;
+      }
+
+      public uint Get() {
+        Miscellanea.Assert(!Done());
+        return values[next];
+      }
+
+      public bool Done() {
+        return next >= end;
+      }
+
+      public void Next() {
+        Miscellanea.Assert(!Done());
+        next++;
+      }
+    }
+
     const int MinSize = 32;
 
     uint[] slots;
@@ -25,6 +51,7 @@ namespace CellLang {
     public uint Insert(uint handle, uint value) {
       uint tag = handle >> 29;
       uint payload = handle & 0x1FFFFFFFU;
+      Miscellanea.Assert(((tag << 29) | payload) == handle);
 
       switch (tag) {
         case 0:
@@ -60,6 +87,7 @@ namespace CellLang {
     public uint Delete(uint handle, uint value) {
       uint tag = handle >> 29;
       uint blockIdx = handle & 0x1FFFFFFFU;
+      Miscellanea.Assert(((tag << 29) | blockIdx) == handle);
 
       switch (tag) {
         case 1: // 2-slots block
@@ -80,6 +108,211 @@ namespace CellLang {
         default:
           Miscellanea.Assert(false);
           throw new NotImplementedException(); // Control flow cannot get here
+      }
+    }
+
+    public bool In(uint value, uint handle) {
+      uint tag = handle >> 29;
+      uint blockIdx = handle & 0x1FFFFFFFU;
+      Miscellanea.Assert(((tag << 29) | blockIdx) == handle);
+
+      switch (tag) {
+        case 1: // 2-block slot
+          return In2Block(value, blockIdx);
+
+        case 2: // 4-block slot
+          return InBlock(value, blockIdx, 4);
+
+        case 3: // 8-block slot
+          return InBlock(value, blockIdx, 8);
+
+        case 4: // Non-hashed 16-slot block
+          return InBlock(value, blockIdx, 16);
+
+        case 5: // Hashed 16-slot block
+          return InHashedBlock(value, blockIdx, Hashcode(value));
+
+        default:
+          Miscellanea.Assert(false);
+          throw new NotImplementedException(); // Control flow cannot get here
+      }
+    }
+
+    public uint Count(uint handle) {
+      uint tag = handle >> 29;
+      uint blockIdx = handle & 0x1FFFFFFFU;
+      Miscellanea.Assert(((tag << 29) | blockIdx) == handle);
+
+      switch (tag) {
+        case 0: // Inline
+          return 1;
+
+        case 1: // 2-block slot
+          return 2;
+
+        case 2: // 4-block slot
+          return 2 + CountFrom(blockIdx + 2, 2);
+
+        case 3: // 8-block slot
+          return 4 + CountFrom(blockIdx + 4, 4);
+
+        case 4: // Non-hashed 16-slot block
+          return 7 + CountFrom(blockIdx + 7, 9);
+
+        case 5: // Hashed 16-slot block
+          return CountHashed(blockIdx);
+
+        default:
+          Miscellanea.Assert(false);
+          throw new NotImplementedException(); // Control flow cannot get here
+      }
+    }
+
+    public Iter GetIter(uint handle) {
+      uint tag = handle >> 29;
+      uint blockIdx = handle & 0x1FFFFFFFU;
+      Miscellanea.Assert(((tag << 29) | blockIdx) == handle);
+
+      switch (tag) {
+        // case 0: // Inline
+        //  return 1;
+
+        case 1: // 2-block slot
+          return new Iter(slots, blockIdx, 2);
+
+        case 2: // 4-block slot
+        case 3: // 8-block slot
+        case 4: // Non-hashed 16-slot block
+          return new Iter(slots, blockIdx, Count(handle));
+
+        case 5: // Hashed 16-slot block
+          return HashedBlockIter(blockIdx);
+
+        default:
+          Miscellanea.Assert(false);
+          throw new NotImplementedException(); // Control flow cannot get here
+      }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    bool In2Block(uint value, uint blockIdx) {
+      return value == slots[blockIdx] || value == slots[blockIdx+1];
+    }
+
+    bool InBlock(uint value, uint blockIdx, int blockSize) {
+      for (int i=0 ; i < blockSize ; i++) {
+        uint content = slots[blockIdx+i];
+        if (content == value)
+          return true;
+        if (content == 0xFFFFFFFFU)
+          return false;
+      }
+      return false;
+    }
+
+    bool InHashedBlock(uint value, uint blockIdx, uint hashcode) {
+      uint slotIdx = blockIdx + (hashcode % 16);
+      uint content = slots[slotIdx];
+      if (content == value)
+        return true;
+      if (content == 0xFFFFFFFFU)
+        return false;
+      uint tag = content >> 29;
+      Miscellanea.Assert(tag <= 5);
+      if (tag == 0)
+        return false;
+      else if (tag < 5)
+        return In(value, content);
+      else
+        return InHashedBlock(value, content & 0x1FFFFFFFU, hashcode/16);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    uint CountFrom(uint offset, uint max) {
+      for (uint i=0 ; i < max ; i++)
+        if (slots[offset+i] == 0xFFFFFFFFU)
+          return i;
+      return max;
+    }
+
+    uint CountHashed(uint blockIdx) {
+      uint count = 0;
+      for (int i=0 ; i < 16 ; i++) {
+        uint content = slots[blockIdx+i];
+        if (content != 0xFFFFFFFFU)
+          count += Count(content);
+      }
+      return count;
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+
+    Iter HashedBlockIter(uint blockIdx) {
+      uint count = CountHashed(blockIdx);
+      uint[] values = new uint[count];
+      int next = 0;
+      CopyHashedBlock(blockIdx, values, ref next);
+      Miscellanea.Assert(next == count);
+      return new Iter(values, 0, count);
+    }
+
+    void CopyHashedBlock(uint blockIdx, uint[] dest, ref int next) {
+      for (int i=0 ; i < 16 ; i++) {
+        uint content = slots[blockIdx+i];
+        if (content != 0xFFFFFFFFU) {
+          uint tag = content >> 29;
+          if (tag == 0)
+            dest[next++] = content;
+          else
+            Copy(content, dest, ref next);
+        }
+      }
+    }
+
+    void Copy(uint handle, uint[] dest, ref int next) {
+      uint tag = handle >> 29;
+      uint blockIdx = handle & 0x1FFFFFFFU;
+      Miscellanea.Assert(((tag << 29) | blockIdx) == handle);
+
+      switch (tag) {
+        // case 0: // Inline
+        //  return 1;
+
+        case 1: // 2-block slot
+          dest[next++] = slots[blockIdx];
+          dest[next++] = slots[blockIdx + 1];
+          return;
+
+        case 2: // 4-block slot
+          CopyNonEmpty(blockIdx, 4, dest, ref next);
+          return;
+
+        case 3: // 8-block slot
+          CopyNonEmpty(blockIdx, 8, dest, ref next);
+          return;
+
+        case 4: // Non-hashed 16-slot block
+          CopyNonEmpty(blockIdx, 16, dest, ref next);
+          return;
+
+        case 5: // Hashed 16-slot block
+          CopyHashedBlock(blockIdx, dest, ref next);
+          return;
+
+        default:
+          Miscellanea.Assert(false);
+          throw new NotImplementedException(); // Control flow cannot get here
+      }
+    }
+
+    void CopyNonEmpty(uint offset, uint max, uint[] dest, ref int next) {
+      for (int i=0 ; i < max ; i++) {
+        uint content = slots[offset + i];
+        if (content == 0xFFFFFFFFU)
+          return;
+        dest[next++] = content;
       }
     }
 
