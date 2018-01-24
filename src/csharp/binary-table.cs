@@ -3,172 +3,6 @@ using System.Collections.Generic;
 
 
 namespace CellLang {
-  struct OneWayBinTable {
-    const int MinCapacity = 16;
-
-    public const uint EmptySlot      = 0xFFFFFFFF;
-    public const uint MultiValueSlot = 0xFFFFFFFE;
-    //const uint MaxSurrId = 0x1FFFFFFF;
-
-    static uint[] emptyArray = new uint[0];
-
-    public uint[] column;
-    public Dictionary<uint, HashSet<uint>> multimap;
-    public int count;
-
-    public void Dump() {
-      Console.WriteLine("count = " + count.ToString());
-      Console.Write("column = [");
-      for (int i=0 ; i < column.Length ; i++)
-        Console.Write((i > 0 ? " " : "") + ((int) column[i]) .ToString());
-      Console.WriteLine("]");
-      foreach(var entry in multimap) {
-        Console.Write(entry.Key.ToString() + " ->");
-        foreach (uint val in entry.Value)
-          Console.Write(" " + val.ToString());
-        Console.WriteLine();
-      }
-    }
-
-    public void Init() {
-      column = emptyArray;
-      multimap = new Dictionary<uint, HashSet<uint>>();
-      count = 0;
-    }
-
-    public void InitReverse(OneWayBinTable source) {
-      Miscellanea.Assert(count == 0);
-
-      uint[] srcCol = source.column;
-      Dictionary<uint, HashSet<uint>> srcMultimap = source.multimap;
-
-      for (uint i=0 ; i < srcCol.Length ; i++) {
-        uint code = srcCol[i];
-        if (code == MultiValueSlot) {
-          HashSet<uint>.Enumerator it = srcMultimap[i].GetEnumerator();
-          while (it.MoveNext())
-            Insert(it.Current, i);
-        }
-        else if (code != EmptySlot)
-          Insert(code, i);
-      }
-    }
-
-    public bool Contains(uint surr1, uint surr2) {
-      if (surr1 >= column.Length)
-        return false;
-      uint code = column[surr1];
-      if (code == EmptySlot)
-        return false;
-      if (code == MultiValueSlot)
-        return multimap[surr1].Contains(surr2);
-      return code == surr2;
-    }
-
-    public bool ContainsKey(uint surr1) {
-      return surr1 < column.Length && column[surr1] != EmptySlot;
-    }
-
-    public uint[] Lookup(uint surr) {
-      if (surr >= column.Length)
-        return emptyArray;
-      uint code = column[surr];
-      if (code == EmptySlot)
-        return emptyArray;
-      if (code != MultiValueSlot)
-        return new uint[] {code};
-
-      HashSet<uint> surrSet = multimap[surr];
-      int count = surrSet.Count;
-      uint[] surrs = new uint[count];
-      HashSet<uint>.Enumerator it = surrSet.GetEnumerator();
-      int next = 0;
-      while (it.MoveNext())
-        surrs[next++] = it.Current;
-      Miscellanea.Assert(next == count);
-      return surrs;
-    }
-
-    public void Insert(uint surr1, uint surr2) {
-      int size = column.Length;
-      if (surr1 >= size) {
-        int newSize = size == 0 ? MinCapacity : 2 * size;
-        while (surr1 >= newSize)
-          newSize *= 2;
-        uint[] newColumn = new uint[newSize];
-        Array.Copy(column, newColumn, size);
-        for (int i=size ; i < newSize ; i++)
-          newColumn[i] = EmptySlot;
-        column = newColumn;
-      }
-
-      uint code = column[surr1];
-      if (code == EmptySlot) {
-        column[surr1] = surr2;
-        count++;
-      }
-      else if (code == MultiValueSlot) {
-        HashSet<uint> surrs = multimap[surr1];
-        if (surrs.Add(surr2))
-          count++;
-      }
-      else if (code != surr2) {
-        column[surr1] = MultiValueSlot;
-        HashSet<uint> surrs = new HashSet<uint>();
-        surrs.Add(code);
-        surrs.Add(surr2);
-        multimap[surr1] = surrs;
-        count++;
-      }
-    }
-
-    public void Clear() {
-      column = emptyArray;
-      multimap.Clear();
-      count = 0;
-    }
-
-    public void Delete(uint surr1, uint surr2) {
-      uint code = column[surr1];
-      if (code == surr2) {
-        column[surr1] = EmptySlot;
-        count--;
-      }
-      else if (code == MultiValueSlot) {
-        HashSet<uint> surrs = multimap[surr1];
-        if (surrs.Remove(surr2)) {
-          count--;
-          if (surrs.Count == 1) {
-            column[surr1] = surrs.GetEnumerator().Current;
-            multimap.Remove(surr1);
-          }
-        }
-      }
-    }
-
-    public uint[,] Copy() {
-      uint[,] res = new uint[count, 2];
-      int next = 0;
-      for (uint i=0 ; i < column.Length ; i++) {
-        uint code = column[i];
-        if (code == MultiValueSlot) {
-          var it = multimap[i].GetEnumerator();
-          while (it.MoveNext()) {
-            uint surr2 = it.Current;
-            res[next, 0] = i;
-            res[next++, 1] = surr2;
-          }
-        }
-        else if (code != EmptySlot) {
-          res[next, 0] = i;
-          res[next++, 1] = code;
-        }
-      }
-      return res;
-    }
-  }
-
-
   class BinaryTable {
     public struct Iter {
       int next;
@@ -269,8 +103,8 @@ namespace CellLang {
     }
 
     public void Clear() {
-      table1.Clear();
-      table2.Clear();
+      table1.Init();
+      table2.Init();
     }
 
     public void Delete(uint surr1, uint surr2) {
@@ -291,16 +125,19 @@ namespace CellLang {
       int next = 0;
       for (uint i=0 ; i < table1.column.Length ; i++) {
         uint code = table1.column[i];
-        if (code != OneWayBinTable.EmptySlot) {
+        if (code != OverflowTable.EmptyMarker) {
           Obj val1 = store1.GetValue(i);
-          if (code != OneWayBinTable.MultiValueSlot) {
+          if (code >> 29 == 0) {
             objs1[next] = val1;
             objs2[next++] = store2.GetValue(code);
           }
           else {
-            foreach (uint surr2 in table1.multimap[i]) {
+            OverflowTable.Iter it = table1.overflowTable.GetIter(code);
+            while (!it.Done()) {
+              uint surr2 = it.Get();
               objs1[next] = val1;
               objs2[next++] = store2.GetValue(surr2);
+              it.Next();
             }
           }
         }
