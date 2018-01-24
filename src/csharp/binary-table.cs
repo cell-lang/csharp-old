@@ -58,7 +58,7 @@ namespace CellLang {
 
     public bool ContainsField2(uint surr2) {
       if (table2.count == 0 & table1.count > 0)
-        table2.InitReverse(table1);
+        table2.InitReverse(ref table1);
       return table2.ContainsKey(surr2);
     }
 
@@ -68,7 +68,7 @@ namespace CellLang {
 
     public uint[] LookupByCol2(uint surr) {
       if (table2.count == 0 & table1.count > 0)
-        table2.InitReverse(table1);
+        table2.InitReverse(ref table1);
       return table2.Lookup(surr);
     }
 

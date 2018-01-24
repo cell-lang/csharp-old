@@ -676,7 +676,7 @@ namespace CellLang {
       for (int i=0 ; i < 16 ; i++) {
         uint content = slots[blockIdx+i];
         InsertIntoHashedBlock(hashedBlockIdx, content, Hashcode(content), out inserted);
-        Miscellanea.Assert(inserted == true);
+        Miscellanea.Assert(inserted);
       }
 
       // Releasing the old block
@@ -684,7 +684,7 @@ namespace CellLang {
 
       // Adding the new value
       InsertIntoHashedBlock(hashedBlockIdx, value, Hashcode(value), out inserted);
-      Miscellanea.Assert(inserted == true);
+      Miscellanea.Assert(inserted);
 
       // Returning the tagged index of the block
       return hashedBlockIdx | 0x50000000U;
@@ -954,10 +954,6 @@ namespace CellLang {
   struct OneWayBinTable {
     const int MinCapacity = 16;
 
-    //public const uint EmptySlot      = 0xFFFFFFFF;
-    //public const uint MultiValueSlot = 0xFFFFFFFE;
-    //const uint MaxSurrId = 0x1FFFFFFF;
-
     static uint[] emptyArray = new uint[0];
 
     public uint[] column;
@@ -984,22 +980,26 @@ namespace CellLang {
       count = 0;
     }
 
-    public void InitReverse(OneWayBinTable source) {
-//      Miscellanea.Assert(count == 0);
-//
-//      uint[] srcCol = source.column;
-//      Dictionary<uint, HashSet<uint>> srcMultimap = source.multimap;
-//
-//      for (uint i=0 ; i < srcCol.Length ; i++) {
-//        uint code = srcCol[i];
-//        if (code == MultiValueSlot) {
-//          HashSet<uint>.Enumerator it = srcMultimap[i].GetEnumerator();
-//          while (it.MoveNext())
-//            Insert(it.Current, i);
-//        }
-//        else if (code != EmptySlot)
-//          Insert(code, i);
-//      }
+    public void InitReverse(ref OneWayBinTable source) {
+      Miscellanea.Assert(count == 0);
+
+      uint[] srcCol = source.column;
+      int len = srcCol.Length;
+
+      for (uint i=0 ; i < len ; i++) {
+        uint code = srcCol[i];
+        if (code != OverflowTable.EmptyMarker)
+          if (code >> 29 == 0) {
+            Insert(code, i);
+          }
+          else {
+            OverflowTable.Iter it = source.overflowTable.GetIter(code);
+            while (!it.Done()) {
+              Insert(it.Get(), i);
+              it.Next();
+            }
+          }
+      }
     }
 
     public bool Contains(uint surr1, uint surr2) {
