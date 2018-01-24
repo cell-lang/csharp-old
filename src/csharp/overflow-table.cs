@@ -42,7 +42,7 @@ namespace CellLang {
     const uint Block2Tag            = 1;
     const uint Block4Tag            = 2;
     const uint Block8Tag            = 3;
-    const uint NonHashedBlock16Tag  = 4;
+    const uint Block16Tag           = 4;
     const uint HashedBlockTag       = 5;
     const uint AvailableTag         = 6;
     const uint Unused               = 7;
@@ -57,8 +57,8 @@ namespace CellLang {
     public void Init() {
       slots = new uint[MinSize];
       for (uint i=0 ; i < MinSize ; i += 16) {
-        slots[i]   = (i - 16) | AvailableTag;
-        slots[i+1] = (i + 16) | AvailableTag;
+        slots[i]   = (i - 16) | AvailableTag << 29;
+        slots[i+1] = (i + 16) | Block16Tag << 29;
       }
       slots[0] = EndMarker;
       slots[MinSize-16+1] = EndMarker;
@@ -711,7 +711,7 @@ namespace CellLang {
     uint Alloc2Block() {
       if (head2 != EmptyMarker) {
         Miscellanea.Assert(slots[head2] == EndMarker);
-        Miscellanea.Assert(slots[head2 + 1] >> 29 == AvailableTag);
+        Miscellanea.Assert(slots[head2+1] == EndMarker || slots[head2+1] >> 29 == Block2Tag);
 
         uint blockIdx = head2;
         RemoveBlockFromChain(blockIdx, EndMarker, ref head2);
@@ -720,10 +720,8 @@ namespace CellLang {
       else {
         uint block4Idx = Alloc4Block();
         Miscellanea.Assert(slots[block4Idx] == EndMarker);
-        Miscellanea.Assert((slots[block4Idx+1] >> 29) == AvailableTag);
-        slots[block4Idx]   = EndMarker;
-        slots[block4Idx+1] = EndMarker;
-        head2 = block4Idx;
+        Miscellanea.Assert(slots[block4Idx+1] == EndMarker || slots[block4Idx+1] >> 29 == Block4Tag);
+        AddBlockToChain(block4Idx, Block2Tag, ref head2);
         return block4Idx + 2;
       }
     }
@@ -736,6 +734,8 @@ namespace CellLang {
       uint otherBlockSlot0 = slots[otherBlockIdx];
 
       if (otherBlockSlot0 >> 29 == AvailableTag) {
+        Miscellanea.Assert(slots[otherBlockIdx+1] >> 29 == Block2Tag);
+
         // The matching block is available, so we release both at once as a 4-slot block
         // But first we have to remove the matching block from the 2-slot block chain
         RemoveBlockFromChain(blockIdx + 2, otherBlockSlot0, ref head2);
@@ -744,40 +744,110 @@ namespace CellLang {
       else {
         // The matching block is not available, so we
         // just add the new one to the 2-slot block chain
-        AddBlockToChain(blockIdx, ref head2);
+        AddBlockToChain(blockIdx, Block2Tag, ref head2);
       }
     }
 
     uint Alloc4Block() {
-      throw new NotImplementedException();
+      if (head4 != EmptyMarker) {
+        Miscellanea.Assert(slots[head4] == EmptyMarker);
+        Miscellanea.Assert(slots[head4+1] == EmptyMarker | slots[head4+1] >> 29 == Block4Tag);
+
+        uint blockIdx = head4;
+        head4 = slots[blockIdx+1] & PayloadMask;
+        return blockIdx;
+      }
+      else {
+        uint block8Idx = Alloc8Block();
+        Miscellanea.Assert(slots[block8Idx] == EmptyMarker);
+        Miscellanea.Assert(slots[block8Idx+1] == EmptyMarker | slots[block8Idx+1] >> 29 == Block8Tag);
+        AddBlockToChain(block8Idx, Block4Tag, ref head4);
+        return block8Idx + 4;
+      }
     }
 
     void Release4Block(uint blockIdx) {
-      throw new NotImplementedException();
+      Miscellanea.Assert((blockIdx & 3) == 0);
+
+      bool isFirst = (blockIdx & 7) == 0;
+      uint otherBlockIdx = (uint) (blockIdx + (isFirst ? 4 : -4));
+      uint otherBlockSlot0 = slots[otherBlockIdx];
+      uint otherBlockSlot1 = slots[otherBlockIdx+1];
+
+      if (otherBlockSlot0 >> 29 == AvailableTag & otherBlockSlot1 >> 29 == Block4Tag) {
+        RemoveBlockFromChain(otherBlockIdx, otherBlockSlot0, ref head4);
+        Release8Block(isFirst ? blockIdx : otherBlockIdx);
+      }
+      else
+        AddBlockToChain(blockIdx, Block4Tag, ref head4);
     }
 
     uint Alloc8Block() {
-      throw new NotImplementedException();
+      if (head8 != EmptyMarker) {
+        Miscellanea.Assert(slots[head8] == EmptyMarker);
+        Miscellanea.Assert(slots[head8+1] == EmptyMarker | slots[head8+1] >> 29 == Block8Tag);
+
+        uint blockIdx = head8;
+        head8 = slots[blockIdx+1] & PayloadMask;
+        return blockIdx;
+      }
+      else {
+        uint block16Idx = Alloc16Block();
+        Miscellanea.Assert(slots[block16Idx] == EmptyMarker);
+        Miscellanea.Assert(slots[block16Idx+1] == EmptyMarker | slots[block16Idx+1] >> 29 == Block16Tag);
+        AddBlockToChain(block16Idx, Block8Tag, ref head8);
+        return block16Idx + 8;
+      }
     }
 
     void Release8Block(uint blockIdx) {
-      throw new NotImplementedException();
+      Miscellanea.Assert((blockIdx & 7) == 0);
+
+      bool isFirst = (blockIdx & 15) == 0;
+      uint otherBlockIdx = (uint) (blockIdx + (isFirst ? 8 : -8));
+      uint otherBlockSlot0 = slots[otherBlockIdx];
+      uint otherBlockSlot1 = slots[otherBlockIdx+1];
+
+      if (otherBlockSlot0 >> 29 == AvailableTag & otherBlockSlot1 >> 29 == Block8Tag) {
+        RemoveBlockFromChain(otherBlockIdx, otherBlockSlot0, ref head8);
+        Release16Block(isFirst ? blockIdx : otherBlockIdx);
+      }
+      else
+        AddBlockToChain(blockIdx, Block8Tag, ref head8);
     }
 
     void Release8BlockUpperHalf(uint blockIdx) {
-      throw new NotImplementedException();
+      AddBlockToChain(blockIdx+4, Block4Tag, ref head4);
     }
 
     uint Alloc16Block() {
-      throw new NotImplementedException();
+      if (head16 == EmptyMarker) {
+        uint len = (uint) slots.Length;
+        uint[] newSlots = new uint[2*len];
+        Array.Copy(slots, newSlots, len);
+        for (uint i=len ; i < 2 * len ; i += 16) {
+          newSlots[i]   = (i - 16) | AvailableTag << 29;
+          newSlots[i+1] = (i + 16) | Block16Tag << 29;
+        }
+        slots[len] = EndMarker;
+        slots[2*len - 16 + 1] = EndMarker;
+        head16 = len;
+      }
+
+      Miscellanea.Assert(slots[head16] == EmptyMarker);
+      Miscellanea.Assert(slots[head16+1] == EmptyMarker | slots[head16+1] >> 29 == Block8Tag);
+
+      uint blockIdx = head16;
+      head16 = slots[blockIdx+1] & PayloadMask;
+      return blockIdx;
     }
 
     void Release16Block(uint blockIdx) {
-      throw new NotImplementedException();
+      AddBlockToChain(blockIdx, Block16Tag, ref head16);
     }
 
     void Release16BlockUpperHalf(uint blockIdx) {
-      throw new NotImplementedException();
+      AddBlockToChain(blockIdx+8, Block8Tag, ref head8);
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -822,13 +892,13 @@ namespace CellLang {
       }
     }
 
-    void AddBlockToChain(uint blockIdx, ref uint head) {
+    void AddBlockToChain(uint blockIdx, uint sizeTag, ref uint head) {
       // The 'previous' field of the newly released block must be cleared
       slots[blockIdx] = EndMarker;
       if (head != EmptyMarker) {
         // If the list of blocks is not empty, we link the first two blocks
-        slots[blockIdx+1] = head & AvailableTag;
-        slots[head] = blockIdx & AvailableTag;
+        slots[blockIdx+1] = head & sizeTag << 29;
+        slots[head] = blockIdx & AvailableTag << 29;
       }
       else {
         // Otherwise we just clear then 'next' field of the newly released block
