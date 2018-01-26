@@ -34,9 +34,14 @@ namespace CellLang {
     const int MinSize = 32;
 
     public const uint EmptyMarker  = 0xFFFFFFFFU;
-    const uint EndMarker    = 0xEFFFFFFFU;
 
-    const uint PayloadMask  = 0x1FFFFFFFU;
+    const uint EndLowerMarker   = 0xDFFFFFFFU;
+    const uint End2UpperMarker  = 0x3FFFFFFFU;
+    const uint End4UpperMarker  = 0x5FFFFFFFU;
+    const uint End8UpperMarker  = 0x7FFFFFFFU;
+    const uint End16UpperMarker = 0x9FFFFFFFU;
+
+    public const uint PayloadMask  = 0x1FFFFFFFU;
 
     const uint InlineTag            = 0;
     const uint Block2Tag            = 1;
@@ -47,12 +52,32 @@ namespace CellLang {
     const uint AvailableTag         = 6;
     const uint Unused               = 7;
 
-
     uint[] slots;
     uint head2;
     uint head4;
     uint head8;
     uint head16;
+
+    public void Dump() {
+      Console.Write("  slots:");
+      for (int i=0 ; i < slots.Length ; i++) {
+        if (i % 16 == 0)
+          Console.Write("\n   ");
+        else if (i % 8 == 0)
+          Console.Write("  ");
+        uint slot = slots[i];
+        uint payload = slot & PayloadMask;
+        Console.Write("  {0}:{1,2}", slot >> 29, payload == 0x1FFFFFFFU ? "-" : payload.ToString());
+      }
+      Console.WriteLine("");
+      Console.WriteLine(
+        "  heads: 2 = {0}, 4 = {1}, 8 = {2}, 16 = {3}",
+        head2 != EmptyMarker ? head2.ToString() : "-",
+        head4 != EmptyMarker ? head4.ToString() : "-",
+        head8 != EmptyMarker ? head8.ToString() : "-",
+        head16 != EmptyMarker ? head16.ToString() : "-"
+      );
+    }
 
     public void Init() {
       slots = new uint[MinSize];
@@ -60,8 +85,8 @@ namespace CellLang {
         slots[i]   = (i - 16) | AvailableTag << 29;
         slots[i+1] = (i + 16) | Block16Tag << 29;
       }
-      slots[0] = EndMarker;
-      slots[MinSize-16+1] = EndMarker;
+      slots[0] = EndLowerMarker;
+      slots[MinSize-16+1] = End16UpperMarker;
       head2 = head4 = head8 = EmptyMarker;
       head16 = 0;
     }
@@ -354,7 +379,7 @@ namespace CellLang {
       slots[blockIdx+1] = value1;
 
       inserted = true;
-      return blockIdx | 0x10000000U;
+      return blockIdx | (Block2Tag << 29);
     }
 
     uint DeleteFrom2Block(uint blockIdx, uint value, uint handle, out bool deleted) {
@@ -395,7 +420,7 @@ namespace CellLang {
       slots[block4Idx+3] = EmptyMarker;
 
       inserted = true;
-      return block4Idx | 0x20000000U;
+      return block4Idx | (Block4Tag << 29);
     }
 
     uint DeleteFrom4Block(uint blockIdx, uint value, uint handle, out bool deleted) {
@@ -497,7 +522,7 @@ namespace CellLang {
         slots[block8Idx+6] = EmptyMarker;
         slots[block8Idx+7] = EmptyMarker;
 
-        return block8Idx | 0x30000000U;
+        return block8Idx | (Block8Tag << 29);
       }
     }
 
@@ -535,7 +560,7 @@ namespace CellLang {
       if (idx == 4) {
         // We are down to 3 elements, so we release the upper half of the block
         Release8BlockUpperHalf(blockIdx);
-        return blockIdx | 0x20000000U;
+        return blockIdx | (Block4Tag << 29);
       }
 
       return handle;
@@ -596,7 +621,7 @@ namespace CellLang {
       for (int i=9 ; i < 16 ; i++)
         slots[block16Idx+i] = EmptyMarker;
 
-      return block16Idx | 0x40000000U;
+      return block16Idx | (Block16Tag << 29);
     }
 
     //## BAD BAD: THE IMPLEMENTATION IS ALMOST THE SAME AS THAT OF DeleteFrom8Block()
@@ -633,7 +658,7 @@ namespace CellLang {
       if (idx == 7) {
         // We are down to 7 elements, so we release the upper half of the block
         Release16BlockUpperHalf(blockIdx);
-        return blockIdx | 0x30000000U;
+        return blockIdx | (Block8Tag << 29);
       }
 
       return handle;
@@ -687,7 +712,7 @@ namespace CellLang {
       Miscellanea.Assert(inserted);
 
       // Returning the tagged index of the block
-      return hashedBlockIdx | 0x50000000U;
+      return hashedBlockIdx | (HashedBlockTag << 29);
     }
 
     uint DeleteFromHashedBlock(uint blockIdx, uint value, uint handle, uint hashcode, out bool deleted) {
@@ -749,18 +774,16 @@ namespace CellLang {
 
     uint Alloc2Block() {
       if (head2 != EmptyMarker) {
-        Miscellanea.Assert(slots[head2] == EndMarker);
-        Miscellanea.Assert(slots[head2+1] == EndMarker || slots[head2+1] >> 29 == Block2Tag);
+        Miscellanea.Assert(slots[head2] == EndLowerMarker);
+        Miscellanea.Assert(slots[head2+1] == End2UpperMarker || slots[head2+1] >> 29 == Block2Tag);
 
         uint blockIdx = head2;
-        RemoveBlockFromChain(blockIdx, EndMarker, ref head2);
+        RemoveBlockFromChain(blockIdx, EndLowerMarker, End2UpperMarker, ref head2);
         return blockIdx;
       }
       else {
         uint block4Idx = Alloc4Block();
-        Miscellanea.Assert(slots[block4Idx] == EndMarker);
-        Miscellanea.Assert(slots[block4Idx+1] == EndMarker || slots[block4Idx+1] >> 29 == Block4Tag);
-        AddBlockToChain(block4Idx, Block2Tag, ref head2);
+        AddBlockToChain(block4Idx, Block2Tag, End2UpperMarker, ref head2);
         return block4Idx + 2;
       }
     }
@@ -777,20 +800,20 @@ namespace CellLang {
 
         // The matching block is available, so we release both at once as a 4-slot block
         // But first we have to remove the matching block from the 2-slot block chain
-        RemoveBlockFromChain(blockIdx + 2, otherBlockSlot0, ref head2);
+        RemoveBlockFromChain(otherBlockIdx, otherBlockSlot0, End2UpperMarker, ref head2);
         Release4Block(isFirst ? blockIdx : otherBlockIdx);
       }
       else {
         // The matching block is not available, so we
         // just add the new one to the 2-slot block chain
-        AddBlockToChain(blockIdx, Block2Tag, ref head2);
+        AddBlockToChain(blockIdx, Block2Tag, End2UpperMarker, ref head2);
       }
     }
 
     uint Alloc4Block() {
       if (head4 != EmptyMarker) {
-        Miscellanea.Assert(slots[head4] == EmptyMarker);
-        Miscellanea.Assert(slots[head4+1] == EmptyMarker | slots[head4+1] >> 29 == Block4Tag);
+        Miscellanea.Assert(slots[head4] == EndLowerMarker);
+        Miscellanea.Assert(slots[head4+1] == End4UpperMarker | slots[head4+1] >> 29 == Block4Tag);
 
         uint blockIdx = head4;
         head4 = slots[blockIdx+1] & PayloadMask;
@@ -798,9 +821,7 @@ namespace CellLang {
       }
       else {
         uint block8Idx = Alloc8Block();
-        Miscellanea.Assert(slots[block8Idx] == EmptyMarker);
-        Miscellanea.Assert(slots[block8Idx+1] == EmptyMarker | slots[block8Idx+1] >> 29 == Block8Tag);
-        AddBlockToChain(block8Idx, Block4Tag, ref head4);
+        AddBlockToChain(block8Idx, Block4Tag, End4UpperMarker, ref head4);
         return block8Idx + 4;
       }
     }
@@ -814,17 +835,17 @@ namespace CellLang {
       uint otherBlockSlot1 = slots[otherBlockIdx+1];
 
       if (otherBlockSlot0 >> 29 == AvailableTag & otherBlockSlot1 >> 29 == Block4Tag) {
-        RemoveBlockFromChain(otherBlockIdx, otherBlockSlot0, ref head4);
+        RemoveBlockFromChain(otherBlockIdx, otherBlockSlot0, End4UpperMarker, ref head4);
         Release8Block(isFirst ? blockIdx : otherBlockIdx);
       }
       else
-        AddBlockToChain(blockIdx, Block4Tag, ref head4);
+        AddBlockToChain(blockIdx, Block4Tag, End4UpperMarker, ref head4);
     }
 
     uint Alloc8Block() {
       if (head8 != EmptyMarker) {
-        Miscellanea.Assert(slots[head8] == EmptyMarker);
-        Miscellanea.Assert(slots[head8+1] == EmptyMarker | slots[head8+1] >> 29 == Block8Tag);
+        Miscellanea.Assert(slots[head8] == EndLowerMarker);
+        Miscellanea.Assert(slots[head8+1] == End8UpperMarker | slots[head8+1] >> 29 == Block8Tag);
 
         uint blockIdx = head8;
         head8 = slots[blockIdx+1] & PayloadMask;
@@ -832,9 +853,9 @@ namespace CellLang {
       }
       else {
         uint block16Idx = Alloc16Block();
-        Miscellanea.Assert(slots[block16Idx] == EmptyMarker);
-        Miscellanea.Assert(slots[block16Idx+1] == EmptyMarker | slots[block16Idx+1] >> 29 == Block16Tag);
-        AddBlockToChain(block16Idx, Block8Tag, ref head8);
+        Miscellanea.Assert(slots[block16Idx] == EndLowerMarker);
+        Miscellanea.Assert(slots[block16Idx+1] == End16UpperMarker | slots[block16Idx+1] >> 29 == Block16Tag);
+        AddBlockToChain(block16Idx, Block8Tag, End8UpperMarker, ref head8);
         return block16Idx + 8;
       }
     }
@@ -848,15 +869,15 @@ namespace CellLang {
       uint otherBlockSlot1 = slots[otherBlockIdx+1];
 
       if (otherBlockSlot0 >> 29 == AvailableTag & otherBlockSlot1 >> 29 == Block8Tag) {
-        RemoveBlockFromChain(otherBlockIdx, otherBlockSlot0, ref head8);
+        RemoveBlockFromChain(otherBlockIdx, otherBlockSlot0, End8UpperMarker, ref head8);
         Release16Block(isFirst ? blockIdx : otherBlockIdx);
       }
       else
-        AddBlockToChain(blockIdx, Block8Tag, ref head8);
+        AddBlockToChain(blockIdx, Block8Tag, End8UpperMarker, ref head8);
     }
 
     void Release8BlockUpperHalf(uint blockIdx) {
-      AddBlockToChain(blockIdx+4, Block4Tag, ref head4);
+      AddBlockToChain(blockIdx+4, Block4Tag, End4UpperMarker, ref head4);
     }
 
     uint Alloc16Block() {
@@ -868,13 +889,13 @@ namespace CellLang {
           newSlots[i]   = (i - 16) | AvailableTag << 29;
           newSlots[i+1] = (i + 16) | Block16Tag << 29;
         }
-        slots[len] = EndMarker;
-        slots[2*len - 16 + 1] = EndMarker;
+        slots[len] = EndLowerMarker;
+        slots[2*len - 16 + 1] = End16UpperMarker;
         head16 = len;
       }
 
-      Miscellanea.Assert(slots[head16] == EmptyMarker);
-      Miscellanea.Assert(slots[head16+1] == EmptyMarker | slots[head16+1] >> 29 == Block8Tag);
+      Miscellanea.Assert(slots[head16] == EndLowerMarker);
+      Miscellanea.Assert(slots[head16+1] == End16UpperMarker | slots[head16+1] >> 29 == Block16Tag);
 
       uint blockIdx = head16;
       head16 = slots[blockIdx+1] & PayloadMask;
@@ -882,24 +903,24 @@ namespace CellLang {
     }
 
     void Release16Block(uint blockIdx) {
-      AddBlockToChain(blockIdx, Block16Tag, ref head16);
+      AddBlockToChain(blockIdx, Block16Tag, End16UpperMarker, ref head16);
     }
 
     void Release16BlockUpperHalf(uint blockIdx) {
-      AddBlockToChain(blockIdx+8, Block8Tag, ref head8);
+      AddBlockToChain(blockIdx+8, Block8Tag, End16UpperMarker, ref head8);
     }
 
     ////////////////////////////////////////////////////////////////////////////
 
-    void RemoveBlockFromChain(uint blockIdx, uint slot0, ref uint head) {
+    void RemoveBlockFromChain(uint blockIdx, uint slot0, uint endUpperMarker, ref uint head) {
       uint slot1 = slots[blockIdx + 1];
 
-      if (slot0 != EndMarker) {
+      if (slot0 != EndLowerMarker) {
         // Not the first block in the chain
         Miscellanea.Assert(head != blockIdx);
         uint prevBlockIdx = slot0 & PayloadMask;
 
-        if (slot1 != EndMarker) {
+        if (slot1 != endUpperMarker) {
           // The block is in the middle of the chain
           // The previous and next blocks must be repointed to each other
           uint nextBlockIdx = slot1 & PayloadMask;
@@ -909,19 +930,19 @@ namespace CellLang {
         else {
           // Last block in a chain with multiple blocks
           // The 'next' field of the previous block must be cleared
-          slots[prevBlockIdx+1] = EndMarker;
+          slots[prevBlockIdx+1] = endUpperMarker;
         }
       }
       else {
-        // First slot in the chain, must be the one pointed to by head2
+        // First slot in the chain, must be the one pointed to by head
         Miscellanea.Assert(head == blockIdx);
 
-        if (slot1 != EndMarker) {
+        if (slot1 != endUpperMarker) {
           // The head must be repointed at the next block,
           // whose 'previous' field must now be cleared
           uint nextBlockIdx = slot1 & PayloadMask;
           head = nextBlockIdx;
-          slots[nextBlockIdx] = EndMarker;
+          slots[nextBlockIdx] = EndLowerMarker;
         }
         else {
           // No 'previous' nor 'next' slots, it must be the only one
@@ -931,17 +952,17 @@ namespace CellLang {
       }
     }
 
-    void AddBlockToChain(uint blockIdx, uint sizeTag, ref uint head) {
+    void AddBlockToChain(uint blockIdx, uint sizeTag, uint endUpperMarker, ref uint head) {
       // The 'previous' field of the newly released block must be cleared
-      slots[blockIdx] = EndMarker;
+      slots[blockIdx] = EndLowerMarker;
       if (head != EmptyMarker) {
         // If the list of blocks is not empty, we link the first two blocks
-        slots[blockIdx+1] = head & sizeTag << 29;
-        slots[head] = blockIdx & AvailableTag << 29;
+        slots[blockIdx+1] = head | sizeTag << 29;
+        slots[head] = blockIdx | AvailableTag << 29;
       }
       else {
         // Otherwise we just clear then 'next' field of the newly released block
-        slots[blockIdx+1] = EndMarker;
+        slots[blockIdx+1] = endUpperMarker;
       }
       // The new block becomes the head one
       head = blockIdx;
@@ -964,14 +985,9 @@ namespace CellLang {
       Console.WriteLine("count = " + count.ToString());
       Console.Write("column = [");
       for (int i=0 ; i < column.Length ; i++)
-        Console.Write((i > 0 ? " " : "") + ((int) column[i]) .ToString());
+        Console.Write("{0}{1:X}", (i > 0 ? " " : ""), column[i]);
       Console.WriteLine("]");
-      // foreach(var entry in multimap) {
-      //   Console.Write(entry.Key.ToString() + " ->");
-      //   foreach (uint val in entry.Value)
-      //     Console.Write(" " + val.ToString());
-      //   Console.WriteLine();
-      // }
+      overflowTable.Dump();
     }
 
     public void Init() {
@@ -1085,19 +1101,22 @@ namespace CellLang {
       int next = 0;
       for (uint i=0 ; i < column.Length ; i++) {
         uint code = column[i];
-        if (code >> 29 != 0) {
-          OverflowTable.Iter it = overflowTable.GetIter(code);
-          while (!it.Done()) {
+        if (code != OverflowTable.EmptyMarker) {
+          if (code >> 29 == 0) {
             res[next, 0] = i;
-            res[next++, 1] = it.Get();
-            it.Next();
+            res[next++, 1] = code;
+          }
+          else {
+            OverflowTable.Iter it = overflowTable.GetIter(code);
+            while (!it.Done()) {
+              res[next, 0] = i;
+              res[next++, 1] = it.Get();
+              it.Next();
+            }
           }
         }
-        else if (code != OverflowTable.EmptyMarker) {
-          res[next, 0] = i;
-          res[next++, 1] = code;
-        }
       }
+      Miscellanea.Assert(next == count);
       return res;
     }
   }

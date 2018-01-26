@@ -217,5 +217,6 @@ soft-clean:
 	@rm -f water-sensor-mixed*
 	@rm -f regression-mixed*
 	@rm -f interfaces.txt
+	@rm -f test-mixed*
 	@rm debug/*
 	@touch debug/stack_trace.txt
