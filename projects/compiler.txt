@@ -129,9 +129,9 @@
 
 // Main file
 
-src/cell/desugar-main.cell
+src/cell/compiler-main.cell
 
 
 // Runtime source code
 
-../build/tmp/runtime-sources-empty.cell
+tmp/runtime-sources.cell

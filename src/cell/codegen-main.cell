@@ -10,12 +10,19 @@ implicit typedefs : [TypeName -> NeType] {
 
 
 Main(String* args) {
-  if args == []:
-    Print("Usage: codegen-dbg <input file>\n");
+  if |args| == 1:
+    input_file = args(0);
+    debug_mode = false;
+  elif |args| == 2 and args(0) == "-d":
+    input_file = args(1);
+    debug_mode = true;
+  else
+    Print("Usage: codegen-dbg [-d] <input file>\n");
     return;
   ;
 
-  res = ReadValueFromFile(args(0));
+
+  res = ReadValueFromFile(input_file);
   return if res == nothing;
   prg = value(res);
 
@@ -24,7 +31,7 @@ Main(String* args) {
     return;
   ;
 
-  cs_code, docs = compile_to_cs(prg, false);
+  cs_code, docs = compile_to_cs(prg, false, debug_mode);
 
   text = append(cs_code, "\n");
   ok = FileWrite("generated.cs", chars(text));

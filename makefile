@@ -30,6 +30,13 @@ codegen.cs: codegen-dbg codegen.txt
 codegen.exe: codegen.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 codegen.cs $(RUNTIME-FILES) -out:codegen.exe
 
+codegen-dbg.cs: codegen.exe codegen.txt
+	./codegen.exe -d codegen.txt
+	bin/apply-hacks < generated.cs > codegen-dbg.cs
+
+codegen-dbg.exe: codegen-dbg.cs $(RUNTIME-FILES)
+	mcs -nowarn:162,168,219,414 codegen-dbg.cs $(RUNTIME-FILES) -out:codegen-dbg.exe
+
 codegen-rel.exe: codegen.cs $(RUNTIME-FILES)
 	mcs -optimize -nowarn:162,168,219,414 codegen.cs $(RUNTIME-FILES) -out:codegen-rel.exe
 
@@ -119,7 +126,7 @@ test.cs: test.cell
 	cellc -p projects/test.txt
 	mv dump-opt-code.txt test.txt
 	rm dump-*
-	./codegen.exe test.txt
+	./codegen.exe -d test.txt
 	mv generated.cs test.cs
 
 test.exe: test.cs $(RUNTIME-FILES)

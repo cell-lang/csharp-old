@@ -1,4 +1,4 @@
-(String*, String*) compile_to_cs(CompiledPrg prg, Bool include_runtime) {
+(String*, String*) compile_to_cs(CompiledPrg prg, Bool include_runtime, Bool debug_mode) {
   symbs = used_symbols(prg);
   assert |symbs| <= 64 * 1024; ## IMPLEMENT PROPERLY
 
@@ -17,9 +17,6 @@
 
   cls_obj_typedef = generate_cls_obj_typedef(all_cls_arities);
   c_code = c_code & cls_obj_typedef & 4 * ("") if cls_obj_typedef != ();
-
-  all_fn_arities = [in_arity(d) : d <- prg.procs];
-  c_code = c_code & join(intermix((generate_push_call_info_wrapper(a) : a <- isort(all_fn_arities)), 2 * (""))) & 4 * ("");
 
   int_seqs_decls, int_seqs_defs = gen_int_seqs_decl_and_def(prg.int_seqs);
 
@@ -48,6 +45,7 @@
     ord_react_blocks,
     ord_static_blocks,
     prg.int_seqs,
+    debug_mode                      = debug_mode,
     sorted_cls_defs                 = sorted_cls_defs,
     int_seqs_types_and_lengths      = int_seqs_types_and_lengths,
     cached_semi_consts_by_impl_arg  = cached_semi_consts_by_impl_arg(prg)
@@ -207,24 +205,6 @@ Int pow(Int b, Nat e) {
 }
 
 
-String* generate_push_call_info_wrapper(Nat arity) = ();
-// String+ generate_push_call_info_wrapper(Nat arity) {
-//   signature = "void push_call_info_wrapper(const char *fn_name" &
-//               append((", Obj " & to_c_var_decl_name(fn_arg(i)) : i < arity)) & ")";
-//   code = (signature & " {", "#ifndef NDEBUG");
-//   if arity == 0:
-//     code = code & ("  push_call_info(fn_name, 0, (Obj *)0);");
-//   else
-//     code = code & ("  Obj *params = new_obj_array(" & printed(arity) & ");");
-//     for i < arity:
-//       code = code & ("  params[" & printed(i) & "] = " & to_c_var_decl_name(fn_arg(i)) & ";");
-//     ;
-//     code = code & ("  push_call_info(fn_name, " & printed(arity) & ", params);");
-//   ;
-//   return nonempty(code & ("#endif", "}"));
-// }
-
-
 ## THIS SHOULD NOT GO HERE
 type FnCallParam  = blank_obj, ObjExpr, ElemVar, PendingInputVar, VecVar, BoolExpr, IntExpr,
                     ItVar, StreamVar, AnyClsVar, AnyRelVar, AnyValueStoreId, AnyAutoVar, AnyDBVar;
@@ -236,6 +216,7 @@ implicit sorted_cls_defs : ClsDef* {
 
 
 implicit {
+  debug_mode                      : Bool,
   sorted_cls_defs                 : ClsDef*,
   int_seqs_types_and_lengths      : (String, Nat)*,
   cached_semi_consts_by_impl_arg  : [ImplArg -> [+FnId]];
@@ -443,18 +424,19 @@ implicit {
     symb_switch()         = compile_symb_switch_to_c(instr.value, instr.cases, instr.else, block_id),
     call_proc()           = compile_call_proc_to_c(if instr.var? then just(instr.var) else nothing, instr.name, instr.args, block_id),
     call_cls()            = mk_cls_call(instr.cls_var, instr.var, instr.args), ## INLINE THE FUNCTION
-    push_call_info()      = (),
-    pop_call_info         = (),
-    // push_call_info()      = { fn_name = (printed(user_repr(instr.fn_name)));
-    //                           params = (if p == nothing then :blank_obj else value(p) : p <- instr.params);
-    //                           return (mk_gen_call("push_call_info_wrapper", fn_name, params, ()));
-    //                         },
-    // pop_call_info         = mk_call("pop_call_info", ()),
+    push_call_info()      = (compiled_push_call_info(instr.fn_name, instr.params) if debug_mode),
+    pop_call_info         = (native_static_call("Miscellanea.PopCallInfo", ()) if debug_mode),
     runtime_check()       = compile_runtime_check_to_c(instr.cond, instr.file, instr.line, instr.text, instr.vars),
     branch()              = compile_branch_to_c(instr.cond, instr.when_true, instr.when_false, block_id),
     _                     = auto_instr_native_code(instr, block_id);
 
 
+  String compiled_push_call_info(ObjFnName fn_name, Maybe[FnArg]* args) {
+    fn_name_str = printed(user_repr(fn_name));
+    args_strs = (if a != nothing then to_c_var_ref_name(value(a)) else "NullObj.Singleton()" : a <- args);
+    argv_str = if args != () then "new Obj[] {" & append(args_strs, ", ") & "}" else "null";
+    return native_static_call("Miscellanea.PushCallInfo", (fn_name_str, argv_str));
+  }
 
 
   String compile_get_bin_rel_iter_to_c(BinRelItVar var, AtomicExpr src, (Maybe[AtomicExpr], Maybe[AtomicExpr]) args) =

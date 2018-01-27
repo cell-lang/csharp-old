@@ -80,6 +80,22 @@ namespace CellLang {
       }
     }
 
+    static int      stackDepth = 0;
+    static string[] fnNamesStack = new String[100];
+    static Obj[][]  argsStack = new Obj[100][];
+
+    public static void PushCallInfo(string fnName, Obj[] args) {
+      if (stackDepth < 100) {
+        fnNamesStack[stackDepth] = fnName;
+        argsStack[stackDepth]    = args;
+      }
+      stackDepth++;
+    }
+
+    public static void PopCallInfo() {
+      stackDepth--;
+    }
+
     public static bool IsHexDigit(byte b) {
       char ch = (char) b;
       return ('0' <= ch & ch <= '9') | ('a' <= ch & ch <= 'f') | ('A' <= ch & ch <= 'F');
