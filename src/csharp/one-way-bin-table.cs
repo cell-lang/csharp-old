@@ -58,6 +58,194 @@ namespace CellLang {
     uint head8;
     uint head16;
 
+    public void Check(uint[] column, int count) {
+      int len = slots.Length;
+      bool[] slotOK = new bool[len];
+      for (int i=0 ; i < len ; i++)
+        Miscellanea.Assert(!slotOK[i]);
+
+      if (head2 != EmptyMarker) {
+        uint curr = head2;
+        Check(slots[curr] == EndLowerMarker, "slots[curr] == EndLowerMarker (2), curr = " + curr.ToString());
+        for ( ; ; ) {
+          Check(curr < len, "curr < len");
+          uint slot1 = slots[curr + 1];
+          uint tag = slot1 >> 29;
+          uint payload = slot1 & PayloadMask;
+          Check(slot1 == End2UpperMarker | (tag == Block2Tag & payload < len), "slot1 == End2UpperMarker | (tag == Block2Tag & payload < len)");
+          Check(!slotOK[curr] & !slotOK[curr+1], "!slotOK[curr] & !slotOK[curr+1]");
+          slotOK[curr] = slotOK[curr+1] = true;
+          if (slot1 == End2UpperMarker)
+            break;
+          uint nextSlot0 = slots[payload];
+          Check(nextSlot0 >> 29 == AvailableTag, "nextSlot0 >> 29 == AvailableTag");
+          Check((nextSlot0 & PayloadMask) == curr, "(nextSlot0 & PayloadMask) == curr");
+          curr = payload;
+        }
+      }
+
+      if (head4 != EmptyMarker) {
+        uint curr = head4;
+        Check(slots[curr] == EndLowerMarker, "slots[curr] == EndLowerMarker (4), curr = " + curr.ToString());
+        for ( ; ; ) {
+          Check(curr < len, "curr < len");
+          uint slot1 = slots[curr + 1];
+          uint tag = slot1 >> 29;
+          uint payload = slot1 & PayloadMask;
+          Check(slot1 == End4UpperMarker | (tag == Block4Tag & payload < len), "slot1 == End4UpperMarker | (tag == Block4Tag & payload < len)");
+          for (int i=0 ; i < 4 ; i++) {
+            Check(!slotOK[curr+i], "!slotOK[curr+i]");
+            slotOK[curr+i] = true;
+          }
+          if (slot1 == End4UpperMarker)
+            break;
+          uint nextSlot0 = slots[payload];
+          Check(nextSlot0 >> 29 == AvailableTag, "nextSlot0 >> 29 == AvailableTag");
+          Check((nextSlot0 & PayloadMask) == curr, "(nextSlot0 & PayloadMask) == curr");
+          curr = payload;
+        }
+      }
+
+      if (head8 != EmptyMarker) {
+        uint curr = head8;
+        Check(slots[curr] == EndLowerMarker, "slots[curr] == EndLowerMarker (8), curr = " + curr.ToString());
+        for ( ; ; ) {
+          Check(curr < len, "curr < len");
+          uint slot1 = slots[curr + 1];
+          uint tag = slot1 >> 29;
+          uint payload = slot1 & PayloadMask;
+          Check(slot1 == End8UpperMarker | (tag == Block8Tag & payload < len), "slot1 == End8UpperMarker | (tag == Block8Tag & payload < len)");
+          for (int i=0 ; i < 8 ; i++) {
+            Check(!slotOK[curr+i], "!slotOK[curr+i]");
+            slotOK[curr+i] = true;
+          }
+          if (slot1 == End8UpperMarker)
+            break;
+          uint nextSlot0 = slots[payload];
+          Check(nextSlot0 >> 29 == AvailableTag, "nextSlot0 >> 29 == AvailableTag");
+          Check((nextSlot0 & PayloadMask) == curr, "(nextSlot0 & PayloadMask) == curr");
+          curr = payload;
+        }
+      }
+
+      if (head16 != EmptyMarker) {
+        uint curr = head16;
+        Check(slots[curr] == EndLowerMarker, "slots[curr] == EndLowerMarker (16), curr = " + curr.ToString());
+        for ( ; ; ) {
+          Check(curr < len, "curr < len");
+          uint slot1 = slots[curr + 1];
+          uint tag = slot1 >> 29;
+          uint payload = slot1 & PayloadMask;
+          Check(slot1 == End16UpperMarker | (tag == Block16Tag & payload < len), "slot1 == End16UpperMarker | (tag == Block16Tag & payload < len)");
+          for (int i=0 ; i < 16 ; i++) {
+            Check(!slotOK[curr+i], "!slotOK[curr+i]");
+            slotOK[curr+i] = true;
+          }
+          if (slot1 == End16UpperMarker)
+            break;
+          uint nextSlot0 = slots[payload];
+          Check(nextSlot0 >> 29 == AvailableTag, "nextSlot0 >> 29 == AvailableTag");
+          Check((nextSlot0 & PayloadMask) == curr, "(nextSlot0 & PayloadMask) == curr");
+          curr = payload;
+        }
+      }
+
+      int actualCount = 0;
+      for (int i=0 ; i < column.Length ; i++) {
+        uint content = column[i];
+        if (content == EmptyMarker)
+          continue;
+        uint tag = content >> 29;
+        uint payload = content & PayloadMask;
+        if (tag == 0) {
+          Check(payload < 100, "payload < 100");
+          actualCount++;
+        }
+        else {
+          CheckGroup(tag, payload, slotOK, ref actualCount);
+        }
+      }
+
+      for (int i=0 ; i < slotOK.Length ; i++)
+        Check(slotOK[i], "slotOK[i]");
+
+      Check(count == actualCount, "count == actualCount");
+    }
+
+    void CheckGroup(uint tag, uint blockIdx, bool[] slotOK, ref int count) {
+      Check(tag >= Block2Tag, "tag >= Block2Tag");
+      Check(tag <= HashedBlockTag, "tag <= HashedBlockTag");
+
+      int capacity, minUsage;
+      if (tag == Block2Tag) {
+        capacity = 2;
+        minUsage = 2;
+      }
+      else if (tag == Block4Tag) {
+        capacity = 4;
+        minUsage = 2;
+      }
+      else if (tag == Block8Tag) {
+        capacity = 8;
+        minUsage = 4;
+      }
+      else if (tag == Block16Tag) {
+        capacity = 16;
+        minUsage = 7;
+      }
+      else {
+        Miscellanea.Assert(tag == HashedBlockTag);
+        capacity = 16;
+        minUsage = 0; // Unused
+      }
+
+      for (int i=0 ; i < capacity ; i++) {
+        Check(!slotOK[blockIdx+i], "!slotOK[blockIdx+i]");
+        slotOK[blockIdx+i] = true;
+      }
+
+      if (tag != HashedBlockTag) {
+        for (int i=0 ; i < capacity ; i++) {
+          uint slot = slots[blockIdx + i];
+          if (i < minUsage)
+            Check(slot != EmptyMarker, "slot != EmptyMarker");
+          if (slot == EmptyMarker) {
+            for (int j=i+1 ; j < capacity ; j++)
+              Check(slots[blockIdx+j] == EmptyMarker, "slots[blockIdx+j] == EmptyMarker");
+            break;
+          }
+          Check(slot >> 29 == 0, "slot >> 29 == 0");
+          Check((slot & PayloadMask) < 100, "(slot & PayloadMask) < 100");
+          count++;
+        }
+      }
+      else {
+        for (int i=0 ; i < 16 ; i++) {
+          uint slot = slots[blockIdx + i];
+          if (slot != EmptyMarker) {
+            uint slotTag = slot >> 29;
+            uint slotPayload = slot & PayloadMask;
+            if (slotTag == 0) {
+              Check(slotPayload < 100, "slotPayload < 100");
+              count++;
+            }
+            else
+              CheckGroup(slotTag, slotPayload, slotOK, ref count);
+          }
+        }
+      }
+    }
+
+    void Check(bool cond, string msg) {
+      if (!cond) {
+        Console.WriteLine(msg);
+        Console.WriteLine("");
+        Dump();
+        Console.WriteLine("");
+        Miscellanea.Assert(false);
+      }
+    }
+
     public void Dump() {
       Console.Write("  slots:");
       for (int i=0 ; i < slots.Length ; i++) {
@@ -816,7 +1004,7 @@ namespace CellLang {
         Miscellanea.Assert(slots[head4+1] == End4UpperMarker | slots[head4+1] >> 29 == Block4Tag);
 
         uint blockIdx = head4;
-        head4 = slots[blockIdx+1] & PayloadMask;
+        RemoveBlockFromChain(blockIdx, EndLowerMarker, End4UpperMarker, ref head4);
         return blockIdx;
       }
       else {
@@ -848,7 +1036,7 @@ namespace CellLang {
         Miscellanea.Assert(slots[head8+1] == End8UpperMarker | slots[head8+1] >> 29 == Block8Tag);
 
         uint blockIdx = head8;
-        head8 = slots[blockIdx+1] & PayloadMask;
+        RemoveBlockFromChain(blockIdx, EndLowerMarker, End8UpperMarker, ref head8);
         return blockIdx;
       }
       else {
@@ -889,8 +1077,9 @@ namespace CellLang {
           newSlots[i]   = (i - 16) | AvailableTag << 29;
           newSlots[i+1] = (i + 16) | Block16Tag << 29;
         }
-        slots[len] = EndLowerMarker;
-        slots[2*len - 16 + 1] = End16UpperMarker;
+        newSlots[len] = EndLowerMarker;
+        newSlots[2*len - 16 + 1] = End16UpperMarker;
+        slots = newSlots;
         head16 = len;
       }
 
@@ -898,7 +1087,7 @@ namespace CellLang {
       Miscellanea.Assert(slots[head16+1] == End16UpperMarker | slots[head16+1] >> 29 == Block16Tag);
 
       uint blockIdx = head16;
-      head16 = slots[blockIdx+1] & PayloadMask;
+      RemoveBlockFromChain(blockIdx, EndLowerMarker, End16UpperMarker, ref head16);
       return blockIdx;
     }
 
@@ -980,6 +1169,10 @@ namespace CellLang {
     public uint[] column;
     public OverflowTable overflowTable;
     public int count;
+
+    public void Check() {
+      overflowTable.Check(column, count);
+    }
 
     public void Dump() {
       Console.WriteLine("count = " + count.ToString());

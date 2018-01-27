@@ -42,6 +42,12 @@ namespace CellLang {
       table2.Init();
       this.store1 = store1;
       this.store2 = store2;
+      Check();
+    }
+
+    public void Check() {
+      table1.Check();
+      table2.Check();
     }
 
     public int Size() {
@@ -100,17 +106,20 @@ namespace CellLang {
       table1.Insert(surr1, surr2);
       if (table2.count > 0)
         table2.Insert(surr2, surr1);
+      Check();
     }
 
     public void Clear() {
       table1.Init();
       table2.Init();
+      Check();
     }
 
     public void Delete(uint surr1, uint surr2) {
       table1.Delete(surr1, surr2);
       if (table2.count > 0)
         table2.Delete(surr2, surr1);
+      Check();
     }
 
     public Obj Copy(bool flipped) {
