@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Diagnostics;
 
@@ -37,8 +38,9 @@ namespace CellLang {
         Console.WriteLine("\nAssertion failed: {0}\nFile: {1}, line: {2}\n\n", text, file, line);
     }
 
-    public static void DumpVar(string name, Obj val) {
-      Console.WriteLine("{0} = {1}\n", name, val.ToString());
+    public static void DumpVar(string name, Obj obj) {
+      string str = PrintedObjOrFilename(obj, true);
+      Console.WriteLine("{0} = {1}\n", name, str);
     }
 
     static Random random = new Random(0);
@@ -55,6 +57,9 @@ namespace CellLang {
     public static long GetTickCount() {
       return Environment.TickCount & Int32.MaxValue;
     }
+
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
 
     public static void Assert(bool cond) {
       if (!cond) {
@@ -80,6 +85,9 @@ namespace CellLang {
       }
     }
 
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+
     static int      stackDepth = 0;
     static string[] fnNamesStack = new String[100];
     static Obj[][]  argsStack = new Obj[100][];
@@ -95,6 +103,74 @@ namespace CellLang {
     public static void PopCallInfo() {
       stackDepth--;
     }
+
+    static void PrintCallStack() {
+      int size = stackDepth <= fnNamesStack.Length ? stackDepth : fnNamesStack.Length;
+      for (int i=0 ; i < size ; i++)
+        Console.WriteLine("{0}", fnNamesStack[i]);
+      string outFnName = "debug" + Path.DirectorySeparatorChar + "stack-trace.txt";
+      Console.Error.WriteLine("\nNow trying to write a full dump of the stack to " + outFnName);
+      Console.Error.Flush();
+      try {
+        using (StreamWriter file = new StreamWriter(outFnName))
+          for (int i=0 ; i < size ; i++)
+            PrintStackFrame(i, file);
+        Console.WriteLine("");
+      }
+      catch (Exception e) {
+        Console.Error.WriteLine("Could not write a dump of the stack to {0}. Did you create the \"debug\" directory?", outFnName);
+      }
+    }
+
+    static void PrintStackFrame(int frameIdx, TextWriter writer) {
+      string fnName = fnNamesStack[frameIdx];
+      Obj[] args = argsStack[frameIdx];
+      writer.Write("{0}(", fnNamesStack[frameIdx]);
+      if (args != null) {
+        writer.WriteLine("");
+        for (int i=0 ; i < args.Length ; i++)
+          PrintIndentedArg(args[i], i == args.Length - 1, writer);
+      }
+      Console.WriteLine(")\n");
+    }
+
+    static void PrintIndentedArg(Obj arg, bool isLast, TextWriter writer) {
+      string str = arg.IsBlankObj() ? "<closure>" : PrintedObjOrFilename(arg, false);
+      for (int i=0 ; i < str.Length ; i++) {
+        if (i == 0 || str[i] == '\n')
+          writer.Write("  ");
+        writer.Write(str[i]);
+      }
+      if (!isLast)
+        writer.Write(',');
+      writer.WriteLine("");
+      writer.Flush();
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+
+    static List<Obj> filedObjs = new List<Obj>();
+
+    static string PrintedObjOrFilename(Obj obj, bool addPath) {
+      string path = addPath ? "debug" + Path.DirectorySeparatorChar : "";
+
+      for (int i=0 ; i < filedObjs.Count ; i++)
+        if (filedObjs[i].IsEq(obj))
+          return String.Format("<{0}obj-{1}.txt>", path, i);
+
+      string str = obj.ToString();
+      if (str.Length <= 50)
+        return str;
+
+      string outFnName = String.Format("debug{0}obj-{1}.txt", Path.DirectorySeparatorChar, filedObjs.Count);
+      File.WriteAllText(outFnName, str);
+      filedObjs.Add(obj);
+      return String.Format("<{0}obj-{1}.txt>", path, filedObjs.Count-1);
+    }
+
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
 
     public static bool IsHexDigit(byte b) {
       char ch = (char) b;

@@ -56,6 +56,14 @@ compiler.cs: codegen.exe $(SRC-FILES)
 cellc-cs.exe: compiler.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 compiler.cs $(RUNTIME-FILES) -out:cellc-cs.exe
 
+compiler-dbg.cs: codegen.exe $(SRC-FILES)
+	./codegen.exe -d tests/compiler.txt
+	bin/apply-hacks < generated.cs > compiler-dbg.cs
+	mv generated.cs tmp/
+
+cellcd-cs.exe: compiler-dbg.cs $(RUNTIME-FILES)
+	mcs -nowarn:162,168,219,414 compiler-dbg.cs $(RUNTIME-FILES) -out:cellcd-cs.exe
+
 regression.cs: codegen.exe
 	./codegen.exe tests/regression.txt
 	mv generated.cs regression.cs
