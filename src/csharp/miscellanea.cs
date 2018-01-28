@@ -24,11 +24,27 @@ namespace CellLang {
     }
 
     public static Obj Fail() {
+      PrintCallStack();
+      Environment.Exit(1);
+      return null;
+    }
+
+    public static Obj SoftFail() {
+      PrintCallStack();
       throw new InvalidOperationException();
     }
 
-    public static Obj SoftFail(int val) {
-      throw new InvalidOperationException();
+    public static void ImplFail(string msg) {
+      if (msg != null)
+        Console.Error.WriteLine(msg + "\n");
+      PrintCallStack();
+      Environment.Exit(1);
+    }
+
+    public static void InternalFail() {
+      Console.Error.WriteLine("Internal error!\n");
+      PrintCallStack();
+      Environment.Exit(1);
     }
 
     public static void PrintAssertionFailedMsg(string file, int line, string text) {
@@ -106,8 +122,9 @@ namespace CellLang {
 
     static void PrintCallStack() {
       int size = stackDepth <= fnNamesStack.Length ? stackDepth : fnNamesStack.Length;
+      Console.WriteLine("");
       for (int i=0 ; i < size ; i++)
-        Console.WriteLine("{0}", fnNamesStack[i]);
+        Console.WriteLine("  {0}", fnNamesStack[i]);
       string outFnName = "debug" + Path.DirectorySeparatorChar + "stack-trace.txt";
       Console.Error.WriteLine("\nNow trying to write a full dump of the stack to " + outFnName);
       Console.Error.Flush();
@@ -131,7 +148,7 @@ namespace CellLang {
         for (int i=0 ; i < args.Length ; i++)
           PrintIndentedArg(args[i], i == args.Length - 1, writer);
       }
-      Console.WriteLine(")\n");
+      writer.WriteLine(")\n");
     }
 
     static void PrintIndentedArg(Obj arg, bool isLast, TextWriter writer) {

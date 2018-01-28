@@ -214,7 +214,7 @@ check:
 	cmp html/updates.html         html-ref/updates.html          
 
 clean:
-	@rm -f codegen-dbg codegen-rel codegen.exe codegen-2.exe codegen.txt
+	@rm -f codegen-dbg codegen-rel codegen.exe codegen.txt
 	@make -s soft-clean
 
 soft-clean:
@@ -233,5 +233,7 @@ soft-clean:
 	@rm -f regression-mixed*
 	@rm -f interfaces.txt
 	@rm -f test-mixed*
-	@rm debug/*
-	@touch debug/stack_trace.txt
+	@rm -f compiler-dbg.cs cellcd-cs.exe
+	@rm -f codegen-2.exe codegen-dbg.cs codegen-dbg.exe
+	@rm -f debug/*
+	@touch debug/stack-trace.txt

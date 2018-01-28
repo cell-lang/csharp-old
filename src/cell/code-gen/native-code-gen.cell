@@ -407,7 +407,7 @@ implicit {
     init_memb_var()       = (to_c_var_ref_name(instr.var) & " = " & to_c_const(instr.new_state) & ";"),
     reset_memb_var()      = (to_c_var_ref_name(instr.var) & " = " & to_c_const(instr.new_state) & ";"),
     clear_loc_var(v?)     = (to_c_var_ref_name(v) & " = NullObj.Singleton();"),
-    terminate             = ("Miscellanea.Fail();", "throw new Exception();"),
+    terminate             = ("Miscellanea.SoftFail();", "throw new Exception();"),
     add_ref(v?)           = (),
     release(v?)           = (),
     print_obj()           = (native_method_call(instr.obj, "Print", ())),
@@ -607,7 +607,7 @@ implicit {
 
     vars_content = ("  Miscellanea.DumpVar(" & printed(_str_(bare_id(v))) & ", " & to_c_var_ref_name(v) & ");" : v <- vars);
     footer = (
-      "  return Miscellanea.SoftFail(0);",
+      "  return Miscellanea.SoftFail();",
       "}"
     );
     return header & vars_content & footer;

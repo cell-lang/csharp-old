@@ -38,3 +38,7 @@ test-mixed.exe
 out-cpp.txt
 out-cs.txt
 out.txt
+cellcd-cs.exe
+codegen-dbg.cs
+codegen-dbg.exe
+compiler-dbg.cs
