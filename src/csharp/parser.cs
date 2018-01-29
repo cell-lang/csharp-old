@@ -192,7 +192,7 @@ namespace CellLang {
 
 
     static long read_string(byte[] text, uint length, long offset, Token token) {
-      uint str_len = 0;
+      uint strLen = 0;
       for (long i=offset+1 ; i < length ; i++) {
         byte ch = text[i];
 
@@ -201,9 +201,35 @@ namespace CellLang {
 
         if (ch == '"') {
           if (token != null) {
-            char[] chars = new char[str_len];
-            for (int j=0 ; j < str_len ; j++)
-              chars[j] = (char) text[offset+j+1];
+            char[] chars = new char[strLen];
+            int nextIdx = 0;
+            for (int j=0 ; j < i-offset-1 ; j++) {
+              char currChar = (char) text[offset+j+1];
+              if (currChar == '\\') {
+                j++;
+                currChar = (char) text[offset + j + 1];
+                if (currChar == '\\' | currChar == '"') {
+                  // Nothing to do here
+                }
+                else if (currChar == 'n') {
+                  currChar = '\n';
+                }
+                else if (currChar == 't') {
+                  currChar = '\t';
+                }
+                else {
+                  currChar = (char) (
+                    4092 * Miscellanea.HexDigitValue(ch) +
+                     256 * Miscellanea.HexDigitValue(text[j+1]) +
+                      16 * Miscellanea.HexDigitValue(text[j+2]) +
+                           Miscellanea.HexDigitValue(text[j+3])
+                  );
+                  j += 3;
+                }
+              }
+              chars[nextIdx++] = currChar;
+            }
+            Miscellanea.Assert(nextIdx == strLen);
 
             token.offset = offset;
             token.length = i + 1 - offset;
@@ -213,7 +239,7 @@ namespace CellLang {
           return i + 1;
         }
 
-        str_len++;
+        strLen++;
 
         if (ch == '\\') {
           if (++i == length)

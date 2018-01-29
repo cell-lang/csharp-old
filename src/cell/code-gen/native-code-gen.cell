@@ -599,15 +599,15 @@ implicit {
 
 
   String* compile_runtime_check_to_c(AtomicExpr cond, String file, NzNat line, Maybe[String] text, <StdVar, ImplArg>* vars) {
-    text_arg = if text != nothing then printed(value(text)) else "null";
+    text_arg = if text != nothing then _print_(value(text)) else "null";
     header = (
       "if (" & to_c_expr(cond) & ".IsSymb(" & symb_idx_name(false) & ")) {",
-      "  Miscellanea.PrintAssertionFailedMsg(" & printed(file) & ", " & printed(line) & ", " & text_arg & ");"
+      "  Miscellanea.PrintAssertionFailedMsg(" & _print_(file) & ", " & printed(line) & ", " & text_arg & ");"
     );
 
     vars_content = ("  Miscellanea.DumpVar(" & printed(_str_(bare_id(v))) & ", " & to_c_var_ref_name(v) & ");" : v <- vars);
     footer = (
-      "  return Miscellanea.SoftFail();",
+      "  return Miscellanea.HardFail();",
       "}"
     );
     return header & vars_content & footer;

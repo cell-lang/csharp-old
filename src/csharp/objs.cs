@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-
+using System.Text;
 
 namespace CellLang {
   public abstract class Obj : IComparable<Obj> {
@@ -953,8 +953,34 @@ namespace CellLang {
     }
 
     override public string ToString() {
-      if (IsString())
-        return "\"" + GetString() + "\"";
+      if (IsString()) {
+        //return "\"" + GetString() + "\"";
+        long[] codes = obj.GetLongArray();
+        int len = codes.Length;
+        StringBuilder builder = new StringBuilder();
+        builder.Append('"');
+        for (int i=0 ; i < len ; i++) {
+          int code = (char) codes[i];
+          if (code == '\n')
+            builder.Append("\\n");
+          else if (code == '\\')
+            builder.Append("\\\\");
+          else if (code == '"')
+            builder.Append("\\\"");
+          else if (code >= 32 & code <= 126)
+            builder.Append((char) code);
+          else {
+            builder.Append('\\');
+            for (int j=0 ; j < 4 ; j++) {
+              int hexDigit = (code >> (12 - 4 * j)) % 16;
+              char ch = (char) ((hexDigit < 10 ? '0' : 'A') + hexDigit);
+              builder.Append(ch);
+            }
+          }
+        }
+        builder.Append('"');
+        return builder.ToString();
+      }
       else
         return SymbTable.IdxToStr(tag) + "(" + obj.ToString() + ")";
     }

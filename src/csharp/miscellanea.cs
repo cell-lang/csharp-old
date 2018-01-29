@@ -34,6 +34,12 @@ namespace CellLang {
       throw new InvalidOperationException();
     }
 
+    public static Obj HardFail() {
+      PrintCallStack();
+      Environment.Exit(1);
+      return null;
+    }
+
     public static void ImplFail(string msg) {
       if (msg != null)
         Console.Error.WriteLine(msg + "\n");
@@ -121,8 +127,8 @@ namespace CellLang {
     }
 
     static void PrintCallStack() {
+      Console.WriteLine("Call stack:\n");
       int size = stackDepth <= fnNamesStack.Length ? stackDepth : fnNamesStack.Length;
-      Console.WriteLine("");
       for (int i=0 ; i < size ; i++)
         Console.WriteLine("  {0}", fnNamesStack[i]);
       string outFnName = "debug" + Path.DirectorySeparatorChar + "stack-trace.txt";
@@ -192,6 +198,11 @@ namespace CellLang {
     public static bool IsHexDigit(byte b) {
       char ch = (char) b;
       return ('0' <= ch & ch <= '9') | ('a' <= ch & ch <= 'f') | ('A' <= ch & ch <= 'F');
+    }
+
+    public static int HexDigitValue(byte b) {
+      char ch = (char) b;
+      return ch - (ch >= '0' & ch <= '9' ? '0' : (ch >= 'a' & ch <= 'f' ? 'a' : 'A'));
     }
 
     public static uint Hashcode(uint n) {

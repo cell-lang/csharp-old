@@ -1,4 +1,4 @@
-../compiler/src/stdlib/prelude.cell
+//../compiler/src/stdlib/prelude.cell
 //../compiler/src/stdlib/prelude-deprecated.cell
 //../compiler/src/types-2-core.cell
 //../compiler/src/types-3-proc.cell
