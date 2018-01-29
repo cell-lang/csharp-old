@@ -14,10 +14,10 @@ namespace CellLang {
       }
 
       Obj obj;
-      long error_offset;
-      bool ok = Parser.parse(bytes, out obj, out error_offset);
+      long errorOffset;
+      bool ok = Parser.Parse(bytes, out obj, out errorOffset);
       if (!ok) {
-        throw new Exception("Syntax error at offset " + error_offset.ToString());
+        throw new Exception("Syntax error at offset " + errorOffset.ToString());
       }
       return obj;
     }

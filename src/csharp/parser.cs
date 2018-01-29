@@ -14,12 +14,12 @@ namespace CellLang {
     public static Obj Parse(Obj text) {
       byte[] bytes = text.GetInnerObj().GetByteArray();
       Obj obj;
-      long error_offset;
-      bool ok = parse(bytes, out obj, out error_offset);
+      long errorOffset;
+      bool ok = Parse(bytes, out obj, out errorOffset);
       if (ok)
         return new TaggedObj(SymbTable.SuccessSymbId, obj);
       else
-        return new TaggedObj(SymbTable.FailureSymbId, IntObj.Get(error_offset));
+        return new TaggedObj(SymbTable.FailureSymbId, IntObj.Get(errorOffset));
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -49,76 +49,76 @@ namespace CellLang {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    static long read_nat(byte[] text, uint length, ref long offset) {
-      long start_offset = offset;
-      long end_offset = start_offset;
+    static long ReadNat(byte[] text, uint length, ref long offset) {
+      long startOffset = offset;
+      long endOffset = startOffset;
       long value = 0;
       byte ch;
-      while (end_offset < length && Char.IsDigit((char)(ch = text[end_offset]))) {
+      while (endOffset < length && Char.IsDigit((char)(ch = text[endOffset]))) {
         value = 10 * value + (ch - '0');
-        end_offset++;
+        endOffset++;
       }
-      Miscellanea.Assert(end_offset > start_offset);
-      long count = end_offset - start_offset;
+      Miscellanea.Assert(endOffset > startOffset);
+      long count = endOffset - startOffset;
       if (count > 19) {
-        offset = -start_offset - 1;
+        offset = -startOffset - 1;
         return -1;
       }
       else if (count == 19) {
         const string MAX = "9223372036854775807";
         for (int i=0 ; i < 19 ; i++) {
-          ch = text[start_offset + i];
-          byte max_ch = (byte) MAX[i];
-          if (ch > max_ch) {
-            offset = -start_offset - 1;
+          ch = text[startOffset + i];
+          byte maxCh = (byte) MAX[i];
+          if (ch > maxCh) {
+            offset = -startOffset - 1;
             return -1;
           }
-          else if (ch < max_ch)
+          else if (ch < maxCh)
             break;
         }
       }
-      offset = end_offset;
+      offset = endOffset;
       return value;
     }
 
 
-    static long read_number(byte[] text, uint length, long offset, Token token, bool negate) {
+    static long ReadNumber(byte[] text, uint length, long offset, Token token, bool negate) {
       byte ch;
 
       long i = offset;
 
-      long int_value = read_nat(text, length, ref i);
+      long intValue = ReadNat(text, length, ref i);
       if (i < 0)
         return i;
 
-      bool is_int;
+      bool isInt;
       if (i == length) {
-        is_int = true;
+        isInt = true;
         ch = 0; // Shutting up the compiler
       }
       else {
         ch = text[i];
-        is_int = ch != '.' & !Char.IsLower((char)ch);
+        isInt = ch != '.' & !Char.IsLower((char)ch);
         Miscellanea.Assert(!Char.IsDigit((char)ch));
       }
 
-      if (is_int) {
+      if (isInt) {
         if (token != null) {
           token.offset = offset;
           token.length = i - offset;
           token.type = TokenType.Int;
-          token.value = negate ? -int_value : int_value;
+          token.value = negate ? -intValue : intValue;
         }
         return i;
       }
 
-      double float_value = int_value;
+      double floatValue = intValue;
       if (ch == '.') {
         long start = ++i;
-        long dec_int_value = read_nat(text, length, ref i);
+        long DecIntValue = ReadNat(text, length, ref i);
         if (i < 0)
           return i;
-        float_value += ((double) dec_int_value) / Math.Pow(10, i - start);
+        floatValue += ((double) DecIntValue) / Math.Pow(10, i - start);
       }
 
       if (i < length) {
@@ -128,22 +128,22 @@ namespace CellLang {
             return -i - 1;
           ch = text[i];
 
-          bool neg_exp = false;
+          bool negExp = false;
           if (ch == '-') {
             if (++i == length)
               return -i - 1;
             ch = text[i];
-            neg_exp = true;
+            negExp = true;
           }
 
           if (!Char.IsDigit((char)ch))
             return -i - 1;
 
-          long exp_value = read_nat(text, length, ref i);
+          long expValue = ReadNat(text, length, ref i);
           if (i < 0)
             return i;
 
-          float_value *= Math.Pow(10, neg_exp ? -exp_value : exp_value);
+          floatValue *= Math.Pow(10, negExp ? -expValue : expValue);
         }
 
         if (Char.IsLower((char)ch))
@@ -154,13 +154,13 @@ namespace CellLang {
         token.offset = offset;
         token.length = i - offset;
         token.type = TokenType.Float;
-        token.value = negate ? -float_value : float_value;
+        token.value = negate ? -floatValue : floatValue;
       }
       return i;
     }
 
 
-    static long read_symbol(byte[] text, uint length, long offset, Token token) {
+    static long ReadSymbol(byte[] text, uint length, long offset, Token token) {
       long i = offset;
       while (++i < length) {
         byte ch = text[i];
@@ -191,7 +191,7 @@ namespace CellLang {
     }
 
 
-    static long read_string(byte[] text, uint length, long offset, Token token) {
+    static long ReadString(byte[] text, uint length, long offset, Token token) {
       uint strLen = 0;
       for (long i=offset+1 ; i < length ; i++) {
         byte ch = text[i];
@@ -258,7 +258,7 @@ namespace CellLang {
     }
 
 
-    static long tokenize(byte[] text, uint length, Token[] tokens) {
+    static long Tokenize(byte[] text, uint length, Token[] tokens) {
       uint index = 0;
       long offset = 0;
 
@@ -300,7 +300,7 @@ namespace CellLang {
 
         // Integer and floating point numbers
         if (ch >= '0' && ch <= '9') {
-          offset = read_number(text, length, offset, token, negate);
+          offset = ReadNumber(text, length, offset, token, negate);
           if (offset < 0)
             return offset;
           else
@@ -309,7 +309,7 @@ namespace CellLang {
 
         // Symbols
         if (ch >= 'a' && ch <= 'z') {
-          offset = read_symbol(text, length, offset, token);
+          offset = ReadSymbol(text, length, offset, token);
           if (offset < 0)
             return offset;
           else
@@ -318,7 +318,7 @@ namespace CellLang {
 
         // Strings
         if (ch == '"') {
-          offset = read_string(text, length, offset, token);
+          offset = ReadString(text, length, offset, token);
           if (offset < 0)
             return offset;
           else
@@ -385,14 +385,14 @@ namespace CellLang {
           cols[i] = new List<Obj>();
       }
 
-      public void store(Obj obj) {
+      public void Store(Obj obj) {
         if (cols.Length != 1)
           Console.WriteLine("cols.Length = " + cols.Length.ToString());
         Miscellanea.Assert(cols.Length == 1);
         cols[0].Add(obj);
       }
 
-      public void store(Obj[] objs, uint size) {
+      public void Store(Obj[] objs, uint size) {
         Miscellanea.Assert(cols.Length == size);
         for (int i=0 ; i < size ; i++)
           cols[i].Add(objs[i]);
@@ -407,7 +407,7 @@ namespace CellLang {
 
     delegate long TokenParser(Token[] tokens, long offset, State state);
 
-    static long read_list(Token[] tokens, long offset, TokenType sep, TokenType term, TokenParser parse_elem, State state) {
+    static long ReadList(Token[] tokens, long offset, TokenType sep, TokenType term, TokenParser parseElem, State state) {
       int length = tokens.Length;
 
       // Empty list
@@ -415,7 +415,7 @@ namespace CellLang {
         return offset + 1;
 
       for ( ; ; ) {
-        offset = parse_elem(tokens, offset, state);
+        offset = parseElem(tokens, offset, state);
 
         // Unexpected EOF
         if (offset >= length)
@@ -446,7 +446,7 @@ namespace CellLang {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    static long parse_entry(Token[] tokens, long offset, uint count, TokenType sep, Obj[] vars) {
+    static long ParseEntry(Token[] tokens, long offset, uint count, TokenType sep, Obj[] vars) {
       int length = tokens.Length;
 
       uint read = 0;
@@ -457,7 +457,7 @@ namespace CellLang {
             offset++;
           else
             break;
-        offset = parse_obj(tokens, offset, out vars[read]);
+        offset = ParseObj(tokens, offset, out vars[read]);
         if (offset < 0)
           break;
       }
@@ -470,35 +470,35 @@ namespace CellLang {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    static long read_obj(Token[] tokens, long offset, State state) {
+    static long ReadObj(Token[] tokens, long offset, State state) {
       Obj obj;
-      offset = parse_obj(tokens, offset, out obj);
+      offset = ParseObj(tokens, offset, out obj);
       if (offset >= 0)
-        state.store(obj);
+        state.Store(obj);
       return offset;
     }
 
-    static long read_entry(Token[] tokens, long offset, State state, uint size, TokenType sep) {
+    static long ReadEntry(Token[] tokens, long offset, State state, uint size, TokenType sep) {
       Obj[] entry = new Obj[3];
-      offset = parse_entry(tokens, offset, size, sep, entry);
+      offset = ParseEntry(tokens, offset, size, sep, entry);
       if (offset >= 0)
-        state.store(entry, size);
+        state.Store(entry, size);
       return offset;
     }
 
-    static long read_map_entry(Token[] tokens, long offset, State state) {
-      return read_entry(tokens, offset, state, 2, TokenType.Arrow);
+    static long ReadMapEntry(Token[] tokens, long offset, State state) {
+      return ReadEntry(tokens, offset, state, 2, TokenType.Arrow);
     }
 
-    static long read_bin_rel_entry(Token[] tokens, long offset, State state) {
-      return read_entry(tokens, offset, state, 2, TokenType.Comma);
+    static long ReadBinRelEntry(Token[] tokens, long offset, State state) {
+      return ReadEntry(tokens, offset, state, 2, TokenType.Comma);
     }
 
-    static long read_tern_rel_entry(Token[] tokens, long offset, State state) {
-      return read_entry(tokens, offset, state, 3, TokenType.Comma);
+    static long ReadTernRelEntry(Token[] tokens, long offset, State state) {
+      return ReadEntry(tokens, offset, state, 3, TokenType.Comma);
     }
 
-    static long read_rec_entry(Token[] tokens, long offset, State state) {
+    static long ReadRecEntry(Token[] tokens, long offset, State state) {
       int length = tokens.Length;
       if (offset >= length || tokens[offset].type != TokenType.Symbol)
         return -offset - 1;
@@ -506,19 +506,19 @@ namespace CellLang {
       if (offset >= length || tokens[offset].type != TokenType.Colon)
         return -offset - 1;
       Obj[] entry = new Obj[2];
-      offset = parse_obj(tokens, offset+1, out entry[1]);
+      offset = ParseObj(tokens, offset+1, out entry[1]);
       if (offset < 0)
         return offset;
       entry[0] = label;
-      state.store(entry, 2);
+      state.Store(entry, 2);
       return offset;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    static long parse_seq(Token[] tokens, long offset, out Obj var) {
+    static long ParseSeq(Token[] tokens, long offset, out Obj var) {
       State state = new State(1);
-      offset = read_list(tokens, offset+1, TokenType.Comma, TokenType.ClosePar, read_obj, state);
+      offset = ReadList(tokens, offset+1, TokenType.Comma, TokenType.ClosePar, ReadObj, state);
       if (offset >= 0)
         var = Builder.CreateSeq(state.cols[0]);
       else
@@ -528,13 +528,13 @@ namespace CellLang {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    static bool is_record(Token[] tokens, long offset) {
+    static bool IsRecord(Token[] tokens, long offset) {
       return offset + 2 < tokens.Length && tokens[offset+1].type == TokenType.Symbol && tokens[offset+2].type == TokenType.Colon;
     }
 
-    static long parse_rec(Token[] tokens, long offset, out Obj var) {
+    static long ParseRec(Token[] tokens, long offset, out Obj var) {
       State state = new State(2);
-      offset = read_list(tokens, offset+1, TokenType.Comma, TokenType.ClosePar, read_rec_entry, state);
+      offset = ReadList(tokens, offset+1, TokenType.Comma, TokenType.ClosePar, ReadRecEntry, state);
       if (offset >= 0)
         var = Builder.CreateBinRel(state.cols[0], state.cols[1]);
       else
@@ -544,9 +544,9 @@ namespace CellLang {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    static long parse_inner_obj_or_tuple(Token[] tokens, long offset, out Obj var) {
+    static long ParseInnerObjOrTuple(Token[] tokens, long offset, out Obj var) {
       State state = new State(1);
-      offset = read_list(tokens, offset+1, TokenType.Comma, TokenType.ClosePar, read_obj, state);
+      offset = ReadList(tokens, offset+1, TokenType.Comma, TokenType.ClosePar, ReadObj, state);
       bool ok = offset >= 0 & state.Count() > 0;
       if (ok)
         var = state.Count() == 1 ? state.cols[0][0] : Builder.CreateSeq(state.cols[0]);
@@ -555,44 +555,44 @@ namespace CellLang {
       return offset;
     }
 
-    static long parse_symb_or_tagged_obj(Token[] tokens, long offset, out Obj var) {
+    static long ParseSymbOrTaggedObj(Token[] tokens, long offset, out Obj var) {
       int length = tokens.Length;
-      SymbObj symb_obj = (SymbObj) tokens[offset].value;
-      int symb_idx = symb_obj.GetSymbId();
+      SymbObj symbObj = (SymbObj) tokens[offset].value;
+      int symbIdx = symbObj.GetSymbId();
       if (++offset < length) {
         if (tokens[offset].type == TokenType.OpenPar) {
-          Obj inner_obj;
-          if (is_record(tokens, offset))
-            offset = parse_rec(tokens, offset, out inner_obj);
+          Obj innerObj;
+          if (IsRecord(tokens, offset))
+            offset = ParseRec(tokens, offset, out innerObj);
           else
-            offset = parse_inner_obj_or_tuple(tokens, offset, out inner_obj);
+            offset = ParseInnerObjOrTuple(tokens, offset, out innerObj);
           if (offset >= 0)
-            var = new TaggedObj(symb_idx, inner_obj);
+            var = new TaggedObj(symbIdx, innerObj);
           else
             var = null;
           return offset;
         }
       }
-      var = symb_obj;
+      var = symbObj;
       return offset;
     }
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    static long parse_rel_tail(Token[] tokens, long offset, uint size, Obj[] first_entry, bool is_map, out Obj var) {
+    static long ParseRelTail(Token[] tokens, long offset, uint size, Obj[] firstEntry, bool isMap, out Obj var) {
       State state = new State(size);
-      state.store(first_entry, size);
+      state.Store(firstEntry, size);
 
-      TokenParser entry_parser;
+      TokenParser entryParser;
       if (size == 2)
-        if (is_map)
-          entry_parser = read_map_entry;
+        if (isMap)
+          entryParser = ReadMapEntry;
         else
-          entry_parser = read_bin_rel_entry;
+          entryParser = ReadBinRelEntry;
       else
-        entry_parser = read_tern_rel_entry;
+        entryParser = ReadTernRelEntry;
 
-      offset = read_list(tokens, offset, is_map ? TokenType.Comma : TokenType.Semicolon, TokenType.CloseBracket, entry_parser, state);
+      offset = ReadList(tokens, offset, isMap ? TokenType.Comma : TokenType.Semicolon, TokenType.CloseBracket, entryParser, state);
 
       if (offset >= 0)
         if (size == 2)
@@ -607,7 +607,7 @@ namespace CellLang {
 
     ////////////////////////////////////////////////////////////////////////////////
 
-    static long parse_unord_coll(Token[] tokens, long offset, out Obj var) {
+    static long ParseUnordColl(Token[] tokens, long offset, out Obj var) {
       int length = tokens.Length;
 
       if (++offset >= length) {
@@ -622,7 +622,7 @@ namespace CellLang {
 
       State state = new State(1);
 
-      offset = read_list(tokens, offset, TokenType.Comma, TokenType.Whatever, read_obj, state);
+      offset = ReadList(tokens, offset, TokenType.Comma, TokenType.Whatever, ReadObj, state);
       if (offset < 0) {
         var = null;
         return offset;
@@ -631,11 +631,11 @@ namespace CellLang {
       TokenType type = tokens[offset++].type;
 
       int count = state.Count();
-      bool is_map = type == TokenType.Arrow & count == 1;
-      bool is_rel = type == TokenType.Semicolon & (count == 2 | count == 3);
+      bool isMap = type == TokenType.Arrow & count == 1;
+      bool isRel = type == TokenType.Semicolon & (count == 2 | count == 3);
 
-      if (is_map) {
-        offset = read_obj(tokens, offset, state);
+      if (isMap) {
+        offset = ReadObj(tokens, offset, state);
         if (offset >= length)
           offset = -offset - 1;
         if (offset < 0) {
@@ -644,27 +644,27 @@ namespace CellLang {
         }
         type = tokens[offset++].type;
       }
-      else if (is_rel && offset < length && tokens[offset].type == TokenType.CloseBracket) {
+      else if (isRel && offset < length && tokens[offset].type == TokenType.CloseBracket) {
         type = TokenType.CloseBracket;
         offset++;
       }
 
       if (type == TokenType.CloseBracket) {
         count = state.Count();
-        if (is_map | (is_rel & count == 2))
+        if (isMap | (isRel & count == 2))
           var = Builder.CreateBinRel(state.cols[0][0], state.cols[0][1]);
-        else if (is_rel)
+        else if (isRel)
           var = Builder.CreateTernRel(state.cols[0][0], state.cols[0][1], state.cols[0][2]);
         else
           var = Builder.CreateSet(state.cols[0]);
         return offset;
       }
 
-      if (is_map | is_rel) {
+      if (isMap | isRel) {
         Obj[] entry = new Obj[3];
         for (int i=0 ; i < state.Count() ; i++)
           entry[i] = state.cols[0][i];
-        return parse_rel_tail(tokens, offset, (uint) state.Count(), entry, is_map, out var);
+        return ParseRelTail(tokens, offset, (uint) state.Count(), entry, isMap, out var);
       }
 
       var = null;
@@ -675,7 +675,7 @@ namespace CellLang {
 
     // If the function is successfull, it returns the index of the next token to consume
     // If it fails, it returns the location/index of the error, negated and decremented by one
-    static long parse_obj(Token[] tokens, long offset, out Obj var) {
+    static long ParseObj(Token[] tokens, long offset, out Obj var) {
       int length = tokens.Length;
 
       if (offset >= length) {
@@ -704,16 +704,16 @@ namespace CellLang {
           return offset + 1;
 
         case TokenType.Symbol:
-          return parse_symb_or_tagged_obj(tokens, offset, out var);
+          return ParseSymbOrTaggedObj(tokens, offset, out var);
 
         case TokenType.OpenPar:
-          if (is_record(tokens, offset))
-            return parse_rec(tokens, offset, out var);
+          if (IsRecord(tokens, offset))
+            return ParseRec(tokens, offset, out var);
           else
-            return parse_seq(tokens, offset, out var);
+            return ParseSeq(tokens, offset, out var);
 
         case TokenType.OpenBracket:
-          return parse_unord_coll(tokens, offset, out var);
+          return ParseUnordColl(tokens, offset, out var);
 
         case TokenType.String:
           var = Miscellanea.StrToObj((string) token.value);
@@ -728,28 +728,28 @@ namespace CellLang {
     ////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////
 
-    public static bool parse(byte[] text, out Obj var, out long error_offset) {
+    public static bool Parse(byte[] text, out Obj var, out long errorOffset) {
       uint size = (uint) text.Length;
 
-      long count = tokenize(text, size, null);
+      long count = Tokenize(text, size, null);
       if (count <= 0) {
         var = null;
-        error_offset = count < 0 ? -count - 1 : size;
+        errorOffset = count < 0 ? -count - 1 : size;
         return false;
       }
 
       Token[] tokens = new Token[count];
       for (int i=0 ; i < count ; i++)
         tokens[i] = new Token();
-      tokenize(text, size, tokens);
+      Tokenize(text, size, tokens);
 
-      long res = parse_obj(tokens, 0, out var);
+      long res = ParseObj(tokens, 0, out var);
       if (res < 0 | res < count) {
-        error_offset = res < 0 ? tokens[-res-1].offset : size;
+        errorOffset = res < 0 ? tokens[-res-1].offset : size;
         return false;
       }
       else {
-        error_offset = 0;
+        errorOffset = 0;
         return true;
       }
     }
