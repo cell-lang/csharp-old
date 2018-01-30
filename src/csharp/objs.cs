@@ -135,12 +135,12 @@ namespace CellLang {
 
     override public string ToString() {
       StringWriter writer = new StringWriter();
-      Print(writer, 120, true, 0);
+      Print(writer, 90, true, 0);
       return writer.ToString();
     }
 
     public void Print() {
-      Print(Console.Out, 120, true, 0);
+      Print(Console.Out, 90, true, 0);
     }
 
     public Obj Printed() {
@@ -774,27 +774,52 @@ namespace CellLang {
         if (newLine)
           writer.Write(' ');
         else
-          writer.WriteIndentedNewLine(indentLevel);
+          writer.WriteIndentedNewLine(indentLevel + 1);
       }
 
       for (int i=0 ; i < len ; i++) {
+        Obj arg1 = col1[i];
+        Obj arg2 = col2[i];
+
         // Writing the first argument, followed by the separator
-        col1[i].Print(writer, maxLineLen, newLine | (i > 0), indentLevel + 2);
+        arg1.Print(writer, maxLineLen, newLine | (i > 0), indentLevel + 1);
         writer.Write(argSep);
 
-        int arg1Len = col1[i].MinPrintedSize();
-        int arg2Len = col2[i].MinPrintedSize();
-        if (arg1Len <= maxLineLen & arg2Len <= maxLineLen & arg1Len + arg2Len + argSep.Length > maxLineLen) {
-          // If each argument fits into the maximum line length, but the
-          // whole entry doesn't, then we break the line and increase the
-          // indentation level before we start printing the second argument
+        int arg1Len = arg1.MinPrintedSize();
+        int arg2Len = arg2.MinPrintedSize();
+
+        if (arg1Len + arg2Len + argSep.Length <= maxLineLen) {
+          // The entire entry fits into one line
+          // We just insert a space and start printing the second argument
+          writer.Write(' ');
+          arg2.Print(writer, maxLineLen, false, indentLevel);
+        }
+        else if (arg1Len <= maxLineLen) {
+          // The first argument fits into one line, but the whole entry doesn't.
+          if ((arg2.IsTagged() & !arg2.IsSyntacticSugaredString()) | arg2Len <= maxLineLen) {
+            // If the second argument fits into one line (and therefore cannot break itself)
+            // or if it's an unsugared tagged object, we break the line.
+            writer.WriteIndentedNewLine(indentLevel + 2);
+            arg2.Print(writer, maxLineLen, false, indentLevel + 2);
+          }
+          else {
+            // Otherwise we keep going on the same line, and let the second argument break itself
+            writer.Write(' ');
+            arg2.Print(writer, maxLineLen, false, indentLevel + 1);
+          }
+        }
+        else if (arg2.IsTagged() & !arg2.IsSyntacticSugaredString() & arg2Len > maxLineLen) {
+          // The first argument does not fit into a line, and the second one
+          // is a multiline unsugared tagged object, so we break the line
           writer.WriteIndentedNewLine(indentLevel + 1);
-          col2[i].Print(writer, maxLineLen, true, indentLevel + 1);
+          arg2.Print(writer, maxLineLen, true, indentLevel + 1);
         }
         else {
-          // Otherwise we just insert a space and start printing the second argument
+          // The first argument doesn't fit into a line, and the second
+          // one is not special, so we just keep going on the same line
+          // and let the second argument break itself is need be
           writer.Write(' ');
-          col2[i].Print(writer, maxLineLen, false, indentLevel);
+          arg2.Print(writer, maxLineLen, true, indentLevel + 1);
         }
 
         // We print the entry separator/terminator when appropriate
@@ -1225,11 +1250,13 @@ namespace CellLang {
         breakLine = (obj.IsTagged() & !obj.IsSyntacticSugaredString()) | obj.MinPrintedSize() <= maxLineLen;
 
       writer.Write('(');
-      if (breakLine)
+      if (breakLine) {
         writer.WriteIndentedNewLine(indentLevel + 1);
-      obj.Print(writer, maxLineLen, breakLine, indentLevel + 1);
-      if (breakLine)
+        obj.Print(writer, maxLineLen, breakLine, indentLevel + 1);
         writer.WriteIndentedNewLine(indentLevel);
+      }
+      else
+        obj.Print(writer, maxLineLen, breakLine, indentLevel);
       writer.Write(')');
     }
 
