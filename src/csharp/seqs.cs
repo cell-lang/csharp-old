@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 
 
 namespace CellLang {
   abstract class SeqObj : Obj {
     internal Obj[] items;
     internal int length;
+    int minPrintedSize = -1;
 
     protected SeqObj(int length) {
       this.items = new Obj[length];
@@ -99,16 +101,16 @@ namespace CellLang {
       Array.Copy(items, Offset(), array, offset, length);
     }
 
-    // protected Obj CopyOnWriteConcat(Obj seq) {
-    //   int offset = Offset();
-    //   int seqLen = seq.GetSize();
-    //   int minLen = length + seqLen;
-    //   Obj[] newItems = new Obj[Math.Max(4 * minLen, 32)];
-    //   Array.Copy(items, offset, newItems, 0, length);
-    //   SeqObj seqObj = (SeqObj) seq;
-    //   Array.Copy(seqObj.items, seqObj.Offset(), newItems, length, seqObj.length);
-    //   return new MasterSeqObj(newItems, minLen);
-    // }
+    protected Obj CopyOnWriteConcat(Obj seq) {
+      int offset = Offset();
+      int seqLen = seq.GetSize();
+      int minLen = length + seqLen;
+      Obj[] newItems = new Obj[Math.Max(4 * minLen, 32)];
+      Array.Copy(items, offset, newItems, 0, length);
+      SeqObj seqObj = (SeqObj) seq;
+      Array.Copy(seqObj.items, seqObj.Offset(), newItems, length, seqObj.length);
+      return new MasterSeqObj(newItems, minLen);
+    }
 
     override public uint Hashcode() {
       int offset = Offset();
@@ -116,6 +118,51 @@ namespace CellLang {
       for (int i=0 ; i < length ; i++)
         hashcodesSum += items[offset+i].Hashcode();
       return hashcodesSum ^ (uint) length;
+    }
+
+    override public void Print(TextWriter writer, int maxLineLen, bool newLine, int indentLevel) {
+      int len = items.Length;
+      int offset = Offset();
+      bool breakLine = MinPrintedSize() > maxLineLen;
+
+      writer.Write('(');
+
+      if (breakLine) {
+        // If we are on a fresh line, we start writing the first element
+        // after the opening bracket, with just a space in between
+        // Otherwise we start on the next line
+        if (newLine)
+          writer.Write(' ');
+        else
+          writer.WriteIndentedNewLine(indentLevel + 1);
+      }
+
+      for (int i=0 ; i < len ; i++) {
+        if (i > 0) {
+          writer.Write(',');
+          if (breakLine)
+            writer.WriteIndentedNewLine(indentLevel + 1);
+          else
+            writer.Write(' ');
+        }
+        items[offset+i].Print(writer, maxLineLen, breakLine & !newLine, indentLevel + 1);
+      }
+
+      if (breakLine)
+        writer.WriteIndentedNewLine(indentLevel);
+
+      writer.Write(')');
+    }
+
+    override public int MinPrintedSize() {
+      if (minPrintedSize == -1) {
+        int len = items.Length;
+        int offset = Offset();
+        minPrintedSize = 2 * len;
+        for (int i=0 ; i < len ; i++)
+          minPrintedSize += items[offset+i].MinPrintedSize();
+      }
+      return minPrintedSize;
     }
 
     override public Value GetValue() {
@@ -224,8 +271,8 @@ namespace CellLang {
         return new SliceObj(this, 0, newLen);
       }
 
-      // return CopyOnWriteConcat(seq);
-      return new RopeObj(this, seq);
+      return CopyOnWriteConcat(seq);
+      // return new RopeObj(this, seq);
     }
 
     override protected int Offset() {
@@ -282,8 +329,8 @@ namespace CellLang {
         return new SliceObj(master, offset, newLen);
       }
 
-      // return CopyOnWriteConcat(seq);
-      return new RopeObj(this, seq);
+      return CopyOnWriteConcat(seq);
+      // return new RopeObj(this, seq);
     }
 
     override protected int Offset() {
@@ -294,170 +341,170 @@ namespace CellLang {
   //////////////////////////////////////////////////////////////////////////////
   //////////////////////////////////////////////////////////////////////////////
 
-  class RopeObj : Obj {
-    Obj left;
-    Obj right;
-    int length;
-    Obj[] array;
-
-    internal RopeObj(Obj left, Obj right) {
-      this.left = left;
-      this.right = right;
-      length = left.GetSize() + right.GetSize();
-    }
-
-    void BuildArray() {
-      if (array == null) {
-        array = new Obj[length];
-        left.CopyItems(array, 0);
-        right.CopyItems(array, left.GetSize());
-        left = right = null;
-      }
-    }
-
-    override public bool IsSeq() {
-      return true;
-    }
-
-    override public bool IsEmptySeq() {
-      return length == 0;
-    }
-
-    override public bool IsNeSeq() {
-      return length != 0;
-    }
-
-    override public int GetSize() {
-      return length;
-    }
-
-    override public Obj GetItem(long idx) {
-      BuildArray();
-      return array[idx];
-    }
-
-    override public Obj Reverse() {
-      BuildArray();
-      Obj[] revArray = new Obj[length];
-      for (int i=0 ; i < length ; i++)
-        revArray[i] = array[length-i-1];
-      return new MasterSeqObj(revArray);
-    }
-
-    override public long[] GetLongArray() {
-      BuildArray();
-      long[] longs = new long[length];
-      for (int i=0 ; i < length ; i++)
-        longs[i] = array[i].GetLong();
-      return longs;
-    }
-
-    override public byte[] GetByteArray() {
-      BuildArray();
-      byte[] bytes = new byte[length];
-      for (int i=0 ; i < length ; i++) {
-        long val = array[i].GetLong();
-        if (val < 0 | val > 255)
-          throw new NotImplementedException();
-        bytes[i] = (byte) val;
-      }
-      return bytes;
-    }
-
-    override public string ToString() {
-      BuildArray();
-      string[] reprs = new string[length];
-      for (int i=0 ; i < length ; i++)
-        reprs[i] = array[i].ToString();
-      return "(" + string.Join(", ", reprs) + ")";
-    }
-
-//    override public Obj ConcatMany() {
+//  class RopeObj : Obj {
+//    Obj left;
+//    Obj right;
+//    int length;
+//    Obj[] array;
+//
+//    internal RopeObj(Obj left, Obj right) {
+//      this.left = left;
+//      this.right = right;
+//      length = left.GetSize() + right.GetSize();
 //    }
-
-    override public uint Hashcode() {
-      BuildArray();
-      uint hashcodesSum = 0;
-      for (int i=0 ; i < length ; i++)
-        hashcodesSum += array[i].Hashcode();
-      return hashcodesSum ^ (uint) length;
-    }
-
-    override protected int TypeId() {
-      return 3;
-    }
-
-    override protected int InternalCmp(Obj other) {
-      BuildArray();
-      return other.CmpSeq(array, 0, length);
-
-    }
-
-    override public int CmpSeq(Obj[] other_items, int other_offset, int other_length) {
-      BuildArray();
-      if (other_length != length)
-        return other_length < length ? 1 : -1;
-      for (int i=0 ; i < length ; i++) {
-        int res = other_items[other_offset+i].Cmp(array[i]);
-        if (res != 0)
-          return res;
-      }
-      return 0;
-    }
-
-    override public SeqOrSetIter GetSeqOrSetIter() {
-      BuildArray();
-      return new SeqOrSetIter(array, 0, length-1);
-    }
-
-//    override public void InitAt(long idx, Obj value) {
+//
+//    void BuildArray() {
+//      if (array == null) {
+//        array = new Obj[length];
+//        left.CopyItems(array, 0);
+//        right.CopyItems(array, left.GetSize());
+//        left = right = null;
+//      }
 //    }
-
-    override public Obj GetSlice(long first, long len) {
-      if (array == null) {
-        long upperBound = first + len;
-        if (upperBound > length)
-          throw new Exception(); //## FIND BETTER EXCEPTION
-        int leftLength = left.GetSize();
-        if (upperBound <= leftLength)
-          return left.GetSlice(first, len);
-        if (first >= leftLength)
-          return right.GetSlice(first-leftLength, len);
-        Obj leftSlice = left.GetSlice(first, leftLength-first);
-        Obj rightSlice = right.GetSlice(0, len-leftLength);
-        return new RopeObj(leftSlice, rightSlice);
-      }
-      else {
-        //## BAD BAD BAD
-        MasterSeqObj master = new MasterSeqObj(array);
-        return master.GetSlice(first, len);
-      }
-    }
-
-    override public Obj Append(Obj obj) {
-      if (array == null) {
-        Obj newRight = right.Append(obj);
-        return new RopeObj(left, newRight);
-      }
-      else {
-        Obj[] newArray = new Obj[16];
-        newArray[0] = obj;
-        Obj newSeq = new MasterSeqObj(newArray, 1);
-        return new RopeObj(this, newSeq);
-      }
-    }
-
-    override public Obj Concat(Obj seq) {
-      return new RopeObj(this, seq);
-    }
-
-    override public void CopyItems(Obj[] destArray, int offset) {
-      if (array == null) {
-        left.CopyItems(destArray, offset);
-        right.CopyItems(destArray, offset+left.GetSize());
-      }
-      else
-        Array.Copy(array, 0, destArray, offset, length);
-    }
-  }
+//
+//    override public bool IsSeq() {
+//      return true;
+//    }
+//
+//    override public bool IsEmptySeq() {
+//      return length == 0;
+//    }
+//
+//    override public bool IsNeSeq() {
+//      return length != 0;
+//    }
+//
+//    override public int GetSize() {
+//      return length;
+//    }
+//
+//    override public Obj GetItem(long idx) {
+//      BuildArray();
+//      return array[idx];
+//    }
+//
+//    override public Obj Reverse() {
+//      BuildArray();
+//      Obj[] revArray = new Obj[length];
+//      for (int i=0 ; i < length ; i++)
+//        revArray[i] = array[length-i-1];
+//      return new MasterSeqObj(revArray);
+//    }
+//
+//    override public long[] GetLongArray() {
+//      BuildArray();
+//      long[] longs = new long[length];
+//      for (int i=0 ; i < length ; i++)
+//        longs[i] = array[i].GetLong();
+//      return longs;
+//    }
+//
+//    override public byte[] GetByteArray() {
+//      BuildArray();
+//      byte[] bytes = new byte[length];
+//      for (int i=0 ; i < length ; i++) {
+//        long val = array[i].GetLong();
+//        if (val < 0 | val > 255)
+//          throw new NotImplementedException();
+//        bytes[i] = (byte) val;
+//      }
+//      return bytes;
+//    }
+//
+//    override public string ToString() {
+//      BuildArray();
+//      string[] reprs = new string[length];
+//      for (int i=0 ; i < length ; i++)
+//        reprs[i] = array[i].ToString();
+//      return "(" + string.Join(", ", reprs) + ")";
+//    }
+//
+////    override public Obj ConcatMany() {
+////    }
+//
+//    override public uint Hashcode() {
+//      BuildArray();
+//      uint hashcodesSum = 0;
+//      for (int i=0 ; i < length ; i++)
+//        hashcodesSum += array[i].Hashcode();
+//      return hashcodesSum ^ (uint) length;
+//    }
+//
+//    override protected int TypeId() {
+//      return 3;
+//    }
+//
+//    override protected int InternalCmp(Obj other) {
+//      BuildArray();
+//      return other.CmpSeq(array, 0, length);
+//
+//    }
+//
+//    override public int CmpSeq(Obj[] other_items, int other_offset, int other_length) {
+//      BuildArray();
+//      if (other_length != length)
+//        return other_length < length ? 1 : -1;
+//      for (int i=0 ; i < length ; i++) {
+//        int res = other_items[other_offset+i].Cmp(array[i]);
+//        if (res != 0)
+//          return res;
+//      }
+//      return 0;
+//    }
+//
+//    override public SeqOrSetIter GetSeqOrSetIter() {
+//      BuildArray();
+//      return new SeqOrSetIter(array, 0, length-1);
+//    }
+//
+////    override public void InitAt(long idx, Obj value) {
+////    }
+//
+//    override public Obj GetSlice(long first, long len) {
+//      if (array == null) {
+//        long upperBound = first + len;
+//        if (upperBound > length)
+//          throw new Exception(); //## FIND BETTER EXCEPTION
+//        int leftLength = left.GetSize();
+//        if (upperBound <= leftLength)
+//          return left.GetSlice(first, len);
+//        if (first >= leftLength)
+//          return right.GetSlice(first-leftLength, len);
+//        Obj leftSlice = left.GetSlice(first, leftLength-first);
+//        Obj rightSlice = right.GetSlice(0, len-leftLength);
+//        return new RopeObj(leftSlice, rightSlice);
+//      }
+//      else {
+//        //## BAD BAD BAD
+//        MasterSeqObj master = new MasterSeqObj(array);
+//        return master.GetSlice(first, len);
+//      }
+//    }
+//
+//    override public Obj Append(Obj obj) {
+//      if (array == null) {
+//        Obj newRight = right.Append(obj);
+//        return new RopeObj(left, newRight);
+//      }
+//      else {
+//        Obj[] newArray = new Obj[16];
+//        newArray[0] = obj;
+//        Obj newSeq = new MasterSeqObj(newArray, 1);
+//        return new RopeObj(this, newSeq);
+//      }
+//    }
+//
+//    override public Obj Concat(Obj seq) {
+//      return new RopeObj(this, seq);
+//    }
+//
+//    override public void CopyItems(Obj[] destArray, int offset) {
+//      if (array == null) {
+//        left.CopyItems(destArray, offset);
+//        right.CopyItems(destArray, offset+left.GetSize());
+//      }
+//      else
+//        Array.Copy(array, 0, destArray, offset, length);
+//    }
+//  }
 }

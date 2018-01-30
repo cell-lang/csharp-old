@@ -229,5 +229,18 @@ namespace CellLang {
     }
 
     public static bool debugFlag = false;
+
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+
+    public static void WriteIndentedNewLine(this TextWriter writer, int level) {
+      WriteIndentedNewLine(writer, "", level);
+    }
+
+    public static void WriteIndentedNewLine(this TextWriter writer, string str, int level) {
+      Console.WriteLine(str);
+      for (int i=0 ; i < level ; i++)
+        writer.Write("  ");
+    }
   }
 }
