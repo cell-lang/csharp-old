@@ -33,12 +33,11 @@ namespace CellLang {
     string AsString();
     Value Lookup(string field);
 
-    string Printed();
-    void Print(StreamWriter writer);
+    void Print(TextWriter writer);
   }
 
 
-  class ValueBase : Value {
+  public abstract class ValueBase : Value {
     public virtual bool IsSymb() {
       return false;
     }
@@ -123,17 +122,18 @@ namespace CellLang {
       throw new NotImplementedException();
     }
 
-    public virtual string Printed() {
-      throw new NotImplementedException();
-    }
-
-    public virtual void Print(StreamWriter writer) {
-      writer.Write(Printed());
+    public void Print(TextWriter writer) {
+      Obj obj = AsObj();
+      obj.Print(writer, 90, true, 0);
     }
 
     override public string ToString() {
-      return Printed();
+      StringWriter writer = new StringWriter();
+      Print(writer);
+      return writer.ToString();
     }
+
+    public abstract Obj AsObj();
   }
 
 
@@ -152,8 +152,8 @@ namespace CellLang {
       return SymbTable.IdxToStr(id);
     }
 
-    override public string Printed() {
-      return AsSymb();
+    override public Obj AsObj() {
+      return SymbObj.Get(id);
     }
   }
 
@@ -173,8 +173,8 @@ namespace CellLang {
       return value;
     }
 
-    override public string Printed() {
-      return value.ToString();
+    override public Obj AsObj() {
+      return IntObj.Get(value);
     }
   }
 
@@ -194,16 +194,16 @@ namespace CellLang {
       return value;
     }
 
-    override public string Printed() {
-      return value.ToString();
+    override public Obj AsObj() {
+      return new FloatObj(value);
     }
   }
 
 
   class SeqValue : ValueBase {
-    Value[] values;
+    ValueBase[] values;
 
-    public SeqValue(Value[] values) {
+    public SeqValue(ValueBase[] values) {
       this.values = values;
     }
 
@@ -219,16 +219,12 @@ namespace CellLang {
       return values[index];
     }
 
-    override public string Printed() {
-      StringBuilder builder = new StringBuilder();
-      builder.Append("(");
-      for (int i=0 ; i < values.Length ; i++) {
-        if (i > 0)
-          builder.Append(", ");
-        builder.Append(values[i].Printed());
-      }
-      builder.Append(")");
-      return builder.ToString();
+    override public Obj AsObj() {
+      int len = values.Length;
+      Obj[] objs = new Obj[len];
+      for (int i=0 ; i < len ; i++)
+        objs[i] = values[i].AsObj();
+      return new MasterSeqObj(objs);
     }
   }
 
@@ -266,16 +262,16 @@ namespace CellLang {
       return true;
     }
 
-    override public string Printed() {
-      return "[]";
+    override public Obj AsObj() {
+      return EmptyRelObj.Singleton();
     }
   }
 
 
   class NeSetValue : ValueBase {
-    Value[] values;
+    ValueBase[] values;
 
-    public NeSetValue(Value[] values) {
+    public NeSetValue(ValueBase[] values) {
       this.values = values;
     }
 
@@ -291,25 +287,21 @@ namespace CellLang {
       return values[index];
     }
 
-    override public string Printed() {
-      StringBuilder builder = new StringBuilder();
-      builder.Append("[");
-      for (int i=0 ; i < values.Length ; i++) {
-        if (i > 0)
-          builder.Append(", ");
-        builder.Append(values[i].Printed());
-      }
-      builder.Append("]");
-      return builder.ToString();
+    override public Obj AsObj() {
+      int len = values.Length;
+      Obj[] objs = new Obj[len];
+      for (int i=0 ; i < len ; i++)
+        objs[i] = values[i].AsObj();
+      return new NeSetObj(objs);
     }
   }
 
 
   class NeBinRelValue : ValueBase {
-    Value[,] values;
+    ValueBase[,] values;
     bool isMap;
 
-    public NeBinRelValue(Value[,] values, bool isMap) {
+    public NeBinRelValue(ValueBase[,] values, bool isMap) {
       this.values = values;
       this.isMap = isMap;
     }
@@ -345,28 +337,23 @@ namespace CellLang {
       throw new KeyNotFoundException();
     }
 
-    override public string Printed() {
-      bool isRec = IsRecord();
-      StringBuilder builder = new StringBuilder();
-      builder.Append(isRec ? "(" : "[");
+    override public Obj AsObj() {
       int len = values.GetLength(0);
+      Obj[] col1 = new Obj[len];
+      Obj[] col2 = new Obj[len];
       for (int i=0 ; i < len ; i++) {
-        if (i > 0)
-          builder.Append(isMap ? ", " : "; ");
-        builder.Append(values[i, 0].Printed());
-        builder.Append(isMap ? (isRec ? ": " : " -> ") : ", ");
-        builder.Append(values[i, 1].Printed());
+        col1[i] = values[i, 0].AsObj();
+        col2[i] = values[i, 1].AsObj();
       }
-      builder.Append(isRec ? ")" : "]");
-      return builder.ToString();
+      return new NeBinRelObj(col1, col2, isMap);
     }
   }
 
 
   class NeTernRelValue : ValueBase {
-    Value[,] values;
+    ValueBase[,] values;
 
-    public NeTernRelValue(Value[,] values) {
+    public NeTernRelValue(ValueBase[,] values) {
       this.values = values;
     }
 
@@ -384,32 +371,26 @@ namespace CellLang {
       field3 = values[index, 2];
     }
 
-    override public string Printed() {
-      StringBuilder builder = new StringBuilder();
-      builder.Append("[");
+    override public Obj AsObj() {
       int len = values.GetLength(0);
+      Obj[] col1 = new Obj[len];
+      Obj[] col2 = new Obj[len];
+      Obj[] col3 = new Obj[len];
       for (int i=0 ; i < len ; i++) {
-        if (i > 0)
-          builder.Append("; ");
-        builder.Append(values[i, 0].Printed());
-        builder.Append(", ");
-        builder.Append(values[i, 1].Printed());
-        builder.Append(", ");
-        builder.Append(values[i, 2].Printed());
+        col1[i] = values[i, 0].AsObj();
+        col2[i] = values[i, 1].AsObj();
+        col3[i] = values[i, 2].AsObj();
       }
-      if (len == 1)
-        builder.Append(";");
-      builder.Append("]");
-      return builder.ToString();
+      return new NeTernRelObj(col1, col2, col3);
     }
   }
 
 
   class TaggedValue : ValueBase {
     int tagId;
-    Value value;
+    ValueBase value;
 
-    public TaggedValue(int tagId, Value value) {
+    public TaggedValue(int tagId, ValueBase value) {
       this.tagId = tagId;
       this.value = value;
     }
@@ -458,39 +439,8 @@ namespace CellLang {
       return value.Lookup(field);
     }
 
-    override public string Printed() {
-      if (IsString()) {
-        StringBuilder builder = new StringBuilder();
-        builder.Append('"');
-        int len = value.Size();
-        for (int i=0 ; i < len ; i++) {
-          int code = (char) value.Item(i).AsLong();
-          if (code == '\n')
-            builder.Append("\\n");
-          else if (code == '\\')
-            builder.Append("\\\\");
-          else if (code == '"')
-            builder.Append("\\\"");
-          else if (code >= 32 & code <= 126)
-            builder.Append((char) code);
-          else {
-            builder.Append('\\');
-            for (int j=0 ; j < 4 ; j++) {
-              int hexDigit = (code >> (12 - 4 * j)) % 16;
-              char ch = (char) ((hexDigit < 10 ? '0' : 'A') + hexDigit);
-              builder.Append(ch);
-            }
-          }
-        }
-        builder.Append('"');
-        return builder.ToString();
-      }
-
-      bool skipPars = value.IsRecord() || (value.IsSeq() && value.Size() != 0);
-      string str = value.Printed();
-      if (!skipPars)
-        str = "(" + str + ")";
-      return SymbTable.IdxToStr(tagId) + str;
+    override public Obj AsObj() {
+      return new TaggedObj(tagId, value.AsObj());
     }
   }
 }

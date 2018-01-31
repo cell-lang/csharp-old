@@ -165,8 +165,8 @@ namespace CellLang {
       return minPrintedSize;
     }
 
-    override public Value GetValue() {
-      Value[] values = new Value[length];
+    override public ValueBase GetValue() {
+      ValueBase[] values = new ValueBase[length];
       int offset = Offset();
       for (int i=0 ; i < length ; i++)
         values[i] = items[offset+i].GetValue();

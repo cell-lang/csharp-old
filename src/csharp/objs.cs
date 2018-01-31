@@ -95,7 +95,7 @@ namespace CellLang {
     public virtual int CmpNeTernRel(Obj[] c1, Obj[] c2, Obj[] c3) {throw new NotImplementedException();}
     public virtual int CmpTaggedObj(int tag, Obj obj)             {throw new NotImplementedException();}
 
-    public virtual Value GetValue()                               {throw new NotImplementedException();}
+    public virtual ValueBase GetValue()                           {throw new NotImplementedException();}
 
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
@@ -274,7 +274,7 @@ namespace CellLang {
       return SymbTable.IdxToStr(id).Length;
     }
 
-    override public Value GetValue() {
+    override public ValueBase GetValue() {
       return new SymbValue(id);
     }
 
@@ -330,7 +330,7 @@ namespace CellLang {
       return value.ToString().Length;
     }
 
-    override public Value GetValue() {
+    override public ValueBase GetValue() {
       return new IntValue(value);
     }
 
@@ -388,7 +388,7 @@ namespace CellLang {
       return value.ToString().Length;
     }
 
-    override public Value GetValue() {
+    override public ValueBase GetValue() {
       return new FloatValue(value);
     }
 
@@ -512,7 +512,7 @@ namespace CellLang {
       return 2;
     }
 
-    override public Value GetValue() {
+    override public ValueBase GetValue() {
       return new EmptyRelValue();
     }
 
@@ -619,9 +619,9 @@ namespace CellLang {
       return minPrintedSize;
     }
 
-    override public Value GetValue() {
+    override public ValueBase GetValue() {
       int size = elts.Length;
-      Value[] values = new Value[size];
+      ValueBase[] values = new ValueBase[size];
       for (int i=0 ; i < size ; i++)
         values[i] = elts[i].GetValue();
       return new NeSetValue(values);
@@ -848,9 +848,9 @@ namespace CellLang {
       return minPrintedSize;
     }
 
-    override public Value GetValue() {
+    override public ValueBase GetValue() {
       int size = col1.Length;
-      Value[,] values = new Value[size, 2];
+      ValueBase[,] values = new ValueBase[size, 2];
       for (int i=0 ; i < size ; i++) {
         values[i, 0] = col1[i].GetValue();
         values[i, 1] = col2[i].GetValue();
@@ -1090,9 +1090,9 @@ namespace CellLang {
       return minPrintedSize;
     }
 
-    override public Value GetValue() {
+    override public ValueBase GetValue() {
       int size = col1.Length;
-      Value[,] values = new Value[size, 3];
+      ValueBase[,] values = new ValueBase[size, 3];
       for (int i=0 ; i < size ; i++) {
         values[i, 0] = col1[i].GetValue();
         values[i, 1] = col2[i].GetValue();
@@ -1285,7 +1285,7 @@ namespace CellLang {
       return minPrintedSize;
     }
 
-    override public Value GetValue() {
+    override public ValueBase GetValue() {
       return new TaggedValue(tag, obj.GetValue());
     }
 
