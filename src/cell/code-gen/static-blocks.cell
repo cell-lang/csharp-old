@@ -271,9 +271,8 @@ implicit {
     var_ids = (bare_id(v) : v <- isort(keys(block.state_vars)));
     vars_copy_code = join((var_apply_code(id) : id <- var_ids));
 
-    tables_finish_code = [{
-        native_method_call(pending_updates_var_ref_name(v), "Finish", ())
-      } : v, t <- block.tables
+    tables_finish_code = [
+      native_method_call(pending_updates_var_ref_name(v), "Finish", ()) : v, t <- block.tables
     ];
 
     nested_blocks_finish_code = [
