@@ -883,7 +883,7 @@ namespace CellLang {
       // Allocating and initializing the hashed block
       uint hashedBlockIdx = Alloc16Block();
       for (int i=0 ; i < 16 ; i++)
-        slots[hashedBlockIdx] = EmptyMarker;
+        slots[hashedBlockIdx + i] = EmptyMarker;
 
       // Transferring the existing values
       for (int i=0 ; i < 16 ; i++) {
