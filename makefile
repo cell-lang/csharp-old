@@ -1,5 +1,6 @@
 SRC-FILES=$(shell ls src/cell/*.cell src/cell/code-gen/*.cell)
 RUNTIME-FILES=$(shell ls src/csharp/*)
+UNIT-TESTS-FILES=$(shell ls src/unit-tests/*)
 
 codegen-dbg codegen.txt tmp/generated.cpp: $(SRC-FILES)
 	rm -rf tmp/
@@ -160,6 +161,9 @@ test: test.cpp
 # 	./codegen-dbg test.txt
 # 	mv generated.cs test.cs
 # 	mcs test.cs $(RUNTIME-FILES) -out:test.exe
+
+unit-tests.exe: codegen.exe $(RUNTIME-FILES) $(UNIT-TESTS-FILES)
+	mcs $(UNIT-TESTS-FILES) $(RUNTIME-FILES) -out:unit-tests.exe
 
 check:
 	./gen-html-dbg ../docs/commands.txt        html/commands.html
