@@ -42,3 +42,5 @@ cellcd-cs.exe
 codegen-dbg.cs
 codegen-dbg.exe
 compiler-dbg.cs
+unit-tests.exe
+weird-bug.cs

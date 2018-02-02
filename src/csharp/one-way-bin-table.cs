@@ -169,10 +169,7 @@ namespace CellLang {
 
       for (int i=0 ; i < slotOK.Length ; i++) {
         if (!slotOK[i]) {
-          Console.WriteLine();
           for (int j=0 ; j < slotOK.Length ; j++) {
-            if (j == 0)
-              ;
             if (j % 32 == 0)
               Console.WriteLine();
             else if (j % 16 == 0)
