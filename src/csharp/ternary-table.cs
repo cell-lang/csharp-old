@@ -98,7 +98,6 @@ namespace CellLang {
               if (tuple.field1OrNext == field1 & tuple.field2OrEmptyMarker == field2)
                 return;
             }
-            break;
 
           case Type.F13:
             for ( ; ; ) {
@@ -109,7 +108,6 @@ namespace CellLang {
               if (tuple.field1OrNext == field1 & tuple.field3 == field3)
                 return;
             }
-            break;
 
           case Type.F23:
             for ( ; ; ) {
@@ -120,7 +118,6 @@ namespace CellLang {
               if (tuple.field2OrEmptyMarker == field2 & tuple.field3 == field3)
                 return;
             }
-            break;
 
           case Type.F1:
             do {

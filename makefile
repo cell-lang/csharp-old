@@ -162,7 +162,7 @@ test: test.cpp
 # 	mv generated.cs test.cs
 # 	mcs test.cs $(RUNTIME-FILES) -out:test.exe
 
-unit-tests.exe: codegen.exe $(RUNTIME-FILES) $(UNIT-TESTS-FILES)
+unit-tests.exe: $(RUNTIME-FILES) $(UNIT-TESTS-FILES)
 	mcs $(UNIT-TESTS-FILES) $(RUNTIME-FILES) -out:unit-tests.exe
 
 check:

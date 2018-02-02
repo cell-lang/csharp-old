@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 
 namespace CellLang {
@@ -158,7 +159,7 @@ namespace CellLang {
         uint tag = content >> 29;
         uint payload = content & PayloadMask;
         if (tag == 0) {
-          Check(payload < 100, "payload < 100");
+          Check(payload < 1000, "payload < 1000");
           actualCount++;
         }
         else {
@@ -166,8 +167,25 @@ namespace CellLang {
         }
       }
 
-      for (int i=0 ; i < slotOK.Length ; i++)
+      for (int i=0 ; i < slotOK.Length ; i++) {
+        if (!slotOK[i]) {
+          Console.WriteLine();
+          for (int j=0 ; j < slotOK.Length ; j++) {
+            if (j == 0)
+              ;
+            if (j % 32 == 0)
+              Console.WriteLine();
+            else if (j % 16 == 0)
+              Console.Write("  ");
+            Console.Write("{0} ", slotOK[j] ? 1 : 0);
+          }
+          Console.WriteLine();
+          Console.WriteLine();
+          Console.WriteLine("i = {0}", i);
+          Console.WriteLine();
+        }
         Check(slotOK[i], "slotOK[i]");
+      }
 
       Check(count == actualCount, "count == actualCount");
     }
@@ -215,7 +233,7 @@ namespace CellLang {
             break;
           }
           Check(slot >> 29 == 0, "slot >> 29 == 0");
-          Check((slot & PayloadMask) < 100, "(slot & PayloadMask) < 100");
+          Check((slot & PayloadMask) < 1000, "(slot & PayloadMask) < 1000");
           count++;
         }
       }
@@ -226,7 +244,7 @@ namespace CellLang {
             uint slotTag = slot >> 29;
             uint slotPayload = slot & PayloadMask;
             if (slotTag == 0) {
-              Check(slotPayload < 100, "slotPayload < 100");
+              Check(slotPayload < 1000, "slotPayload < 1000");
               count++;
             }
             else
@@ -727,7 +745,7 @@ namespace CellLang {
         else if (valueI == EmptyMarker)
           break;
         else
-          lastValue = value;
+          lastValue = valueI;
         idx++;
       }
 
@@ -743,7 +761,7 @@ namespace CellLang {
 
       if (targetIdx != idx)
         slots[blockIdx + targetIdx] = lastValue;
-      slots[idx-1] = EmptyMarker;
+      slots[blockIdx + idx - 1] = EmptyMarker;
 
       if (idx == 4) {
         // We are down to 3 elements, so we release the upper half of the block
@@ -825,7 +843,7 @@ namespace CellLang {
         else if (valueI == EmptyMarker)
           break;
         else
-          lastValue = value;
+          lastValue = valueI;
         idx++;
       }
 
@@ -841,7 +859,7 @@ namespace CellLang {
 
       if (targetIdx != idx)
         slots[blockIdx + targetIdx] = lastValue;
-      slots[idx-1] = EmptyMarker;
+      slots[blockIdx + idx - 1] = EmptyMarker;
 
       if (idx == 7) {
         // We are down to 7 elements, so we release the upper half of the block
@@ -923,11 +941,13 @@ namespace CellLang {
         }
       }
       else if (tag < 5) {
-        slots[slotIdx] = Delete(content, value, out deleted);
+        uint newHandle = Delete(content, value, out deleted);
+        slots[slotIdx] = newHandle;
       }
       else {
         uint nestedBlockIdx = content & PayloadMask;
-        slots[slotIdx] = DeleteFromHashedBlock(nestedBlockIdx, value, content, hashcode/16, out deleted);
+        uint newHandle = DeleteFromHashedBlock(nestedBlockIdx, value, content, hashcode/16, out deleted);
+        slots[slotIdx] = newHandle;
       }
 
       //## TODO: IMPLEMENT REALLOCATION HERE IF USAGE IS TOO LOW...
@@ -945,8 +965,10 @@ namespace CellLang {
       else {
         uint tag = content >> 29;
         Miscellanea.Assert(tag <= 5);
-        if (tag < 5)
-          slots[slotIdx] = Insert(content, value, out inserted);
+        if (tag < 5) {
+          uint newHandle = Insert(content, value, out inserted);
+          slots[slotIdx] = newHandle;
+        }
         else
           InsertIntoHashedBlock(content & PayloadMask, value, hashcode / 16, out inserted);
       }
@@ -1096,7 +1118,7 @@ namespace CellLang {
     }
 
     void Release16BlockUpperHalf(uint blockIdx) {
-      AddBlockToChain(blockIdx+8, Block8Tag, End16UpperMarker, ref head8);
+      AddBlockToChain(blockIdx+8, Block8Tag, End8UpperMarker, ref head8);
     }
 
     ////////////////////////////////////////////////////////////////////////////
