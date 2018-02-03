@@ -218,10 +218,11 @@ check:
 	cmp html/updates.html         html-ref/updates.html          
 
 clean:
-	@rm -f codegen-dbg codegen-rel codegen.exe codegen.txt
+	@rm -f codegen-dbg codegen-rel
 	@make -s soft-clean
 
 soft-clean:
+	@rm -f codegen.exe codegen.txt
 	@rm -rf tmp/
 	@rm -f generated.cs generated-2.cs codegen.cs codegen-2.cs
 	@rm -f gen-html-dbg gen-html-dbg.mdb
@@ -239,5 +240,6 @@ soft-clean:
 	@rm -f test-mixed*
 	@rm -f compiler-dbg.cs cellcd-cs.exe
 	@rm -f codegen-2.exe codegen-dbg.cs codegen-dbg.exe
+	@rm -f unit-tests.exe
 	@rm -f debug/*
 	@touch debug/stack-trace.txt

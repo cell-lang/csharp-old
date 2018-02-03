@@ -35,12 +35,12 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     val_store_name = to_c_var_decl_name(value_store_id);
     ret_elem_type = return_value_type(output_type);
     arg_type = input_arg_type(input_type);
-    ctor_fn = constructor_function(input_type);
 
     code = (
       "",
-      "public bool In_" & base_name & "(" & arg_type & " value) {",
-      "  int surr = " & relvar_path & ".store.LookupValue(" & ctor_fn & "(value));",
+      "public bool In_" & base_name & "(" & arg_type & " value) {"
+    ) & indent_lines(import_code(input_type, "value", "Obj obj = ")) & (
+      "  int surr = " & relvar_path & ".store.LookupValue(obj);",
       "  return surr != -1 && " & relvar_path & ".Contains((uint) surr);",
       "}",
       "",
@@ -92,11 +92,18 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     ret_types = (return_value_type(t) : t <- output_types);
     args_types = (input_arg_type(t) : t <- input_types);
     args_decls = (t & " arg" & printed(i) : t @ i <- args_types);
-    ctor_fns = (constructor_function(it) : it <- input_types);
-    args_convs = flip_pair_if((f & "(arg" & printed(i) & ")" : f @ i <- ctor_fns), flipped);
+    args_import_code = join(
+      (import_code(it, "arg" & printed(i), "Obj argObj" & printed(i) & " = ") : it @ i <- input_types)
+    );
+    imported_args = flip_pair_if(("argObj0", "argObj1"), flipped);
 
-    body_instr = "  return WrappingUtils.TableContains(" & relvar_path & ", " & append(args_convs, ", ") & ");";
-    code = ("", "public bool In_" & base_name & "(" & append(args_decls, ", ") & ") {", body_instr, "}");
+    code = (
+      "",
+      "public bool In_" & base_name & "(" & append(args_decls, ", ") & ") {"
+    ) & indent_lines(args_import_code) & (
+      "  return WrappingUtils.TableContains(" & relvar_path & ", " & append(imported_args, ", ") & ");",
+      "}"
+    );
     docs = ("", "bool In_" & base_name & "(" & append(args_types, ", ") & ");");
 
     if maybe_key_col != nothing:
@@ -109,8 +116,9 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
       code = code & (
         "",
-        "public " & out_type & " Lookup_" & base_name & "(" & in_type & " key) {",
-        "  int surr1 = " & relvar_path & ".store1.LookupValue(" & ctor_fns(key_col) & "(key));",
+        "public " & out_type & " Lookup_" & base_name & "(" & in_type & " key) {"
+      ) & indent_lines(import_code(input_types(key_col), "key", "Obj keyObj = ")) & (
+        "  int surr1 = " & relvar_path & ".store1.LookupValue(keyObj);",
         "  if (surr1 == -1)",
         "    throw new KeyNotFoundException();",
         "  BinaryTable.Iter it = " & relvar_path & ".GetIter1((uint) surr1);",
@@ -177,7 +185,9 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     ret_types_str = append(ret_types, ", ");
 
     args_types = (input_arg_type(t) : t <- input_types);
-    ctor_fns = (constructor_function(it) : it <- input_types);
+    args_import_code = join(
+      (import_code(it, "arg" & printed(i), "Obj argObj" & printed(i) & " = ") : it @ i <- input_types)
+    );
 
     rel_name = to_c_var_decl_name(relvar);
     base_name = external_name(relvar);
@@ -185,20 +195,20 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
     args_decls = append((t & " arg" & printed(i) : t @ i <- args_types), ", ");
     cols_perm_args = append((printed(i) : i <- rev_perm), ", ");
-    args_convs = (ctor_fns(i) & "(arg" & printed(i) & ")" : i <- applied_perm);
 
     perm_idxs = (printed(i+1) : i <- rev_perm);
 
     code = (
       "",
-      "public bool In_" & base_name & "(" & args_decls & ") {",
-      "  int surr1 = " & relvar_path & ".store1.LookupValue(" & args_convs(0) & ");",
+      "public bool In_" & base_name & "(" & args_decls & ") {"
+    ) & indent_lines(args_import_code) & (
+      "  int surr1 = " & relvar_path & ".store1.LookupValue(argObj" & printed(rev_perm(0)) & ");",
       "  if (surr1 == -1)",
       "    return false;",
-      "  int surr2 = " & relvar_path & ".store2.LookupValue(" & args_convs(1) & ");",
+      "  int surr2 = " & relvar_path & ".store2.LookupValue(argObj" & printed(rev_perm(1)) & ");",
       "  if (surr2 == -1)",
       "    return false;",
-      "  int surr3 = " & relvar_path & ".store3.LookupValue(" & args_convs(2) & ");",
+      "  int surr3 = " & relvar_path & ".store3.LookupValue(argObj" & printed(rev_perm(2)) & ");",
       "  if (surr3 == -1)",
       "    return false;",
       "  return " & relvar_path & ".Contains((uint) surr1, (uint) surr2, (uint) surr3);",

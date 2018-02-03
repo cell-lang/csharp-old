@@ -1,6 +1,10 @@
 type AtomicInterType  = bool, integer, float, symbol, string;
 type BasicInterType   = AtomicInterType, generic;
-type InterType        = BasicInterType, tuple(InterType+), seq(InterType), set(InterType), tagged(InterType);
+type InterType        = BasicInterType,
+                        tuple(InterType+),
+                        seq(InterType),
+                        set(InterType),
+                        tagged(SymbObj, InterType);
 
 
 NeType internal_type(AtomicInterType) =
@@ -11,49 +15,104 @@ NeType internal_type(AtomicInterType) =
   string      = type_string;
 
 
-String input_arg_type(BasicInterType) =
-  bool        = "bool",
-  integer     = "long",
-  float       = "double",
-  symbol      |
-  string      |
-  generic     = "string";
+String input_arg_type(InterType) =
+  bool            = "bool",
+  integer         = "long",
+  float           = "double",
+  tuple(ts?)      = "Tuple<" & append((input_arg_type(t) : t <- ts), ", ") & ">",
+  seq(t?)         |
+  set(t?)         = input_arg_type(t) & "[]",
+  tagged(_, t?)   = input_arg_type(t),
+  symbol          |
+  string          |
+  generic         = "string";
 
 
-String constructor_function(InterType) =
-  bool        = "SymbObj.Get",
-  integer     = "IntObj.Get",
-  float       = "new FloatObj",
-  symbol      = "Conversions.ConvertText",
-  string      = "Conversions.StringToObj",
-  generic     = "Conversions.ConvertText";
+String* import_code(InterType it, String expr, String action_prefix) =
+  bool                = (action_prefix & "SymbObj.Get(" & expr & ");"),
+  integer             = (action_prefix & "IntObj.Get(" & expr & ");"),
+  float               = (action_prefix & "new FloatObj(" & expr & ");"),
+  symbol              = (action_prefix & "Conversions.ConvertText(" & expr & ");"),
+  string              = (action_prefix & "Conversions.StringToObj(" & expr & ");"),
+  tuple(ts?)          = tuple_import_code(ts, expr, action_prefix),
+  seq(t?)             = array_import_code(t, expr, action_prefix, "new MasterSeqObj"),
+  set(t?)             = array_import_code(t, expr, action_prefix, "Builder.CreateSet"),
+  tagged(_, generic)  = import_code(:generic, expr, action_prefix),
+  tagged(s?, t?)      = tagged_value_import_code(s, t, expr, action_prefix),
+  generic             = (action_prefix & "Conversions.ConvertText(" & expr & ");");
+
+
+String* tuple_import_code(InterType+ types, String expr, String action_prefix) {
+  unique_id = printed(_counter_(:any_value_will_do));
+  expr_var = "expr" & unique_id;
+
+  field_vars = ("field" & printed(i) & "_" & unique_id : t @ i <- types);
+  fields_code = (import_code(t, expr_var & ".Item" & printed(i+1), "Obj " & field_vars(i) & " = ") : t @ i <- types);
+
+  tuple_instr = action_prefix & "new MasterSeqObj(new Obj[] {" & append(field_vars, ", ") & "});";
+
+  ## BAD, I'M RECONSTRUCTING THE InterType VALUE AFTER DESTROYING IT
+  return (input_arg_type(:tuple(types)) & " " & expr_var & " = " & expr & ";") &
+         (join(fields_code) | tuple_instr);
+}
+
+
+String* array_import_code(InterType elem_type, String expr, String action_prefix, String ctor) {
+  unique_id = printed(_counter_(:any_value_will_do));
+  expr_var = "expr" & unique_id;
+  idx_var = "idx" & unique_id;
+  array_var = "array" & unique_id;
+
+  elem_code = import_code(elem_type, expr_var & "[" & idx_var & "]", array_var & "[" & idx_var & "] = ");
+
+  return indent_lines((
+      input_arg_type(elem_type) & "[] " & expr_var & " = " & expr & ";",
+      "Obj[] " & array_var & " = new Obj[" & expr_var & ".Length];",
+      "for (int " & idx_var & " = 0 ; " & idx_var & " < " & expr_var & ".Length ; " & idx_var & "++) {"
+    ) & indent_lines(elem_code) & (
+      "}",
+      action_prefix & ctor & "(" & array_var & ");"
+    )
+  );
+}
+
+
+String* tagged_value_import_code(SymbObj tag, InterType inner_type, String expr, String action_prefix) {
+  unique_id = printed(_counter_(:any_value_will_do));
+  inner_var = "inner" & unique_id;
+
+  inner_code = import_code(inner_type, expr, "Obj " & inner_var & " = ");
+  creation_instr = action_prefix & "new TaggedObj(" & symb_idx_name(tag) & ", " & inner_var & ");";
+
+  return (inner_code | creation_instr);
+}
 
 
 String return_value_type(InterType) =
-  bool        = "bool",
-  integer     = "long",
-  float       = "double",
-  symbol      = "string",
-  string      = "string",
-  tuple(ts?)  = "Tuple<" & append((return_value_type(t) : t <- ts), ", ") & ">",
-  seq(t?)     |
-  set(t?)     = return_value_type(t) & "[]",
-  tagged(t?)  = if t != :generic then return_value_type(t) else return_value_type(:generic),
-  generic     = "Value";
+  bool          = "bool",
+  integer       = "long",
+  float         = "double",
+  symbol        = "string",
+  string        = "string",
+  tuple(ts?)    = "Tuple<" & append((return_value_type(t) : t <- ts), ", ") & ">",
+  seq(t?)       |
+  set(t?)       = return_value_type(t) & "[]",
+  tagged(_, t?) = if t != :generic then return_value_type(t) else return_value_type(:generic),
+  generic       = "Value";
 
 
 String* export_code(InterType it, String expr, String action_prefix) =
-  bool            = (action_prefix & expr & ".GetBool();"),
-  integer         = (action_prefix & expr & ".GetLong();"),
-  float           = (action_prefix & expr & ".GetDouble();"),
-  symbol          = (action_prefix & expr & ".ToString();"),
-  string          = (action_prefix & expr & ".GetString();"),
-  tuple(ts?)      = tuple_export_code(ts, expr, action_prefix),
-  seq(t?)         |
-  set(t?)         = array_export_code(t, expr, action_prefix),
-  tagged(generic) = export_code(:generic, expr, action_prefix),
-  tagged(t?)      = export_code(t, expr & ".GetInnerObj()", action_prefix),
-  generic         = (action_prefix & "Conversions.ExportAsValue(" & expr & ");");
+  bool                = (action_prefix & expr & ".GetBool();"),
+  integer             = (action_prefix & expr & ".GetLong();"),
+  float               = (action_prefix & expr & ".GetDouble();"),
+  symbol              = (action_prefix & expr & ".ToString();"),
+  string              = (action_prefix & expr & ".GetString();"),
+  tuple(ts?)          = tuple_export_code(ts, expr, action_prefix),
+  seq(t?)             |
+  set(t?)             = array_export_code(t, expr, action_prefix),
+  tagged(_, generic)  = export_code(:generic, expr, action_prefix),
+  tagged(_, t?)       = export_code(t, expr & ".GetInnerObj()", action_prefix),
+  generic             = (action_prefix & "Conversions.ExportAsValue(" & expr & ");");
 
 
 String* tuple_export_code(InterType+ types, String expr, String action_prefix) {
@@ -76,17 +135,17 @@ String* tuple_export_code(InterType+ types, String expr, String action_prefix) {
 
 String* array_export_code(InterType elem_type, String expr, String action_prefix) {
   return match (elem_type)
-    bool            = (action_prefix & "Conversions.ToBoolArray(" & expr & ");"),
-    integer         = (action_prefix & "Conversions.ToLongArray(" & expr & ");"),
-    float           = (action_prefix & "Conversions.ToDoubleArray(" & expr & ");"),
-    symbol          = (action_prefix & "Conversions.ToSymbolArray(" & expr & ");"),
-    string          = (action_prefix & "Conversions.ToStringArray(" & expr & ");"),
-    generic         = (action_prefix & "Conversions.ToValueArray(" & expr & ");"),
-    tagged(generic) = array_export_code(:generic, expr, action_prefix),
-    tuple()         |
-    seq()           |
-    set()           |
-    tagged()        = generic_array_export_code(elem_type, expr, action_prefix);
+    bool                = (action_prefix & "Conversions.ToBoolArray(" & expr & ");"),
+    integer             = (action_prefix & "Conversions.ToLongArray(" & expr & ");"),
+    float               = (action_prefix & "Conversions.ToDoubleArray(" & expr & ");"),
+    symbol              = (action_prefix & "Conversions.ToSymbolArray(" & expr & ");"),
+    string              = (action_prefix & "Conversions.ToStringArray(" & expr & ");"),
+    generic             = (action_prefix & "Conversions.ToValueArray(" & expr & ");"),
+    tagged(_, generic)  = array_export_code(:generic, expr, action_prefix),
+    tuple()             |
+    seq()               |
+    set()               |
+    tagged()            = generic_array_export_code(elem_type, expr, action_prefix);
 
 
   String* generic_array_export_code(InterType elem_type, String expr, String action_prefix) {
@@ -122,12 +181,8 @@ String array_new_expr(InterType elem_type, String size_expr) =
 ////////////////////////////////////////////////////////////////////////////////
 
 implicit typedefs : [TypeName -> NeType] {
-  BasicInterType input_interface_type(NeType type) {
-    for it <- (:bool, :integer, :float, :symbol, :string):
-      return it if is_subset(type, internal_type(it));
-    ;
-    return :generic;
-  }
+
+  InterType input_interface_type(NeType type) = output_interface_type(type);
 
 
   InterType output_interface_type(NeType type) {
@@ -156,7 +211,9 @@ implicit typedefs : [TypeName -> NeType] {
       tag_type = tag_supertype(type);
       if is_symb_singl_type(tag_type):
         obj_type = untagged_objs_supertype(type);
-        return :tagged(output_interface_type(obj_type)) if obj_type != empty_type;
+        ## WHY IS THERE THE obj_type != empty_type GUARD?
+        assert obj_type != empty_type;
+        return :tagged(only_symb(tag_type), output_interface_type(obj_type)) if obj_type != empty_type;
       ;
     ;
 

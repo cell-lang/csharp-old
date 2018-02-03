@@ -14,12 +14,11 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
     name = sentence_case(id);
     uc_name = uppercase(id);
 
-    ctor_fn = constructor_function(inter_type);
-
     code = (
       "",
-      "void Set_" & name & "(" & input_type & " value" & ") {",
-      "  InternalSetInput(Input." & uc_name & ", " & ctor_fn & "(value));",
+      "void Set_" & name & "(" & input_type & " value" & ") {"
+    ) & indent_lines(import_code(inter_type, "value", "Obj obj = ")) & (
+      "  InternalSetInput(Input." & uc_name & ", obj);",
       "}"
     );
 
@@ -212,7 +211,7 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
         "}",
         "",
         "public void SetInput(Input input, string value) {",
-        "  InternalSetInput(input, " & constructor_function(:generic) & "(value));",
+        "  InternalSetInput(input, Conversions.ConvertText(value));",
         "}"
       );
     ;
@@ -276,10 +275,12 @@ implicit typedefs : [TypeName -> NeType] {
     code = (
       "",
       "public " & ret_val_str & " Call_" & base_name & "(" & args_decls & ") {"
-    ) & (
-      "  Obj objArg" & printed(i) & " = " & constructor_function(it) & "(arg" & printed(i) & ");"
-      : it @ i <- args_inter_types
     );
+
+    code = code & join((
+      import_code(it, "arg" & printed(i), "Obj objArg" & printed(i) & " = ")
+      : it @ i <- args_inter_types
+    ));
 
     conds = (to_c_fn_name(p) & "(objArg" & printed(i) & ")" : i, p <- mono_args);
     if poly_args != ():

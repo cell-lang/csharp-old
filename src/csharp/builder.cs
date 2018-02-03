@@ -20,6 +20,10 @@ namespace CellLang {
       return new MasterSeqObj(objs_copy);
     }
 
+    public static Obj CreateSet(Obj[] objs) {
+      return CreateSet(objs, objs.Length);
+    }
+
     public static Obj CreateSet(List<Obj> objs) {
       return CreateSet(objs.ToArray(), objs.Count);
     }
