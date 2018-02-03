@@ -4,14 +4,19 @@ using System;
 namespace CellLang {
   public static class BinTableUnitTests {
     public static void Run() {
-      for (int i=1 ; i <= 200 ; i++) {
-        Console.WriteLine(i.ToString());
-        for (int j=0 ; j < 100 ; j++) {
-          // Console.Write("{0} ", j);
-          Run(i, false);
-        }
-        // Console.WriteLine();
-      }
+      // for (int i=1 ; i < 50 ; i++) {
+      //   Console.WriteLine(i.ToString());
+      //   for (int j=0 ; j < 100 ; j++) {
+      //     // Console.Write("{0} ", j);
+      //     Run(i, false);
+      //   }
+      //   Console.WriteLine();
+      // }
+
+      // for (int i=1 ; i < 240 ; i++) {
+      //   Console.WriteLine(i.ToString());
+      //   Run(i, false);
+      // }
     }
 
     static Random random = new Random(0);
