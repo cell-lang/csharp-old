@@ -1082,7 +1082,6 @@ namespace CellLang {
     override public int MinPrintedSize() {
       if (minPrintedSize == -1) {
         int len = col1.Length;
-        bool isRec = IsNeRecord();
         minPrintedSize = 6 * len + (len == 1 ? 1 : 0);
         for (int i=0 ; i < len ; i++)
           minPrintedSize += col1[i].MinPrintedSize() + col2[i].MinPrintedSize() + col3[i].MinPrintedSize();

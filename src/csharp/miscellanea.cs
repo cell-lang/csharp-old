@@ -140,13 +140,12 @@ namespace CellLang {
             PrintStackFrame(i, file);
         Console.WriteLine("");
       }
-      catch (Exception e) {
+      catch {
         Console.Error.WriteLine("Could not write a dump of the stack to {0}. Did you create the \"debug\" directory?", outFnName);
       }
     }
 
     static void PrintStackFrame(int frameIdx, TextWriter writer) {
-      string fnName = fnNamesStack[frameIdx];
       Obj[] args = argsStack[frameIdx];
       writer.Write("{0}(", fnNamesStack[frameIdx]);
       if (args != null) {

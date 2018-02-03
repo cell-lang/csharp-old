@@ -332,8 +332,6 @@ namespace CellLang {
         return;
 
       int storeCapacity = store.Capacity();
-      int storeCount = store.Count();
-
       int reqCapacity = store.Count() + count;
 
       if (storeCapacity < reqCapacity)
