@@ -128,33 +128,33 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
         "  uint surr2 = it.GetField2();",
         "  it.Next();",
         "  Miscellanea.Assert(it.Done());"
-      ) & export_code(
-            output_types(non_key_col),
-            relvar_path & ".store2.LookupSurrogate(surr2)",
-            "return "
-      ) & ("}");
+      ) & indent_lines(export_code(
+        output_types(non_key_col),
+        relvar_path & ".store2.LookupSurrogate(surr2)",
+        "return "
+      )) & ("}");
 
       docs = (docs | out_type & " Lookup_" & base_name & "(" & in_type & "); // Throws KeyNotFoundException() if no corresponding tuple is found");
     ;
 
     phys_idxs = flip_pair_if(("1", "2"), flipped);
     types_str = append(ret_types, ", ");
-    sgn = "public Tuple<" & types_str & ">[] Get_" & base_name & "()";
+    sgn = "Tuple<" & types_str & ">[] Get_" & base_name & "()";
     body = (
       "int size = " & relvar_path & ".Size();",
       "Tuple<" & types_str & ">[] copy = new Tuple<" & types_str & ">[size];",
       "BinaryTable.Iter it = " & relvar_path & ".GetIter();",
       "int next = 0;",
       "while (!it.Done()) {"
-    ) & export_code(
+    ) & indent_lines(export_code(
       output_types(0),
       relvar_path & ".store" & phys_idxs(0) & ".LookupSurrogate(it.GetField" & phys_idxs(0) & "())",
-      "  " & ret_types(0) & " field1 = "
-    ) & export_code(
+      ret_types(0) & " field1 = "
+    )) & indent_lines(export_code(
       output_types(1),
       relvar_path & ".store" & phys_idxs(1) & ".LookupSurrogate(it.GetField" & phys_idxs(1) & "())",
-      "  " & ret_types(1) & " field2 = "
-    ) & (
+      ret_types(1) & " field2 = "
+    )) & (
       "  copy[next++] = new Tuple<" & types_str & ">(field1, field2);",
       "  it.Next();",
       "}",
@@ -162,7 +162,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
       "return copy;"
     );
 
-    code = (code | "", sgn & " {") & indent_lines(body) & ("}");
+    code = (code | "", "public " & sgn & " {") & indent_lines(body) & ("}");
     docs = (docs | sgn & ";");
 
     return (code, docs);
@@ -220,19 +220,19 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
       "  TernaryTable.Iter it = " & relvar_path & ".GetIter();",
       "  int next = 0;",
       "  while (!it.Done()) {"
-      ) & export_code(
+      ) & indent_lines(indent_lines(export_code(
         output_types(0),
         relvar_path & ".store" & perm_idxs(0) & ".LookupSurrogate(it.GetField" & perm_idxs(0) & "())",
-        "    " & ret_types(0) & " field1 = "
-      ) & export_code(
+        ret_types(0) & " field1 = "
+      ))) & indent_lines(indent_lines(export_code(
         output_types(1),
         relvar_path & ".store" & perm_idxs(1) & ".LookupSurrogate(it.GetField" & perm_idxs(1) & "())",
-        "    " & ret_types(1) & " field2 = "
-      ) & export_code(
+        ret_types(1) & " field2 = "
+      ))) & indent_lines(indent_lines(export_code(
         output_types(2),
         relvar_path & ".store" & perm_idxs(2) & ".LookupSurrogate(it.GetField" & perm_idxs(2) & "())",
-        "    " & ret_types(2) & " field3 = "
-      ) & (
+        ret_types(2) & " field3 = "
+      ))) & (
       "    copy[next++] = new Tuple<" & ret_types_str & ">(field1, field2, field3);",
       "    it.Next();",
       " }",
@@ -243,7 +243,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
     docs = (
       "",
-      "bool In_" & base_name & "(" & args_decls & ") {",
+      "bool In_" & base_name & "(" & args_decls & ")",
       "Tuple<" & ret_types_str & ">[] " & "Get_" & base_name & "()"
     );
 
