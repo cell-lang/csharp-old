@@ -33,13 +33,20 @@ implicit
       then get_method_name_fallback(relvar)
       else upper_camel_case(bare_id(relvar));
 
+  String call_method_name(MethodId method_id) =
+    if pretty_name_has_conflicts(method_id.symbol)
+      then call_method_name_fallback(method_id)
+      else upper_camel_case(bare_id(method_id.symbol));
+
   String get_method_name_fallback(MembVar var) = "Get_" & external_name(var);
   String in_method_name_fallback(RelVar relvar) = "In_" & external_name(relvar);
   String get_method_name_fallback(RelVar relvar) = "Get_" & external_name(relvar);
   String lookup_method_name_fallback(RelVar relvar) = "Lookup_" & external_name(relvar);
+  String call_method_name_fallback(MethodId method_id) = "Call_" & external_name(method_id.symbol);
 
-  Bool pretty_name_has_conflicts(<MembVar, RelVar> var) {
-    pretty_name = upper_camel_case(bare_id(var));
+
+  Bool pretty_name_has_conflicts(<MembVar, RelVar, MethodSymbol> member) {
+    pretty_name = upper_camel_case(bare_id(member));
     builtin_names = builtin_method_names;
     return pretty_name == db_class_name or builtin_names(pretty_name) or duplicate_names(pretty_name);
 
@@ -336,7 +343,7 @@ implicit
 
   (String*, String*) db_method_wrapper(MethodId method_id, CompiledMethod method) {
     if not method_id.id?:
-      ext_name = external_name(method_id.symbol);
+      ext_name = call_method_name(method_id);
       return method_wrapper(method_id, method, block_name, ext_name, db_class_name, path_prefix);
     else
       return ((), ());
@@ -363,7 +370,7 @@ implicit
 
     code = methods_wrappers_code & state_var_accessors_code & table_accessors_code & nested_autos_code;
 
-    docs_by_type = (state_var_accessors_docs, table_accessors_docs, methods_wrappers_docs, nested_autos_docs);
+    docs_by_type = (state_var_accessors_docs, table_accessors_docs, (""), methods_wrappers_docs, nested_autos_docs);
     docs = join((indent_lines(d) : d <- docs_by_type, d != ()));
 
     return (code, docs);
@@ -374,9 +381,11 @@ implicit
 
 implicit typedefs : [TypeName -> NeType] {
   (String*, String*) static_auto_wrapper(StaticBlock root_block, [DBSymbol -> StaticBlock] blocks) {
-    state_var_names = (upper_camel_case(bare_id(v)) : v, unused_var <- isort(root_block.state_vars));
-    relvar_names = (upper_camel_case(bare_id(v)) : v, unused_var <- isort(root_block.tables));
-    duplicate_names = duplicates(state_var_names & relvar_names);
+    state_var_ids = (v : v, unused_var <- isort(root_block.state_vars));
+    relvar_ids = (v : v, unused_var <- isort(root_block.tables));
+    method_ids = (id.symbol : id, unused_var <- isort(root_block.methods), not id.id?);
+    all_ids = state_var_ids & relvar_ids & method_ids;
+    duplicate_names = duplicates((upper_camel_case(bare_id(id)) : id <- all_ids));
 
     let block_name = root_block.name, db_var_chain = (), root_block_name = root_block.name:
       let duplicate_names = duplicate_names:

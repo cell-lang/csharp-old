@@ -259,7 +259,7 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
 
 implicit typedefs : [TypeName -> NeType] {
   (String*, String*) method_wrapper(MethodId method_id, CompiledMethod method,
-    <AutoSymbol, DBSymbol> block_name, String base_name, String class_name, String method_path) {
+    <AutoSymbol, DBSymbol> block_name, String ext_name, String class_name, String method_path) {
     args_inter_types = (input_interface_type(t) : t <- method.args_types);
     inter_ret_type = output_interface_type(method.ret_type);
     args_types_str = append((input_arg_type(it) : it <- args_inter_types), ", ");
@@ -274,11 +274,11 @@ implicit typedefs : [TypeName -> NeType] {
 
     code = (
       "",
-      "public " & ret_val_str & " Call_" & base_name & "(" & args_decls & ") {"
+      "public " & ret_val_str & " " & ext_name & "(" & args_decls & ") {"
     );
 
     code = code & join((
-      import_code(it, "arg" & printed(i), "Obj objArg" & printed(i) & " = ")
+      indent_lines(import_code(it, "arg" & printed(i), "Obj objArg" & printed(i) & " = "))
       : it @ i <- args_inter_types
     ));
 
@@ -316,7 +316,7 @@ implicit typedefs : [TypeName -> NeType] {
       "}"
     );
 
-    docs = ret_val_str & " Call_" & base_name & "(" & args_types_str & ");";
+    docs = ret_val_str & " " & ext_name & "(" & args_types_str & ");";
 
     return (code, (docs));
   }
