@@ -7,14 +7,18 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
   String full_path(<MembVar, RelVar> var) = path_prefix & to_c_var_decl_name(var);
 
   String db_class_name = upper_camel_case(bare_id(root_block_name));
+
+  String get_method_name(MembVar var) = "Get_" & external_name(var);
+  String in_method_name(RelVar relvar) = "In_" & external_name(relvar);
+  String get_method_name(RelVar relvar) = "Get_" & external_name(relvar);
+  String lookup_method_name(RelVar relvar) = "Lookup_" & external_name(relvar);
 }
 
 
 implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : DBSymbol, typedefs : [TypeName -> NeType] {
   (String*, String*) state_var_accessor(MembVar var, NeType var_type) {
     inter_type = output_interface_type(var_type);
-    base_name = external_name(var);
-    meth_name = "Get_" & base_name;
+    meth_name = get_method_name(var);
     var_name = to_c_var_decl_name(var);
     ret_type = return_value_type(inter_type);
 
@@ -29,7 +33,8 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
   (String*, String*) unary_table_accessors(RelVar relvar, ValueStoreId value_store_id, NeType elem_type) {
     input_type = input_interface_type(elem_type);
     output_type = output_interface_type(elem_type);
-    base_name = external_name(relvar);
+    in_method_name = in_method_name(relvar);
+    get_method_name = get_method_name(relvar);
     rel_name = to_c_var_decl_name(relvar);
     relvar_path = full_path(relvar);
     val_store_name = to_c_var_decl_name(value_store_id);
@@ -38,13 +43,13 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
     code = (
       "",
-      "public bool In_" & base_name & "(" & arg_type & " value) {"
+      "public bool " & in_method_name & "(" & arg_type & " value) {"
     ) & indent_lines(import_code(input_type, "value", "Obj obj = ")) & (
       "  int surr = " & relvar_path & ".store.LookupValue(obj);",
       "  return surr != -1 && " & relvar_path & ".Contains((uint) surr);",
       "}",
       "",
-      "public " & ret_elem_type & "[] " & "Get_" & base_name & "() {",
+      "public " & ret_elem_type & "[] " & get_method_name & "() {",
       "  uint size = " & relvar_path & ".Size();",
       "  " & ret_elem_type & "[] copy = new " & array_new_expr(output_type, "size") & ";",
       "  UnaryTable.Iter it = " & relvar_path & ".GetIter();",
@@ -62,8 +67,8 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
     docs = (
       "",
-      "bool In_" & base_name & "(" & arg_type & ");",
-      ret_elem_type & "[] Get_" & base_name & "();"
+      "bool " & in_method_name & "(" & arg_type & ");",
+      ret_elem_type & "[] " & get_method_name & "();"
     );
 
     return (code, docs);
@@ -86,7 +91,9 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     types = flip_pair_if(perm_types, flipped);
     input_types = (input_interface_type(t) : t <- types);
     output_types = (output_interface_type(t) : t <- types);
-    base_name = external_name(relvar);
+    in_method_name = in_method_name(relvar);
+    get_method_name = get_method_name(relvar);
+    lookup_method_name = lookup_method_name(relvar);
     rel_name = to_c_var_decl_name(relvar);
     relvar_path = full_path(relvar);
     ret_types = (return_value_type(t) : t <- output_types);
@@ -99,12 +106,12 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
     code = (
       "",
-      "public bool In_" & base_name & "(" & append(args_decls, ", ") & ") {"
+      "public bool " & in_method_name & "(" & append(args_decls, ", ") & ") {"
     ) & indent_lines(args_import_code) & (
       "  return WrappingUtils.TableContains(" & relvar_path & ", " & append(imported_args, ", ") & ");",
       "}"
     );
-    docs = ("", "bool In_" & base_name & "(" & append(args_types, ", ") & ");");
+    docs = ("", "bool " & in_method_name & "(" & append(args_types, ", ") & ");");
 
     if maybe_key_col != nothing:
       key_col = value(maybe_key_col);
@@ -116,7 +123,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
       code = code & (
         "",
-        "public " & out_type & " Lookup_" & base_name & "(" & in_type & " key) {"
+        "public " & out_type & " " & lookup_method_name & "(" & in_type & " key) {"
       ) & indent_lines(import_code(input_types(key_col), "key", "Obj keyObj = ")) & (
         "  int surr1 = " & relvar_path & ".store1.LookupValue(keyObj);",
         "  if (surr1 == -1)",
@@ -134,12 +141,12 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
         "return "
       )) & ("}");
 
-      docs = (docs | out_type & " Lookup_" & base_name & "(" & in_type & "); // Throws KeyNotFoundException() if no corresponding tuple is found");
+      docs = (docs | out_type & " " & lookup_method_name & "(" & in_type & "); // Throws KeyNotFoundException() if no corresponding tuple is found");
     ;
 
     phys_idxs = flip_pair_if(("1", "2"), flipped);
     types_str = append(ret_types, ", ");
-    sgn = "Tuple<" & types_str & ">[] Get_" & base_name & "()";
+    sgn = "Tuple<" & types_str & ">[] " & get_method_name & "()";
     body = (
       "int size = " & relvar_path & ".Size();",
       "Tuple<" & types_str & ">[] copy = new Tuple<" & types_str & ">[size];",
@@ -190,7 +197,8 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     );
 
     rel_name = to_c_var_decl_name(relvar);
-    base_name = external_name(relvar);
+    in_method_name = in_method_name(relvar);
+    get_method_name = get_method_name(relvar);
     relvar_path = full_path(relvar);
 
     args_decls = append((t & " arg" & printed(i) : t @ i <- args_types), ", ");
@@ -200,7 +208,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
     code = (
       "",
-      "public bool In_" & base_name & "(" & args_decls & ") {"
+      "public bool " & in_method_name & "(" & args_decls & ") {"
     ) & indent_lines(args_import_code) & (
       "  int surr1 = " & relvar_path & ".store1.LookupValue(argObj" & printed(rev_perm(0)) & ");",
       "  if (surr1 == -1)",
@@ -214,7 +222,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
       "  return " & relvar_path & ".Contains((uint) surr1, (uint) surr2, (uint) surr3);",
       "}",
       "",
-      "public Tuple<" & ret_types_str & ">[] " & "Get_" & base_name & "() {",
+      "public Tuple<" & ret_types_str & ">[] " & get_method_name & "() {",
       "  int size = " & relvar_path & ".Size();",
       "  Tuple<" & ret_types_str & ">[] copy = new Tuple<" & ret_types_str & ">[size];",
       "  TernaryTable.Iter it = " & relvar_path & ".GetIter();",
@@ -243,8 +251,8 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
     docs = (
       "",
-      "bool In_" & base_name & "(" & args_decls & ")",
-      "Tuple<" & ret_types_str & ">[] " & "Get_" & base_name & "()"
+      "bool " & in_method_name & "(" & args_decls & ")",
+      "Tuple<" & ret_types_str & ">[] " & get_method_name & "()"
     );
 
     return (code, docs);
@@ -275,8 +283,8 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
   (String*, String*) db_method_wrapper(MethodId method_id, CompiledMethod method) {
     if not method_id.id?:
-      base_name = external_name(method_id.symbol);
-      return method_wrapper(method_id, method, block_name, base_name, db_class_name, path_prefix);
+      ext_name = external_name(method_id.symbol);
+      return method_wrapper(method_id, method, block_name, ext_name, db_class_name, path_prefix);
     else
       return ((), ());
     ;
