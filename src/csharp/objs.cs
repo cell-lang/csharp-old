@@ -1033,7 +1033,7 @@ namespace CellLang {
         if (newLine)
           writer.Write(" ");
         else
-          writer.WriteIndentedNewLine(indentLevel);
+          writer.WriteIndentedNewLine(indentLevel + 1);
       }
 
       for (int i=0 ; i < len ; i++) {
