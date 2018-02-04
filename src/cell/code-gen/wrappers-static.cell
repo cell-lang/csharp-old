@@ -1,4 +1,9 @@
-implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : DBSymbol {
+implicit
+  block_name      : DBSymbol,
+  db_var_chain    : NestedDBVar*,
+  root_block_name : DBSymbol,
+  duplicate_names : [String]
+{
   String external_name(<MembVar, RelVar, MethodSymbol> var) =
     append((sentence_case(bare_id(v)) : v <- (db_var_chain | var)), "_");
 
@@ -8,14 +13,62 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
   String db_class_name = upper_camel_case(bare_id(root_block_name));
 
-  String get_method_name(MembVar var) = "Get_" & external_name(var);
-  String in_method_name(RelVar relvar) = "In_" & external_name(relvar);
-  String get_method_name(RelVar relvar) = "Get_" & external_name(relvar);
-  String lookup_method_name(RelVar relvar) = "Lookup_" & external_name(relvar);
+  String get_method_name(MembVar var) =
+    if pretty_name_has_conflicts(var)
+      then get_method_name_fallback(var)
+      else upper_camel_case(bare_id(var));
+
+  String in_method_name(RelVar relvar) =
+    if pretty_name_has_conflicts(relvar)
+      then in_method_name_fallback(relvar)
+      else upper_camel_case(bare_id(relvar));
+
+  String get_method_name(RelVar relvar) =
+    if pretty_name_has_conflicts(relvar)
+      then get_method_name_fallback(relvar)
+      else upper_camel_case(bare_id(relvar));
+
+  String lookup_method_name(RelVar relvar) =
+    if pretty_name_has_conflicts(relvar)
+      then get_method_name_fallback(relvar)
+      else upper_camel_case(bare_id(relvar));
+
+  String get_method_name_fallback(MembVar var) = "Get_" & external_name(var);
+  String in_method_name_fallback(RelVar relvar) = "In_" & external_name(relvar);
+  String get_method_name_fallback(RelVar relvar) = "Get_" & external_name(relvar);
+  String lookup_method_name_fallback(RelVar relvar) = "Lookup_" & external_name(relvar);
+
+  Bool pretty_name_has_conflicts(<MembVar, RelVar> var) {
+    pretty_name = upper_camel_case(bare_id(var));
+    builtin_names = builtin_method_names;
+    return pretty_name == db_class_name or builtin_names(pretty_name) or duplicate_names(pretty_name);
+
+    [String] builtin_method_names = [
+      "Equals",           // 1
+      "Finalize",         // 0
+      "GetHashCode",      // 0
+      "GetType",          // 0
+      "MemberwiseClone",  // 0
+      "ToString",         // 0
+
+      "Equals",           // 2
+      "ReferenceEquals",  // 2
+
+      "ReadState",        // 0
+      "SetState",         // 1
+      "Execute"           // 1
+    ];
+  }
 }
 
 
-implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : DBSymbol, typedefs : [TypeName -> NeType] {
+implicit
+  block_name      : DBSymbol,
+  db_var_chain    : NestedDBVar*,
+  root_block_name : DBSymbol,
+  duplicate_names : [String],
+  typedefs        : [TypeName -> NeType]
+{
   (String*, String*) state_var_accessor(MembVar var, NeType var_type) {
     inter_type = output_interface_type(var_type);
     meth_name = get_method_name(var);
@@ -141,7 +194,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
         "return "
       )) & ("}");
 
-      docs = (docs | out_type & " " & lookup_method_name & "(" & in_type & "); // Throws KeyNotFoundException() if no corresponding tuple is found");
+      docs = (docs | out_type & " " & lookup_method_name & "(" & in_type & ");");
     ;
 
     phys_idxs = flip_pair_if(("1", "2"), flipped);
@@ -251,8 +304,8 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
     docs = (
       "",
-      "bool " & in_method_name & "(" & args_decls & ")",
-      "Tuple<" & ret_types_str & ">[] " & get_method_name & "()"
+      "bool " & in_method_name & "(" & args_decls & ");",
+      "Tuple<" & ret_types_str & ">[] " & get_method_name & "();"
     );
 
     return (code, docs);
@@ -311,7 +364,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     code = methods_wrappers_code & state_var_accessors_code & table_accessors_code & nested_autos_code;
 
     docs_by_type = (state_var_accessors_docs, table_accessors_docs, methods_wrappers_docs, nested_autos_docs);
-    docs = join(intermix((indent_lines(d) : d <- docs_by_type, d != ()), ("")));
+    docs = join((indent_lines(d) : d <- docs_by_type, d != ()));
 
     return (code, docs);
   }
@@ -321,9 +374,15 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
 implicit typedefs : [TypeName -> NeType] {
   (String*, String*) static_auto_wrapper(StaticBlock root_block, [DBSymbol -> StaticBlock] blocks) {
+    state_var_names = (upper_camel_case(bare_id(v)) : v, unused_var <- isort(root_block.state_vars));
+    relvar_names = (upper_camel_case(bare_id(v)) : v, unused_var <- isort(root_block.tables));
+    duplicate_names = duplicates(state_var_names & relvar_names);
+
     let block_name = root_block.name, db_var_chain = (), root_block_name = root_block.name:
-      accessors_code, accessors_docs = static_auto_accessors(root_block, blocks);
-      class_name = db_class_name;
+      let duplicate_names = duplicate_names:
+        accessors_code, accessors_docs = static_auto_accessors(root_block, blocks);
+        class_name = db_class_name;
+      ;
     ;
 
     db_name = to_c_name(root_block.name);
@@ -383,7 +442,7 @@ implicit typedefs : [TypeName -> NeType] {
       "class CellLang.Generated." & class_name & " {",
       "  " & class_name & "(" & append(ctor_impl_args, ", ") & ");",
       "",
-      "  CellLang.Value ReadState();",
+      "  Value ReadState();",
       "  void SetState(String);",
       "  void Execute(String);" if has_any_updates
     );

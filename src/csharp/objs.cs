@@ -141,6 +141,7 @@ namespace CellLang {
 
     public void Print() {
       Print(Console.Out, 90, true, 0);
+      Console.WriteLine();
     }
 
     public Obj Printed() {

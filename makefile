@@ -2,7 +2,7 @@ SRC-FILES=$(shell ls src/cell/*.cell src/cell/code-gen/*.cell)
 RUNTIME-FILES=$(shell ls src/csharp/*)
 UNIT-TESTS-FILES=$(shell ls src/unit-tests/*)
 
-codegen-dbg codegen.txt tmp/generated.cpp: $(SRC-FILES)
+codegen-dbg tmp/generated.cpp: $(SRC-FILES)
 	rm -rf tmp/
 	mkdir tmp
 	cellc -p projects/codegen.txt
@@ -18,14 +18,22 @@ codegen-opt: tmp/generated.cpp
 	g++ -O3 -DNDEBUG tmp/generated.cpp -o codegen-opt
 
 # gen-html-dbg: codegen-dbg $(RUNTIME-FILES)
-# 	./codegen-dbg gen-html.txt
+# 	./codegen gen-html.txt
 # 	mcs -debug -d:DEBUG generated.cs $(RUNTIME-FILES) -out:gen-html-dbg
 
 # recompile-generated:
 # 	mcs -debug -d:DEBUG generated.cs $(RUNTIME-FILES) -out:gen-html-dbg
 
-codegen.cs: codegen-dbg codegen.txt
-	./codegen-dbg codegen.txt
+codegen.txt: $(SRC-FILES)
+	rm -rf tmp/
+	mkdir tmp
+	cellc -p projects/codegen.txt
+	mv dump-opt-code.txt codegen.txt
+	rm dump-*.txt
+	mv generated.* tmp/
+
+codegen.cs: codegen.txt
+	./codegen codegen.txt
 	bin/apply-hacks < generated.cs > codegen.cs
 
 codegen.exe: codegen.cs $(RUNTIME-FILES)
@@ -130,8 +138,7 @@ desugar.cs: codegen.exe tests/desugar.txt $(SRC-FILES)
 desugar.exe: desugar.cs $(RUNTIME-FILES)
 	mcs -nowarn:162,168,219,414 desugar.cs $(RUNTIME-FILES) -out:desugar.exe
 
-# test.cs: test.cell codegen.exe
-test.cs: test.cell
+test.cs: test.cell codegen.exe
 	cellc -p projects/test.txt
 	mv dump-opt-code.txt test.txt
 	rm dump-*
@@ -158,7 +165,7 @@ test: test.cpp
 # 	rm generated.cpp dump-*.txt
 
 # test.exe: test.txt $(RUNTIME-FILES)
-# 	./codegen-dbg test.txt
+# 	./codegen test.txt
 # 	mv generated.cs test.cs
 # 	mcs test.cs $(RUNTIME-FILES) -out:test.exe
 
@@ -218,10 +225,11 @@ check:
 	cmp html/updates.html         html-ref/updates.html          
 
 clean:
-	@rm -f codegen-dbg codegen-rel
+	@rm -f codegen
 	@make -s soft-clean
 
 soft-clean:
+	@rm -f codegen-dbg codegen-rel
 	@rm -f codegen.exe codegen.txt
 	@rm -rf tmp/
 	@rm -f generated.cs generated-2.cs codegen.cs codegen-2.cs
@@ -236,7 +244,7 @@ soft-clean:
 	@rm -f chat-server-mixed.cs chat-server-interface.cs
 	@rm -f water-sensor-mixed*
 	@rm -f regression-mixed*
-	@rm -f interfaces.txt
+	@rm -f interfaces.txt interfaces.cs
 	@rm -f test-mixed*
 	@rm -f compiler-dbg.cs cellcd-cs.exe
 	@rm -f codegen-2.exe codegen-dbg.cs codegen-dbg.exe
