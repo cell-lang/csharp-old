@@ -1,6 +1,46 @@
 implicit block : ReactBlock {
   String auto_class_name = upper_camel_case(bare_id(block.name));
   String auto_struct_ptr = "((" & to_c_name(block.name) & " *) ptr)";
+
+  String safe_name(Symbol signal) {
+    name = upper_camel_case(signal);
+    name = "_" & name if pretty_name_has_conflicts(signal);
+    return name;
+  }
+
+  Bool pretty_name_has_conflicts(Symbol signal) {
+    pretty_name = upper_camel_case(signal);
+    return pretty_name == auto_class_name or in(pretty_name, reserved_names);
+
+    [String] reserved_names = [
+      // Object class instance methods
+      "Equals",
+      "Finalize",
+      "GetHashCode",
+      "GetType",
+      "MemberwiseClone",
+      "ToString",
+
+      // Static Object class methods
+      "Equals",
+      "ReferenceEquals",
+
+      // Automata reserved names
+      "Input",
+      "Output",
+      "ChangedOutputs",
+
+      // Standard automaton methods
+      "Apply",
+      "ReadState",
+      "SetState",
+      "SetElapsedMillisecs",
+      "SetElapsedSecs",
+      "InternalSetInput",
+      "SetInput",
+      "ReadOutput"
+    ];
+  }
 }
 
 
@@ -8,21 +48,23 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
   (String*, String*) input_setter(Atom id) {
     type = block.inputs[id].type;
     inter_type = input_interface_type(type);
-    return ((), ()) if inter_type == :generic;
+    // return ((), ()) if inter_type == :generic;
     input_type = input_arg_type(inter_type);
 
-    name = sentence_case(id);
+    name = safe_name(id);
     uc_name = uppercase(id);
 
     code = (
       "",
-      "void Set_" & name & "(" & input_type & " value" & ") {"
-    ) & indent_lines(import_code(inter_type, "value", "Obj obj = ")) & (
-      "  InternalSetInput(Input." & uc_name & ", obj);",
+      "public " & input_type & " " & name & " {",
+      "  set {"
+    ) & indent_lines(indent_lines(import_code(inter_type, "value", "Obj obj = "))) & (
+      "    InternalSetInput(Input." & uc_name & ", obj);",
+      "  }",
       "}"
     );
 
-    docs = "  void Set_" & name & "(" & input_type & ");";
+    docs = "  " & input_type & " " & name & ";";
 
     return (code, (docs));
   }
@@ -36,22 +78,24 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
     inter_type = output_interface_type(type);
     ret_type = return_value_type(inter_type);
 
-    base_name = sentence_case(id);
+    name = safe_name(id);
     var_name = to_c_var_decl_name(signal_var(id));
 
     code = (
       "",
-      "public " & ret_type & " Get_" & base_name & "() {",
-      "  Obj obj = automaton." & var_name & ";",
-      "  if (obj.IsNullObj())",
-      "    throw new Exception(\"Output is undefined\");",
-      "  if (obj.IsBlankObj())" if output.discrete,
-      "    throw new Exception(\"Discrete output is not set\");" if output.discrete
-    ) & export_code(inter_type, "obj", "  return ") & (
+      "public " & ret_type & " " & name & " {",
+      "  get {",
+      "    Obj obj = automaton." & var_name & ";",
+      "    if (obj.IsNullObj())",
+      "      throw new Exception(\"Output is undefined\");",
+      "    if (obj.IsBlankObj())" if output.discrete,
+      "      throw new Exception(\"Discrete output is not set\");" if output.discrete
+    ) & indent_lines(indent_lines(export_code(inter_type, "obj", "return "))) & (
+      "  }",
       "}"
     );
 
-    docs = "  " & ret_type & " Get_" & base_name & "();";
+    docs = "  " & ret_type & " " & name & ";";
 
     return (code, (docs));
   }
@@ -61,8 +105,8 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
 
   (String*, String*) auto_method_wrapper(MethodId method_id, CompiledMethod method) {
     return ((), ()) if method_id.id?;
-    base_name = sentence_case(bare_id(method_id.symbol));
-    return method_wrapper(method_id, method, block.name, base_name, auto_class_name, "automaton.");
+    name = safe_name(bare_id(method_id.symbol));
+    return method_wrapper(method_id, method, block.name, name, auto_class_name, "automaton.");
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -115,7 +159,9 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
 
     enum_empty_line = ("" if input_enum_docs != () and output_enum_docs != ());
     enums_docs = input_enum_docs & enum_empty_line & output_enum_docs;
-    enums_decls = ("public " & l : l <- input_enum_docs) & enum_empty_line & ("public " & l : l <- output_enum_docs);
+    enums_decls = (if i == 0 then "public " & l else l : l @ i <- input_enum_docs) &
+                  enum_empty_line &
+                  (if i == 0 then "public " & l else l : l @ i <- output_enum_docs);
 
     docs = (
       "class CellLang.Generated." & auto_class_name & " {"
@@ -133,12 +179,12 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
       "  Value ReadState();",
       "  void SetState(string);",
       "",
-      "  Output[] ChangedOutputs(int);" if outputs != ()
+      "  Output[] ChangedOutputs;" if outputs != ()
     );
 
-    docs = docs & ("") & input_setters_docs if input_setters_docs != ();
-    docs = docs & ("") & output_getters_docs if output_getters_docs != ();
-    docs = docs & ("") & methods_wrappers_docs if methods_wrappers_docs != ();
+    docs = docs & ("", "  // Inputs") & input_setters_docs if input_setters_docs != ();
+    docs = docs & ("", "  // Outputs") & output_getters_docs if output_getters_docs != ();
+    docs = docs & ("", "  // Methods") & methods_wrappers_docs if methods_wrappers_docs != ();
 
     docs = docs & (
       "};"
@@ -219,12 +265,14 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
     if outputs != ():
       code = code & (
         "",
-        "public Output[] ChangedOutputs() {",
-        "  int count = (int) automaton.changed_outputs_count;",
-        "  Output[] outputs = new Output[count];",
-        "  for (int i=0 ; i < count ; i++)",
-        "    outputs[i] = (Output) automaton.changed_outputs[i];",
-        "  return outputs;",
+        "public Output[] ChangedOutputs {",
+        "  get {",
+        "    int count = (int) automaton.changed_outputs_count;",
+        "    Output[] outputs = new Output[count];",
+        "    for (int i=0 ; i < count ; i++)",
+        "      outputs[i] = (Output) automaton.changed_outputs[i];",
+        "    return outputs;",
+        "  }",
         "}",
         "",
         "public Value ReadOutput(Output output) {",

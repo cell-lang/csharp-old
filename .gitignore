@@ -45,3 +45,4 @@ compiler-dbg.cs
 unit-tests.exe
 weird-bug.cs
 codegen
+chat-server-mixed.exe

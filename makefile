@@ -85,8 +85,8 @@ regression-mixed.cs: codegen.exe
 	mv generated.cs regression-mixed.cs
 	mv interfaces.txt regression-mixed-interfaces.cs
 
-regression-mixed.exe: regression-mixed.cs ../regression-tests/mixed/tr-auto-A.cs
-	mcs -nowarn:162,168,219,414 ../regression-tests/mixed/tr-auto-A.cs regression-mixed.cs $(RUNTIME-FILES) -out:regression-mixed.exe
+regression-mixed.exe: regression-mixed.cs ../regression-tests/mixed/*.cs
+	mcs -nowarn:162,168,219,414 ../regression-tests/mixed/*.cs regression-mixed.cs $(RUNTIME-FILES) -out:regression-mixed.exe
 
 water-sensor.cs: codegen.exe
 	./codegen.exe tests/water-sensor.txt
