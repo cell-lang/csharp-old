@@ -1,9 +1,6 @@
-implicit
-  block_name      : DBSymbol,
-  db_var_chain    : NestedDBVar*,
-  root_block_name : DBSymbol,
-  duplicate_ids   : [String, Nat]
-{
+implicit block_name : DBSymbol, db_var_chain : NestedDBVar*,
+         root_block_name : DBSymbol, duplicate_ids : [String, Nat] {
+
   String external_name(<MembVar, RelVar, MethodSymbol> var) =
     append((sentence_case(bare_id(v)) : v <- (db_var_chain | var)), "_");
 
@@ -74,13 +71,9 @@ implicit
 }
 
 
-implicit
-  block_name      : DBSymbol,
-  db_var_chain    : NestedDBVar*,
-  root_block_name : DBSymbol,
-  duplicate_ids   : [String, Nat],
-  typedefs        : [TypeName -> NeType]
-{
+implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : DBSymbol,
+         duplicate_ids : [String, Nat], typedefs : [TypeName -> NeType] {
+
   (String*, String*) state_var_accessor(MembVar var, NeType var_type) {
     inter_type = output_interface_type(var_type);
     meth_name = get_method_name(var);
@@ -88,7 +81,19 @@ implicit
     ret_type = return_value_type(inter_type);
 
     body = export_code(inter_type, full_path(var), "return ");
-    code = ("", "public " & ret_type & " " & meth_name & "() {") & indent_lines(body) & ("}");
+
+    if pretty_name_has_conflicts(var, 0):
+      code = ("", "public " & ret_type & " " & meth_name & "() {") & indent_lines(body) & ("}");
+    else
+      code = (
+        "",
+        "public " & ret_type & " " & meth_name & " {",
+        "  get {"
+      ) & indent_lines(indent_lines(body)) & (
+        "  }",
+        "}"
+      );
+    ;
 
     return (code, (ret_type & " " & meth_name & "();"));
   }
