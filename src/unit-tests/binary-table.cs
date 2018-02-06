@@ -91,17 +91,30 @@ namespace CellLang {
           if (bitMap[i, j])
             list.Add(j);
         uint[] expValues = list.ToArray();
-        uint[] actualValues = table.LookupByCol1(i);
-        Array.Sort(actualValues);
-        if (actualValues.Length != expValues.Length) {
+
+        if (table.ContainsField1(i) != (expValues.Length > 0)) {
           Console.Error.WriteLine("ERROR (2)!\n");
           Environment.Exit(1);
         }
-        for (int k=0 ; k < actualValues.Length ; k++) {
-          if (actualValues[k] != expValues[k]) {
-            Console.Error.WriteLine("ERROR (3)!\n");
-            Environment.Exit(1);
-          }
+
+        uint[] actualValues = table.LookupByCol1(i);
+        Array.Sort(actualValues);
+        if (!Eq(actualValues, expValues)) {
+          Console.Error.WriteLine("ERROR (3)!\n");
+          Environment.Exit(1);
+        }
+
+        list = new List<uint>();
+        BinaryTable.Iter it = table.GetIter1(i);
+        while (!it.Done()) {
+          list.Add(it.GetField2());
+          it.Next();
+        }
+        actualValues = list.ToArray();
+        Array.Sort(actualValues);
+        if (!Eq(actualValues, expValues)) {
+          Console.Error.WriteLine("ERROR (4)!\n");
+          Environment.Exit(1);
         }
       }
 
@@ -111,19 +124,41 @@ namespace CellLang {
           if (bitMap[i, j])
             list.Add(i);
         uint[] expValues = list.ToArray();
+
+        if (table.ContainsField2(j) != (expValues.Length > 0)) {
+          Console.Error.WriteLine("ERROR (5)!\n");
+          Environment.Exit(1);
+        }
+
         uint[] actualValues = table.LookupByCol2(j);
         Array.Sort(actualValues);
-        if (actualValues.Length != expValues.Length) {
+        if (!Eq(actualValues, expValues)) {
+          Console.Error.WriteLine("ERROR (6)!\n");
+          Environment.Exit(1);
+        }
+
+        list = new List<uint>();
+        BinaryTable.Iter it = table.GetIter2(j);
+        while (!it.Done()) {
+          list.Add(it.GetField1());
+          it.Next();
+        }
+        actualValues = list.ToArray();
+        Array.Sort(actualValues);
+        if (!Eq(actualValues, expValues)) {
           Console.Error.WriteLine("ERROR (4)!\n");
           Environment.Exit(1);
         }
-        for (int k=0 ; k < actualValues.Length ; k++) {
-          if (actualValues[k] != expValues[k]) {
-            Console.Error.WriteLine("ERROR (5)!\n");
-            Environment.Exit(1);
-          }
-        }
       }
+    }
+
+    static bool Eq(uint[] a1, uint[] a2) {
+      if (a1.Length != a2.Length)
+        return false;
+      for (int i=0 ; i < a1.Length ; i++)
+        if (a1[i] != a2[i])
+          return false;
+      return true;
     }
 
     static void PrintDiffs(BinaryTable table, bool[,] bitMap, int size) {
