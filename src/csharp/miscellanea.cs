@@ -34,6 +34,11 @@ namespace CellLang {
       throw new InvalidOperationException();
     }
 
+    public static Obj SoftFail(string msg) {
+      Console.Error.WriteLine(msg);
+      return SoftFail();
+    }
+
     public static Obj HardFail() {
       PrintCallStack();
       Environment.Exit(1);
@@ -127,10 +132,10 @@ namespace CellLang {
     }
 
     static void PrintCallStack() {
-      Console.WriteLine("Call stack:\n");
+      Console.Error.WriteLine("Call stack:\n");
       int size = stackDepth <= fnNamesStack.Length ? stackDepth : fnNamesStack.Length;
       for (int i=0 ; i < size ; i++)
-        Console.WriteLine("  {0}", fnNamesStack[i]);
+        Console.Error.WriteLine("  {0}", fnNamesStack[i]);
       string outFnName = "debug" + Path.DirectorySeparatorChar + "stack-trace.txt";
       Console.Error.WriteLine("\nNow trying to write a full dump of the stack to " + outFnName);
       Console.Error.Flush();
@@ -138,7 +143,7 @@ namespace CellLang {
         using (StreamWriter file = new StreamWriter(outFnName))
           for (int i=0 ; i < size ; i++)
             PrintStackFrame(i, file);
-        Console.WriteLine("");
+        Console.Error.WriteLine("");
       }
       catch {
         Console.Error.WriteLine("Could not write a dump of the stack to {0}. Did you create the \"debug\" directory?", outFnName);

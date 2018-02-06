@@ -44,6 +44,18 @@ namespace CellLang {
         throw new Exception();
     }
 
+    override public Obj UpdatedAt(long idx, Obj obj) {
+      if (idx < 0 | idx >= length)
+        Miscellanea.SoftFail("Invalid sequence index");
+
+      int offset = Offset();
+      Obj[] newItems = new Obj[length];
+      for (int i=0 ; i < length ; i++)
+        newItems[i] = i == idx ? obj : items[offset + i];
+
+      return new MasterSeqObj(newItems);
+    }
+
     override public Obj Reverse() {
       int offset = Offset();
       int last = offset + length - 1;

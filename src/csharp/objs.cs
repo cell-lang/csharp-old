@@ -51,9 +51,8 @@ namespace CellLang {
     public virtual BinRelIter   GetBinRelIter()                   {throw new NotImplementedException();}
     public virtual TernRelIter  GetTernRelIter()                  {throw new NotImplementedException();}
 
-    //## IMPLEMENT
     // Copy-on-write update
-    public virtual Obj UpdateAt(long i, Obj v)                    {throw new NotImplementedException();}
+    public virtual Obj UpdatedAt(long i, Obj v)                   {throw new NotImplementedException();}
 
     public virtual BinRelIter GetBinRelIterByCol1(Obj obj)        {throw new NotImplementedException();}
     public virtual BinRelIter GetBinRelIterByCol2(Obj obj)        {throw new NotImplementedException();}
