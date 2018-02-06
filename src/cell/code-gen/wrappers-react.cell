@@ -3,22 +3,42 @@ implicit block : ReactBlock {
   String auto_struct_ptr = "((" & to_c_name(block.name) & " *) ptr)";
 
   [String] duplicate_names {
-    inputs = isort(keys(block.inputs));
-    outputs = isort(keys(block.outputs));
-    names = (upper_camel_case(id) : id <- inputs & outputs);
+    inputs = keys(block.inputs);
+    outputs = keys(block.outputs) - inputs;
+    names = (upper_camel_case(id) : id <- isort(inputs) & isort(outputs));
     return duplicates(names);
   }
 
   String safe_name(Symbol signal) {
     name = upper_camel_case(signal);
     name = capitalize(_str_(signal), true) if in(name, duplicate_names); ## MOVE THIS TO A NEW FUNCTION utils IN.cell
-    name = "_" & name if pretty_name_has_conflicts(signal);
+    name = "_" & name if has_conflicts(name);
     return name;
   }
 
-  Bool pretty_name_has_conflicts(Symbol signal) {
-    pretty_name = upper_camel_case(signal);
-    return pretty_name == auto_class_name or in(pretty_name, reserved_names);
+  [String] inputs_and_outputs_names = [
+    safe_name(s) : s, unused_var <- block.inputs | s, unused_var <- block.outputs
+  ];
+
+  [String, Nat] duplicate_method_names {
+    method_ids = [id.symbol, id.arity : id, unused_var <- block.methods, not id.id?];
+    native_ids = ((upper_camel_case(bare_id(s)), a) : s, a <- isort(method_ids));
+    return [nid(0), nid(1) : nid <- duplicates(native_ids)];
+  }
+
+  String safe_name(MethodSymbol method_symb, Nat arity) {
+    symbol = bare_id(method_symb);
+    name = upper_camel_case(symbol);
+    // We first check if this conflicts with other method names
+    duplicate_method_names = duplicate_method_names; //## BAD
+    name = capitalize(_str_(symbol), true) if duplicate_method_names(name, arity);
+    // Now we've to deal with conflicts with inputs, outputs and reserved_names
+    name = "__" & name if in(name, inputs_and_outputs_names) or has_conflicts(name);
+    return name;
+  }
+
+  Bool has_conflicts(String name) {
+    return name == auto_class_name or in(name, reserved_names);
 
     [String] reserved_names = [
       // Object class instance methods
@@ -113,7 +133,7 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
 
   (String*, String*) auto_method_wrapper(MethodId method_id, CompiledMethod method) {
     return ((), ()) if method_id.id?;
-    name = safe_name(bare_id(method_id.symbol));
+    name = safe_name(method_id.symbol, method_id.arity);
     return method_wrapper(method_id, method, block.name, name, auto_class_name, "automaton.");
   }
 
@@ -192,7 +212,7 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
 
     docs = docs & ("", "  // Inputs") & input_setters_docs if input_setters_docs != ();
     docs = docs & ("", "  // Outputs") & output_getters_docs if output_getters_docs != ();
-    docs = docs & ("", "  // Methods") & methods_wrappers_docs if methods_wrappers_docs != ();
+    docs = docs & ("", "  // Methods") & indent_lines(methods_wrappers_docs) if methods_wrappers_docs != ();
 
     docs = docs & (
       "};"
