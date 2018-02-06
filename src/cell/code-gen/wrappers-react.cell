@@ -2,8 +2,16 @@ implicit block : ReactBlock {
   String auto_class_name = upper_camel_case(bare_id(block.name));
   String auto_struct_ptr = "((" & to_c_name(block.name) & " *) ptr)";
 
+  [String] duplicate_names {
+    inputs = isort(keys(block.inputs));
+    outputs = isort(keys(block.outputs));
+    names = (upper_camel_case(id) : id <- inputs & outputs);
+    return duplicates(names);
+  }
+
   String safe_name(Symbol signal) {
     name = upper_camel_case(signal);
+    name = capitalize(_str_(signal), true) if in(name, duplicate_names); ## MOVE THIS TO A NEW FUNCTION utils IN.cell
     name = "_" & name if pretty_name_has_conflicts(signal);
     return name;
   }
