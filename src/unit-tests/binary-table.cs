@@ -8,10 +8,10 @@ namespace CellLang {
       for (int i=1 ; i < 50 ; i++) {
         Console.WriteLine(i.ToString());
         for (int j=0 ; j < 100 ; j++) {
-          // Console.Write("{0} ", j);
+        //  Console.Write("{0} ", j);
           Run(i, false);
         }
-        // Console.WriteLine();
+        //Console.WriteLine();
       }
 
       Console.WriteLine();
@@ -44,7 +44,7 @@ namespace CellLang {
         }
 
         if (trace)
-          Console.WriteLine("Inserting: ({0}, {1})", surr1, surr2);
+          Console.WriteLine("Inserting: ({0,2}, {1,2})", surr1, surr2);
 
         table.Insert(surr1, surr2);
         bitMap[surr1, surr2] = true;
@@ -94,6 +94,10 @@ namespace CellLang {
 
         if (table.ContainsField1(i) != (expValues.Length > 0)) {
           Console.Error.WriteLine("ERROR (2)!\n");
+          for (int k=0 ; k < expValues.Length ; k++)
+            Console.Error.Write("{0} ", expValues[k]);
+          Console.Error.WriteLine();
+          Console.Error.WriteLine("{0}", table.ContainsField1(i));
           Environment.Exit(1);
         }
 
