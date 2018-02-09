@@ -46,3 +46,5 @@ unit-tests.exe
 weird-bug.cs
 codegen
 chat-server-mixed.exe
+runtime/
+bin/cellc-cs

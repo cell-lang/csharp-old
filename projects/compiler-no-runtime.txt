@@ -127,4 +127,4 @@ src/cell/compiler-main.cell
 
 // Runtime source code
 
-runtime/runtime-sources.cell
+runtime/runtime-sources-empty.cell

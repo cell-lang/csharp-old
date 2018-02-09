@@ -64,20 +64,12 @@
   gen_code = join((
     ( "using System;",
       "using System.Collections.Generic;",
+      "using System.Text;",
+      "using System.Diagnostics;",
+      "using System.IO;",
+      "",
       ""
     ),
-
-    // Headers for the functional subset of the language
-    standard_headers if include_runtime,
-    (""),
-
-    // Headers for table support code
-    table_headers if include_runtime and has_automata,
-    ("") if include_runtime and has_automata,
-
-    // Headers for interface support code
-    interface_headers if include_runtime and has_automata,
-    ("") if has_automata,
 
     ( "namespace CellLang {",
       "  static class Generated {"
@@ -89,11 +81,16 @@
 
     ("  }", "}", ""),
 
-    standard_sources if include_runtime,
+    // Runtime support for the functional subset of the language
+    core_runtime if include_runtime,
     ("") if include_runtime,
-    table_sources if include_runtime and has_automata,
+
+    // Runtime support for mutable relation variables
+    table_runtime if include_runtime and has_automata,
     ("") if include_runtime and has_automata,
-    interface_sources if include_runtime and has_automata,
+
+    // Runtime support for wrapping code
+    interface_runtime if include_runtime and has_automata,
     ("") if include_runtime and has_automata
   ));
 
@@ -409,8 +406,8 @@ implicit {
     reset_memb_var()      = (to_c_var_ref_name(instr.var) & " = " & to_c_const(instr.new_state) & ";"),
     clear_loc_var(v?)     = (to_c_var_ref_name(v) & " = NullObj.Singleton();"),
     terminate             = ("Miscellanea.SoftFail();", "throw new Exception();"),
-    add_ref(v?)           = (),
-    release(v?)           = (),
+    add_ref(v?)           = undefined,
+    release(v?)           = undefined,
     print_obj()           = (native_method_call(instr.obj, "Print", ())),
     ret_val(e?)           = ("return " & to_c_expr(e) & ";"),
     no_op                 = (),

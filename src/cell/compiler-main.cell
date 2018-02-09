@@ -27,9 +27,9 @@ String* create_error_msg(ParserError err, String filename) =
                               };
 
 
-Maybe[CCodeOutput] Compile(
-  [String -> Nat*] src_files, Bool include_runtime, Bool run_typechecking, Bool add_rc,
-  Bool ignore_assertions, Bool debug_mode, Bool print_intermediate, Bool print_times, Bool wait_for_key
+Maybe[(String*, String*)] Compile(
+  [String -> Nat*] src_files, Bool include_runtime, Bool run_typechecking, Bool ignore_assertions,
+  Bool debug_mode, Bool print_intermediate, Bool print_times, Bool wait_for_key
 ) {
   t0 = _ticks_(:any_value_will_do);
 
@@ -150,32 +150,9 @@ Maybe[CCodeOutput] Compile(
     ok = FileWrite("dump-opt-code.txt", chars(printed(opt_code, 100)));
   ;
 
-  if add_rc:
-    rc_code = compiled_prg(
-      typedefs:       opt_code.typedefs,
-      bool_procs:     opt_code.bool_procs,
-      procs:          [add_ref_counting(pd) : pd <- opt_code.procs],
-      react_blocks:   [add_ref_counting(b)  : b  <- opt_code.react_blocks],
-      static_blocks:  [add_ref_counting(b)  : b <- opt_code.static_blocks],
-      int_seqs:       opt_code.int_seqs
-    );
-    Print("Reference counting added\n");
-    if wait_for_key:
-      unused_var = GetChar();
-    ;
-  else
-    rc_code = opt_code;
-  ;
-
+  cs_code  = compile_to_cs(opt_code, include_runtime, debug_mode);
   t8 = _ticks_(:any_value_will_do);
-
-  if print_intermediate:
-    ok = FileWrite("dump-rc-code.txt", chars(printed(rc_code, 100)));
-  ;
-
-  c_code  = compile_to_cs(rc_code, include_runtime, debug_mode);
-  t9 = _ticks_(:any_value_will_do);
-  Print("C code generated\n");
+  Print("C# code generated\n");
   if wait_for_key:
     unused_var = GetChar();
   ;
@@ -191,14 +168,11 @@ Maybe[CCodeOutput] Compile(
     ;
     Print("Code generation:     " & printed(t6-t5) & "ms\n");
     Print("Code optimization:   " & printed(t7-t6) & "ms\n");
-    if add_rc:
-      Print("Reference counting:  " & printed(t8-t7) & "ms\n");
-    ;
-    Print("C code generation:   " & printed(t9-t8) & "ms\n");
-    Print("Total time elapsed:  " & printed(t9-t0) & "ms\n");
+    Print("C# code generation:  " & printed(t8-t7) & "ms\n");
+    Print("Total time elapsed:  " & printed(t8-t0) & "ms\n");
   ;
 
-  return just(c_code);
+  return just(cs_code);
 }
 
 
@@ -240,9 +214,8 @@ Int Main(String* args) {
   fname = last(args);
   options = subseq(args, 0, argc-1);
 
-  include_runtime = standard_headers != ();
+  include_runtime = core_runtime != ();
   run_typechecking = true;
-  add_ref_counting = true;
   ignore_assertions = false;
   debug_mode = false;
 
@@ -256,8 +229,6 @@ Int Main(String* args) {
       include_runtime = false;
     elif o == "-ntc":
       run_typechecking = false;
-    elif o == "-nrc":
-      add_ref_counting = false;
     elif o == "-ia":
       ignore_assertions = true;
     elif o == "-d":
@@ -298,16 +269,16 @@ Int Main(String* args) {
     src_files = src_files & [fn -> value(fc)];
   ;
 
-  output = Compile(src_files, include_runtime, run_typechecking, add_ref_counting, ignore_assertions,
+  output = Compile(src_files, include_runtime, run_typechecking, ignore_assertions,
                    debug_mode, print_intermediate, print_times, wait_for_key_at_every_step);
 
   if output != nothing:
-    output = value(output);
-    body = append(output.body, "\n");
-    ok = FileWrite("generated.cpp", chars(body));
-    if output.header != ():
-      header = append(output.header, "\n");
-      ok = FileWrite("generated.h", chars(header));
+    code, docs = value(output);
+    body = append(code, "\n");
+    ok = FileWrite("generated.cs", chars(body));
+    if docs != ():
+      header = append(docs, "\n");
+      ok = FileWrite("interface.txt", chars(header));
     ;
   ;
 

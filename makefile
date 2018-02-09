@@ -1,6 +1,12 @@
 SRC-FILES=$(shell ls src/cell/*.cell src/cell/code-gen/*.cell)
-RUNTIME-FILES=$(shell ls src/csharp/*)
+CORE-RUNTIME-FILES=$(shell ls src/core/*) src/procs.cs
+AUTO-RUNTIME-FILES=$(shell ls src/automata/*)
+WRAP-RUNTIME-FILES=$(shell ls src/wrapping/*)
+RUNTIME-FILES=$(CORE-RUNTIME-FILES) $(AUTO-RUNTIME-FILES) $(WRAP-RUNTIME-FILES)
 UNIT-TESTS-FILES=$(shell ls src/unit-tests/*)
+
+################################################################################
+####################### Level 3 AST -> C# code generator #######################
 
 codegen-dbg tmp/generated.cpp: $(SRC-FILES)
 	rm -rf tmp/
@@ -18,7 +24,7 @@ codegen-opt: tmp/generated.cpp
 	g++ -O3 -DNDEBUG tmp/generated.cpp -o codegen-opt
 
 # gen-html-dbg: codegen-dbg $(RUNTIME-FILES)
-# 	./codegen gen-html.txt
+# 	bin/codegen gen-html.txt
 # 	mcs -debug -d:DEBUG generated.cs $(RUNTIME-FILES) -out:gen-html-dbg
 
 # recompile-generated:
@@ -33,45 +39,63 @@ codegen.txt: $(SRC-FILES)
 	mv generated.* tmp/
 
 codegen.cs: codegen.txt
-	./codegen codegen.txt
-	bin/apply-hacks < generated.cs > codegen.cs
+	bin/codegen codegen.txt
+	mv generated.cs codegen.cs
+	# bin/apply-hacks < generated.cs > codegen.cs
 
-codegen.exe: codegen.cs $(RUNTIME-FILES)
-	mcs -nowarn:162,168,219,414 codegen.cs $(RUNTIME-FILES) -out:codegen.exe
+codegen.exe: codegen.cs $(CORE-RUNTIME-FILES)
+	mcs -nowarn:162,168,219,414 codegen.cs $(CORE-RUNTIME-FILES) -out:codegen.exe
 
 codegen-dbg.cs: codegen.exe codegen.txt
 	./codegen.exe -d codegen.txt
 	bin/apply-hacks < generated.cs > codegen-dbg.cs
 
-codegen-dbg.exe: codegen-dbg.cs $(RUNTIME-FILES)
-	mcs -nowarn:162,168,219,414 codegen-dbg.cs $(RUNTIME-FILES) -out:codegen-dbg.exe
+codegen-dbg.exe: codegen-dbg.cs $(CORE-RUNTIME-FILES)
+	mcs -nowarn:162,168,219,414 codegen-dbg.cs $(CORE-RUNTIME-FILES) -out:codegen-dbg.exe
 
-codegen-rel.exe: codegen.cs $(RUNTIME-FILES)
-	mcs -optimize -nowarn:162,168,219,414 codegen.cs $(RUNTIME-FILES) -out:codegen-rel.exe
+codegen-rel.exe: codegen.cs $(CORE-RUNTIME-FILES)
+	mcs -optimize -nowarn:162,168,219,414 codegen.cs $(CORE-RUNTIME-FILES) -out:codegen-rel.exe
 
-codegen-2.cs: codegen.exe codegen.txt
-	./codegen.exe codegen.txt
-	mv generated.cs generated-2.cs
-	bin/apply-hacks < generated-2.cs > codegen-2.cs
+################################################################################
+############################# Cell -> C# compiler ##############################
 
-codegen-2.exe: codegen-2.cs $(RUNTIME-FILES)
-	mcs -nowarn:162,168,219,414 codegen-2.cs $(RUNTIME-FILES) -out:codegen-2.exe
+runtime/runtime-sources.cell runtime/runtime-sources-empty.cell: $(RUNTIME-FILES)
+	bin/build-runtime-src-file.py src/ runtime/runtime-sources.cell runtime/runtime-sources-empty.cell
 
-compiler.cs: codegen.exe $(SRC-FILES)
-	./codegen.exe tests/compiler.txt
+cellc-cs: $(SRC-FILES) runtime/runtime-sources.cell runtime/runtime-sources-empty.cell
+	cellc projects/compiler.txt
+	rm -rf tmp/
+	mkdir tmp
+	mv generated.* tmp/
+	cat tmp/generated.cpp | ../build/bin/ren-fns > tmp/cellc-cs.cpp
+	echo >> tmp/cellc-cs.cpp
+	echo >> tmp/cellc-cs.cpp
+	cat ../build/src/hacks.cpp >> tmp/cellc-cs.cpp
+	g++ -O3 -DNDEBUG tmp/cellc-cs.cpp -o cellc-cs
+
+compiler.cs: codegen.exe tests/compiler.txt
+	bin/codegen tests/compiler.txt
 	bin/apply-hacks < generated.cs > compiler.cs
 	mv generated.cs tmp/
 
-cellc-cs.exe: compiler.cs $(RUNTIME-FILES)
-	mcs -nowarn:162,168,219,414 compiler.cs $(RUNTIME-FILES) -out:cellc-cs.exe
-
-compiler-dbg.cs: codegen.exe $(SRC-FILES)
-	./codegen.exe -d tests/compiler.txt
-	bin/apply-hacks < generated.cs > compiler-dbg.cs
+cellc-cs.exe:  $(SRC-FILES) runtime/runtime-sources.cell runtime/runtime-sources-empty.cell
+	cellc-cs projects/compiler.txt
+	rm -rf tmp/
+	mkdir tmp
+	cat generated.cs | bin/apply-hacks > tmp/cellc-cs.cs
 	mv generated.cs tmp/
+	mcs -nowarn:162,168,219,414 tmp/cellc-cs.cs src/hacks.cs -out:cellc-cs.exe
 
-cellcd-cs.exe: compiler-dbg.cs $(RUNTIME-FILES)
-	mcs -nowarn:162,168,219,414 compiler-dbg.cs $(RUNTIME-FILES) -out:cellcd-cs.exe
+# compiler-dbg.cs: codegen.exe $(SRC-FILES)
+# 	./codegen.exe -d tests/compiler.txt
+# 	bin/apply-hacks < generated.cs > compiler-dbg.cs
+# 	mv generated.cs tmp/
+
+# cellcd-cs.exe: compiler-dbg.cs $(CORE-RUNTIME-FILES)
+# 	mcs -nowarn:162,168,219,414 compiler-dbg.cs $(CORE-RUNTIME-FILES) -out:cellcd-cs.exe
+
+################################################################################
+################################################################################
 
 regression.cs: codegen.exe
 	./codegen.exe tests/regression.txt
@@ -226,13 +250,10 @@ check:
 
 clean:
 	@rm -f codegen
-	@make -s soft-clean
-
-soft-clean:
 	@rm -f codegen-dbg codegen-rel
 	@rm -f codegen.exe codegen.txt
 	@rm -rf tmp/
-	@rm -f generated.cs generated-2.cs codegen.cs codegen-2.cs
+	@rm -f generated.cs codegen.cs
 	@rm -f gen-html-dbg gen-html-dbg.mdb
 	@rm -f cellc-cs.exe compiler.cs
 	@rm -f regression.cs
@@ -247,7 +268,7 @@ soft-clean:
 	@rm -f interfaces.txt interfaces.cs
 	@rm -f test-mixed*
 	@rm -f compiler-dbg.cs cellcd-cs.exe
-	@rm -f codegen-2.exe codegen-dbg.cs codegen-dbg.exe
+	@rm -f codegen-dbg.cs codegen-dbg.exe
 	@rm -f unit-tests.exe
 	@rm -f debug/*
 	@touch debug/stack-trace.txt
