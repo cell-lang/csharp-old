@@ -35,11 +35,6 @@ cellc-cs: $(SRC-FILES) runtime/runtime-sources.cell runtime/runtime-sources-empt
 	cat ../build/src/hacks.cpp >> tmp/cellc-cs.cpp
 	g++ -O3 -DNDEBUG tmp/cellc-cs.cpp -o cellc-cs
 
-compiler.cs: codegen.exe tests/compiler.txt
-	bin/codegen tests/compiler.txt
-	bin/apply-hacks < generated.cs > compiler.cs
-	mv generated.cs tmp/
-
 cellc-cs.exe:  $(SRC-FILES) runtime/runtime-sources.cell runtime/runtime-sources-empty.cell
 	cellc-cs projects/compiler.txt
 	rm -rf tmp/
@@ -48,13 +43,24 @@ cellc-cs.exe:  $(SRC-FILES) runtime/runtime-sources.cell runtime/runtime-sources
 	mv generated.cs tmp/
 	mcs -nowarn:219 tmp/cellc-cs.cs src/hacks.cs -out:cellc-cs.exe
 
-# compiler-dbg.cs: codegen.exe $(SRC-FILES)
-# 	./codegen.exe -d tests/compiler.txt
-# 	bin/apply-hacks < generated.cs > compiler-dbg.cs
-# 	mv generated.cs tmp/
+################################################################################
+################################################################################
 
-# cellcd-cs.exe: compiler-dbg.cs $(CORE-RUNTIME-FILES)
-# 	mcs -nowarn:219 compiler-dbg.cs $(CORE-RUNTIME-FILES) -out:cellcd-cs.exe
+compiler-test-loop: cellc-cs.exe
+	./cellc-cs.exe projects/compiler.txt
+	cat generated.cs | bin/apply-hacks > tmp/cellc-cs-1.cs
+	mv generated.cs tmp/generated-1.cs
+	mcs -nowarn:219 tmp/cellc-cs-1.cs src/hacks.cs -out:cellc-cs-1.exe
+	./cellc-cs-1.exe projects/compiler.txt
+	cmp generated.cs tmp/generated-1.cs
+
+compiler-test-loop-no-runtime: cellc-cs.exe
+	./cellc-cs.exe -nrt projects/compiler.txt
+	cat generated.cs | bin/apply-hacks > tmp/cellc-cs-1.cs
+	mv generated.cs tmp/generated-1.cs
+	mcs -nowarn:219 tmp/cellc-cs-1.cs src/hacks.cs $(RUNTIME-FILES) -out:cellc-cs-1.exe
+	./cellc-cs-1.exe -nrt projects/compiler.txt
+	cmp generated.cs tmp/generated-1.cs
 
 ################################################################################
 ################################################################################
@@ -218,6 +224,7 @@ clean:
 	@rm -f generated.cs codegen.cs
 	@rm -f gen-html-dbg gen-html-dbg.mdb
 	@rm -f cellc-cs.exe compiler.cs
+	@rm -f cellc-cs-1.exe
 	@rm -f regression.cs
 	@rm -f chat-server.cs chat-server.exe
 	@rm -f dump-*.txt
