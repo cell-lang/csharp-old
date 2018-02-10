@@ -402,7 +402,7 @@ implicit {
     move_forward(v?)      = (native_method_call(v, "Next", ())),
     set_var()             = native_set_var_code(instr.var, instr.value),
     set_bvar()            |
-    set_ivar()            = mk_assignment(instr.var, instr.value),
+    set_ivar()            = (native_assignment_code(instr.var, instr.value)),
     set_rc_var()          = (native_code(instr.value, instr.var)),
     init_memb_var()       = (native_var_ref_name(instr.var) & " = " & native_const(instr.new_state) & ";"),
     reset_memb_var()      = (native_var_ref_name(instr.var) & " = " & native_const(instr.new_state) & ";"),
@@ -423,12 +423,17 @@ implicit {
     switch_on_nat()       = native_nat_switch_code(instr.value, instr.cases, block_id),
     symb_switch()         = native_symb_switch_code(instr.value, instr.cases, instr.else, block_id),
     call_proc()           = native_call_proc_code(if instr.var? then just(instr.var) else nothing, instr.name, instr.args, block_id),
-    call_cls()            = mk_cls_call(instr.cls_var, instr.var, instr.args), ## INLINE THE FUNCTION
+    call_cls()            = (native_cls_call_code(instr.cls_var, instr.var, instr.args)),
     push_call_info()      = (native_push_call_info_code(instr.fn_name, instr.params) if debug_mode),
     pop_call_info         = (native_static_call("Miscellanea.PopCallInfo", ()) if debug_mode),
     runtime_check()       = native_runtime_check_code(instr.cond, instr.file, instr.line, instr.text, instr.vars),
     branch()              = native_branch_code(instr.cond, instr.when_true, instr.when_false, block_id),
     _                     = auto_instr_native_code(instr, block_id);
+
+
+  String native_cls_call_code(AnyClsVar cls_var, WriteObjVar var, AtomicExpr+ args) =
+    ## NO NEED FOR NOW TO HANDLE THE CASE cls_var(Nat), AS THOSE VARIABLES ARE NEVER "CALLED", ONLY PASSED ON
+    cls_var(<+> symb?) | capt_cls_var(symb?) = native_method_call(var, cls_var, "Invoke", (args | "env"));
 
 
   String native_push_call_info_code(ObjFnName fn_name, Maybe[FnArg]* args) {
@@ -480,10 +485,10 @@ implicit {
   }
 
 
-  String* native_set_var_code(WriteObjVar var, ObjExpr value) = mk_assignment(var, value);
+  String* native_set_var_code(WriteObjVar var, ObjExpr value) = (native_assignment_code(var, value));
 
   String* native_set_var_code(ImplArg var, ObjExpr value) =
-    mk_assignment(var, value) & gen_cache_clearing_code(var);
+    (native_assignment_code(var, value)) & gen_cache_clearing_code(var);
 
 
   ## BUG BUG BUG: IF THERE IS INSIDE ONE OF THE CASES A BREAK STATEMENT MEANT TO
@@ -555,10 +560,9 @@ implicit {
     pars_info = (gen_par_info(p) : p <- params);
     code_frags, args = unzip(pars_info);
     call_code = if var != nothing
-      then mk_fn_call(value(var), native_fn_name(name), args)
-      else mk_fn_call(native_fn_name(name), args);
-    return join(code_frags) & call_code;
-
+      then native_static_call(value(var), native_fn_name(name), args)
+      else native_static_call(native_fn_name(name), args);
+    return (join(code_frags) | call_code);
 
     (String*, FnCallParam) gen_par_info(ObjExpr p) = ((), p);
 
@@ -612,41 +616,6 @@ implicit {
     );
     return header & vars_content & footer;
   }
-
-  ///////////////////////////////////////////////////////////////////////////////
-  ///////////////////////////////////////////////////////////////////////////////
-
-  String native_arg(FnCallParam arg) {
-    by_ref = arg :: <TableItVar, AnyRelVar>;
-    return #(if by_ref then "&" else "") & native_expr(arg);
-  }
-
-  String mk_gen_call(String fn_name, String* leading_params, FnCallParam* params, String* trailing_params) =
-    fn_name & "(" & append(leading_params & (native_arg(p) : p <- params) & trailing_params, ", ") & ");";
-
-  String mk_gen_call(AnyVar var, String fn_name, String* leading_params, FnCallParam* params, String* trailing_params) =
-    native_var_ref_name(var) & " = " & mk_gen_call(fn_name, leading_params, params, trailing_params);
-
-  String mk_gen_call(AnyVar var, String fn_name, String* params) = mk_gen_call(var, fn_name, params, (), ());
-
-  String mk_gen_call(String fn_name, String* params) = mk_gen_call(fn_name, params, (), ());
-
-  // String* mk_call(String fn_name, FnCallParam* params)             = (mk_gen_call(fn_name, (), params, ()));
-  // String* mk_call(AnyVar var, String fn_name, FnCallParam* params) = (mk_gen_call(var, fn_name, (), params, ()));
-
-  String* mk_fn_call(String fn_name, FnCallParam* params)             = (mk_gen_call(fn_name, (), params, ("env")));
-  String* mk_fn_call(AnyVar var, String fn_name, FnCallParam* params) = (mk_gen_call(var, fn_name, (), params, ("env")));
-
-  ## AnyVar IS WRONG HERE, SHOULD ONLY BE OBJ/BOOL/INT VARS
-  String* mk_assignment(AnyVar var, AnyTypeExpr value) = (native_var_ref_name(var) & " = " & native_expr(value) & ";");
-
-
-  String* mk_cls_call(AnyClsVar cls_var, ObjVar var, ObjExpr+ args) =
-    ## NO NEED FOR NOW TO HANDLE THE CASE cls_var(Nat), AS THOSE VARIABLES ARE NEVER "CALLED", ONLY PASSED ON
-    cls_var(<+> symb?) | capt_cls_var(symb?) = {
-      name = native_var_ref_name(cls_var);
-      return (mk_gen_call(var, name & ".Invoke", (), args, ("env")));
-    };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -667,15 +636,6 @@ String native_method_call(Encodable target, String method_name, Encodable* args)
 String native_method_call(Encodable res, Encodable target, String method_name, Encodable* args) =
   native_code(res) & " = " & native_method_call(target, method_name, args);
 
-// String native_method_call(Encodable target, String method_name, Encodable* args, String+ extra_args) =
-//   native_expr(target) & "." & method_name & "(" & append((native_expr(a) : a <- args) & extra_args, ", ") & ");";
-//
-// String native_method_call(Encodable target, String method_name, Encodable* args, String extra_arg) =
-//   native_method_call(target, method_name, args, (extra_arg));
-//
-// String native_method_call(AnyVar res, Encodable target, String method_name, Encodable* args, String extra_arg) =
-//   native_expr(res) & " = " & native_method_call(target, method_name, args, extra_arg);
-
 String native_static_call(String static_name, Encodable* args) =
   static_name & "(" & append((native_code(a) : a <- args), ", ") & ");";
 
@@ -684,6 +644,9 @@ String native_static_call(Encodable res, String static_name, Encodable* args) =
 
 String native_new_call(Encodable res, String obj_type, Encodable* args) =
   native_code(res) & " = new " & obj_type & "(" & append((native_code(a) : a <- args), ", ") & ");";
+
+String native_assignment_code(AnyVar var, Encodable value) =
+  native_var_ref_name(var) & " = " & native_code(value) & ";";
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
