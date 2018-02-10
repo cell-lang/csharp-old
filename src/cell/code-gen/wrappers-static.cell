@@ -371,12 +371,14 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
   (String*, String*) static_auto_accessors(StaticBlock block, [DBSymbol -> StaticBlock] blocks) {
     state_var_accessors = isort([state_var_accessor(v, t) : v, t <- block.state_vars]);
     state_var_accessors_code, state_var_accessors_docs = (join(ls) : ls <- unzip(state_var_accessors));
+    state_var_accessors_docs = ("") & state_var_accessors_docs if state_var_accessors_docs != ();
 
     table_accessors = isort([table_accessors(v, t) : v, t <- block.tables]);
     table_accessors_code, table_accessors_docs = (join(ls) : ls <- unzip(table_accessors));
 
     methods_wrappers = isort([db_method_wrapper(id, m) : id, m <- block.methods]);
     methods_wrappers_code, methods_wrappers_docs = (join(ls) : ls <- unzip(methods_wrappers));
+    methods_wrappers_docs = ("") & methods_wrappers_docs if methods_wrappers_docs != ();
 
     nested_autos_accessors = isort([
         static_auto_accessors(blocks[t], blocks, block_name = blocks[t].name, db_var_chain = (db_var_chain | v))
@@ -386,8 +388,8 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
     code = methods_wrappers_code & state_var_accessors_code & table_accessors_code & nested_autos_code;
 
-    docs_by_type = (state_var_accessors_docs, table_accessors_docs, (""), methods_wrappers_docs, nested_autos_docs);
-    docs = join((indent_lines(d) : d <- docs_by_type, d != ()));
+    docs_by_type = (state_var_accessors_docs, table_accessors_docs, methods_wrappers_docs);
+    docs = join((indent_lines(d) : d <- docs_by_type)) & nested_autos_docs;
 
     return (code, docs);
   }
@@ -482,7 +484,7 @@ implicit typedefs : [TypeName -> NeType] {
       "  void SetState(String);",
       "  void Execute(String);" if has_any_updates
     );
-    class_docs = class_docs & ("") & accessors_docs if accessors_docs != ();
+    class_docs = class_docs & accessors_docs if accessors_docs != ();
     class_docs = (class_docs | "}");
 
     return (class_impl, class_docs);
