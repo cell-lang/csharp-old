@@ -31,7 +31,7 @@ Main(String* args) {
     return;
   ;
 
-  cs_code, docs = compile_to_cs(prg, false, debug_mode);
+  cs_code, docs = native_code(prg, false, debug_mode);
 
   text = append(cs_code, "\n");
   ok = FileWrite("generated.cs", chars(text));

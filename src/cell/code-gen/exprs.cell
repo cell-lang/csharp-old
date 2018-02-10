@@ -107,7 +107,7 @@ String native_expr(BoolExpr expr, Bool parentesised) {
     contains()            = native_contains_expr(expr.coll, expr.entry),
     table_contains()      = native_method_call_expr(expr.table, "Contains", expr.tuple),
 
-    is_member()           = to_c_fn_name(expr.pred) & "(" & native_expr(expr.obj) & ")",
+    is_member()           = native_fn_name(expr.pred) & "(" & native_expr(expr.obj) & ")",
     state_is_def()        = native_var_ref_name(expr.auto_var) & "." & state_is_def_proc_name(expr.type) & "()",
 
     neg(e?)               = parentesize("!" & native_expr(e, true), parentesised),

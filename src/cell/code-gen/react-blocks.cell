@@ -36,7 +36,7 @@ implicit {
 
     ctor_vars_decl = gen_vars_decls(block.pre_init_code);
     ctor_vars_decl = ctor_vars_decl & ("") if ctor_vars_decl != ();
-    ctor_body = ctor_vars_decl & compile_to_c(block.pre_init_code, nothing);
+    ctor_body = ctor_vars_decl & native_code(block.pre_init_code, nothing);
 
     //## BAD BAD BAD: THIS IS JUST A HACK. IT SHOULD BE DEALT WITH IN THE CODE GENERATION PHASE
     ctor_body = ctor_body & (
@@ -47,13 +47,13 @@ implicit {
     ctor_sgn = "public " & class_name & "(Env env) {";
     ctor_code = (ctor_sgn) & indent_lines(ctor_body) & ("}", "");
 
-    // cleanup_body = compile_to_c(block.cleanup_code, nothing);
+    // cleanup_body = native_code(block.cleanup_code, nothing);
     // cleanup_proc = ("", "public ~" & class_name & "() {") & indent_lines(cleanup_body) & ("}");
     // class_decl = class_decl & cleanup_proc;
 
     apply_method_vars_decls = gen_vars_decls(block.apply_code);
     apply_method_vars_decls = (apply_method_vars_decls | "") if apply_method_vars_decls != ();
-    apply_method_body = apply_method_vars_decls & compile_to_c(block.apply_code, nothing);
+    apply_method_body = apply_method_vars_decls & native_code(block.apply_code, nothing);
     apply_method_sgn = "public void " & apply_method_name(block.name) & "(Env env) {";
     apply_method_code = (apply_method_sgn) & indent_lines(apply_method_body) & ("}");
 
@@ -62,7 +62,7 @@ implicit {
         sgn = "void " & node_update_method_name(block.name, id) & "(" & time_arg & "Env env) {";
         loc_vars_decls = gen_vars_decls(body);
         loc_vars_decls = (loc_vars_decls | "") if loc_vars_decls != ();
-        return ("", sgn) & indent_lines(loc_vars_decls & compile_to_c(body, nothing)) & ("}");
+        return ("", sgn) & indent_lines(loc_vars_decls & native_code(body, nothing)) & ("}");
       } : id, body <- block.nodes_update_code
     ];
 
@@ -114,14 +114,14 @@ implicit {
     sgn = "void " & method_name & "(" & args_str & ") {";
     vars_decl_text = gen_vars_decls(body);
     vars_decl_text = (vars_decl_text | "") if vars_decl_text != ();
-    body_text = vars_decl_text & compile_to_c(body, nothing);
+    body_text = vars_decl_text & native_code(body, nothing);
     return (sgn) & indent_lines(body_text) & ("}");
   }
 
 
   String* native_state_is_def_code(AutoSymbol name, Instr* code) {
     vars_decls = gen_vars_decls(code);
-    body = vars_decls & ("" if vars_decls != ()) & compile_to_c(code, nothing);
+    body = vars_decls & ("" if vars_decls != ()) & native_code(code, nothing);
     sng = "public bool " & state_is_def_proc_name(name) & "()";
     return (sng & " {") & indent_lines(body) & ("}");
   }
@@ -129,7 +129,7 @@ implicit {
 
   String* native_copy_state_code(AutoSymbol name, Instr* code) {
     vars_decls = gen_vars_decls(code);
-    body = vars_decls & ("" if vars_decls != ()) & compile_to_c(code, nothing);
+    body = vars_decls & ("" if vars_decls != ()) & native_code(code, nothing);
     sgn = "public Obj " & copy_state_proc_name(name) & "()";
     return (sgn & " {") & indent_lines(body) & ("}");
   }
@@ -137,7 +137,7 @@ implicit {
 
   String* native_set_state_code(AutoSymbol name, Instr* code) {
     vars_decls = gen_vars_decls(code);
-    body = vars_decls & ("" if vars_decls != ()) & compile_to_c(code, nothing);
+    body = vars_decls & ("" if vars_decls != ()) & native_code(code, nothing);
     ## WHY DOES THIS RETURN AN OBJ?
     sgn = "public void " & set_state_proc_name(name) & "(Obj a0)";
     return (sgn & " {") & indent_lines(body) & ("}");
@@ -153,7 +153,7 @@ implicit {
     args_str = append(("Obj " & native_var_decl_name(fn_arg(i)) & ", " : i < name.arity));
     sgn = "public Obj " & user_def_method_name(block_name, name) & "(" & args_str & "Env env)";
     vars_decls = gen_vars_decls(body);
-    body_text = vars_decls & ("" if vars_decls != ()) & compile_to_c(body, nothing);
+    body_text = vars_decls & ("" if vars_decls != ()) & native_code(body, nothing);
     return (sgn & " {") & indent_lines(body_text) & ("}");
   }
 

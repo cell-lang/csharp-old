@@ -159,7 +159,7 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
     input_set_methods_names = (input_set_method_name(block.name, i) : i <- ord_inputs);
     output_vars_names = (native_var_decl_name(signal_var(o)) : o <- ord_outputs);
 
-    input_memb_test_pred_name = (to_c_fn_name(block.input_memb_preds[i]) : i <- ord_inputs);
+    input_memb_test_pred_name = (native_fn_name(block.input_memb_preds[i]) : i <- ord_inputs);
 
     elapsed_time_var_name = native_var_decl_name(elapsed_time);
     changed_outputs_count_var_name = native_var_decl_name(changed_outputs_count);
@@ -358,9 +358,9 @@ implicit typedefs : [TypeName -> NeType] {
       : it @ i <- args_inter_types
     ));
 
-    conds = (to_c_fn_name(p) & "(objArg" & printed(i) & ")" : i, p <- mono_args);
+    conds = (native_fn_name(p) & "(objArg" & printed(i) & ")" : i, p <- mono_args);
     if poly_args != ():
-      poly_conds = ((to_c_fn_name(ps(i)) & "(objArg" & printed(i) & ")" : i <- poly_args) : ps <- isort(memb_preds));
+      poly_conds = ((native_fn_name(ps(i)) & "(objArg" & printed(i) & ")" : i <- poly_args) : ps <- isort(memb_preds));
       anded_conds = ({
           c = append(cs, " && ");
           c = "(" & c & ")" if |cs| > 1;

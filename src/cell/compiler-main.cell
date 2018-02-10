@@ -150,7 +150,7 @@ Maybe[(String*, String*)] Compile(
     ok = FileWrite("dump-opt-code.txt", chars(printed(opt_code, 100)));
   ;
 
-  cs_code  = compile_to_cs(opt_code, include_runtime, debug_mode);
+  cs_code  = native_code(opt_code, include_runtime, debug_mode);
   t8 = _ticks_(:any_value_will_do);
   Print("C# code generated\n");
   if wait_for_key:

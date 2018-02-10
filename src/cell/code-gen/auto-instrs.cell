@@ -71,7 +71,7 @@ implicit {
 
   String* native_try_block_code(LocVar var, Instr+ body, Maybe[Nat] block_id) = (
     "try {"
-  ) & indent_lines(compile_to_c(body, block_id)) & (
+  ) & indent_lines(native_code(body, block_id)) & (
     "}",
     "catch {",
     "  " & native_var_ref_name(var) & " = NullObj.Singleton();",

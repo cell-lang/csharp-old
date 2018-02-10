@@ -238,9 +238,9 @@ String pending_updates_var_type(Table table) {
 String memo_var_name(<ProcSymbol, MembTestPredId>) = undefined;
 
 String memo_var_name(FnId id) =
-  fn_family_id()  = to_c_fn_symb_name(id.symbol) & "_E",
+  fn_family_id()  = native_fn_symb_name(id.symbol) & "_E",
   unique_fn_id()  = memo_var_name(id.family) & printed(id.id),
-  nested_fn_id()  = to_c_fn_name(id.outer) & "_" & memo_var_name(id.inner);
+  nested_fn_id()  = native_fn_name(id.outer) & "_" & memo_var_name(id.inner);
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,7 +268,7 @@ String native_table_type(Table table) {
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-String to_c_const(<blank, undefined> state) =
+String native_const(<blank, undefined> state) =
   #(if state == :blank then "BlankObj" else "NullObj") & ".Singleton()";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -342,28 +342,28 @@ String const_int_seq_c_name(Nat seq_id) = "const_int_seq_" & printed(seq_id);
 //////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////
 
-String to_c_fn_name(FnId id) =
-  fn_family_id()    = to_c_fn_symb_name(id.symbol, id.arity),
-  unique_fn_id()    = to_c_fn_name(id.family) & uppercase_encoding(id.id),
-  nested_fn_id()    = to_c_fn_name(id.outer) & "_" & to_c_fn_name(id.inner);
+String native_fn_name(FnId id) =
+  fn_family_id()    = native_fn_symb_name(id.symbol, id.arity),
+  unique_fn_id()    = native_fn_name(id.family) & uppercase_encoding(id.id),
+  nested_fn_id()    = native_fn_name(id.outer) & "_" & native_fn_name(id.inner);
 
-String to_c_fn_symb_name(FnSymbol fn_symb, Nat arity) =
+String native_fn_symb_name(FnSymbol fn_symb, Nat arity) =
   fn_symbol(symb?)    = _str_(symb) & "_F" & printed(arity),
   op_symbol(op?)      = _str_(op);
 
-String to_c_fn_symb_name(FnSymbol fn_symb) =
+String native_fn_symb_name(FnSymbol fn_symb) =
   fn_symbol(symb?)    = _str_(symb),
   op_symbol(op?)      = _str_(op);
 
 
-String to_c_fn_name(MembTestPredId) =
+String native_fn_name(MembTestPredId) =
   memb_test(<+> a?)         = "is" & upper_camel_case(a),
   memb_test(<*..*> n?)      = "is_type_" & printed(n),
   memb_test(a1?, <+> a2?)   = "is" & upper_camel_case(a2) & "_" & upper_camel_case(a1),
   memb_test(a?, <*..*> n?)  = "is" & upper_camel_case(a) & "_" & printed(n);
 
 
-String to_c_fn_name(ProcSymbol proc_symb) {
+String native_fn_name(ProcSymbol proc_symb) {
   bare_symb = match (proc_symb) proc_symbol(s?) = s;
   name = upper_camel_case(bare_symb) & "_P";
   name = "Procs." & name if bare_symb :: <file_read, file_write, print, get_char>;

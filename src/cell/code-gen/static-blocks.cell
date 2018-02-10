@@ -15,7 +15,7 @@ implicit {
     memb_decls = links_decls & isort(state_vars_decls) & isort(value_store_decls) & isort(table_decls) & isort(nested_blocks_decls);
 
     ctor_code = native_ctor_code(block.name, block.links, block.tables, block.init_code);
-    // cleanup_code = compile_cleanup_code_to_c(block.name, block.cleanup_code);
+    // cleanup_code = native_cleanup_code(block.name, block.cleanup_code);
 
     copy_state_code = native_copy_state_code(block.name, block.copy_state_code);
     set_state_code = native_set_state_code(block.name, block.set_state_code);
@@ -91,15 +91,15 @@ implicit {
     );
     vars_decl = gen_vars_decls(init_code);
     vars_decl = vars_decl & ("") if vars_decl != ();
-    body = vars_decl & links_init_code & tables_init_code & compile_to_c(init_code, nothing);
+    body = vars_decl & links_init_code & tables_init_code & native_code(init_code, nothing);
     link_args = append((native_name(l) & " linkedAuto" & printed(i) & ", " : l @ i <- links));
     signature = "public " & native_name(name) & "(" & link_args & "Env env) {";
     return (signature) & indent_lines(body) & ("}");
   }
 
 
-  // (String, String*) compile_cleanup_code_to_c(DBSymbol name, Instr* cleanup_code) {
-  //   cleanup_body = compile_to_c(cleanup_code, nothing);
+  // (String, String*) native_cleanup_code(DBSymbol name, Instr* cleanup_code) {
+  //   cleanup_body = native_code(cleanup_code, nothing);
   //   cleanup_sgn = "void " & cleanup_method_name(name) & "(" & native_name(name) & " *self)";
   //   cleanup_decl = cleanup_sgn & ";";
   //   cleanup_proc = (cleanup_sgn & " {") & indent_lines(cleanup_body) & ("}");
@@ -109,7 +109,7 @@ implicit {
 
   String* native_copy_state_code(DBSymbol name, Instr* code) {
     vars_decls = gen_vars_decls(code);
-    body = vars_decls & ("" if vars_decls != ()) & compile_to_c(code, nothing);
+    body = vars_decls & ("" if vars_decls != ()) & native_code(code, nothing);
     sgn = "public Obj " & copy_state_proc_name(name) & "() {";
     return (sgn) & indent_lines(body) & ("}");
   }
@@ -118,8 +118,8 @@ implicit {
   String* native_set_state_code(DBSymbol name, Instr* code) {
     //aux_struct_init_call = native_method_call("this", aux_struct_init_proc_name(name), ());
     vars_decls = gen_vars_decls(code);
-    //body = vars_decls & ("" if vars_decls != (), aux_struct_init_call) & compile_to_c(code, nothing);
-    body = vars_decls & compile_to_c(code, nothing);
+    //body = vars_decls & ("" if vars_decls != (), aux_struct_init_call) & native_code(code, nothing);
+    body = vars_decls & native_code(code, nothing);
     sgn = "public void " & set_state_proc_name(name) & "(Obj a0, " & aux_struct_c_name(name) & " updater) {";
     return (sgn) & indent_lines(body) & ("}");
   }
@@ -409,7 +409,7 @@ implicit {
     args_str = append(("Obj " & native_var_decl_name(fn_arg(i)) & ", " : i < method_id.arity));
     sgn = "public Obj " & user_def_method_name(block_name, method_id) & "(" & args_str & "Env env) {";
     vars_decls = gen_vars_decls(body);
-    body_text = vars_decls & ("" if vars_decls != ()) & compile_to_c(body, nothing);
+    body_text = vars_decls & ("" if vars_decls != ()) & native_code(body, nothing);
     return (sgn) & indent_lines(body_text) & ("}");
   }
 
@@ -418,7 +418,7 @@ implicit {
     args_strs = ("Obj " & native_var_decl_name(fn_arg(i)) & ", " : i < arity(update_id));
     sgn = "public void " & update_name(block_name, update_id) & "(" & append(args_strs) & aux_struct_c_name(block_name) & " updater, Env env) {";
     vars_decls = gen_vars_decls(body);
-    body_text = vars_decls & ("" if vars_decls != ()) & compile_to_c(body, nothing);
+    body_text = vars_decls & ("" if vars_decls != ()) & native_code(body, nothing);
     return (sgn) & indent_lines(body_text) & ("}");
   }
 }
