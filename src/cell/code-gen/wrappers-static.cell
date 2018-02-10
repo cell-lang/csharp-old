@@ -4,9 +4,9 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*,
   String external_name(<MembVar, RelVar, MethodSymbol> var) =
     append((sentence_case(bare_id(v)) : v <- (db_var_chain | var)), "_");
 
-  String path_prefix = "automaton." & append((to_c_var_decl_name(v) & "." : v <- db_var_chain));
+  String path_prefix = "automaton." & append((native_var_decl_name(v) & "." : v <- db_var_chain));
 
-  String full_path(<MembVar, RelVar> var) = path_prefix & to_c_var_decl_name(var);
+  String full_path(<MembVar, RelVar> var) = path_prefix & native_var_decl_name(var);
 
   String db_class_name = upper_camel_case(bare_id(root_block_name));
 
@@ -77,7 +77,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
   (String*, String*) state_var_accessor(MembVar var, NeType var_type) {
     inter_type = output_interface_type(var_type);
     meth_name = get_method_name(var);
-    var_name = to_c_var_decl_name(var);
+    var_name = native_var_decl_name(var);
     ret_type = return_value_type(inter_type);
 
     body = export_code(inter_type, full_path(var), "return ");
@@ -105,9 +105,9 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     output_type = output_interface_type(elem_type);
     in_method_name = in_method_name(relvar, 1);
     get_method_name = get_method_name(relvar);
-    rel_name = to_c_var_decl_name(relvar);
+    rel_name = native_var_decl_name(relvar);
     relvar_path = full_path(relvar);
-    val_store_name = to_c_var_decl_name(value_store_id);
+    val_store_name = native_var_decl_name(value_store_id);
     ret_elem_type = return_value_type(output_type);
     arg_type = input_arg_type(input_type);
 
@@ -164,7 +164,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
     in_method_name = in_method_name(relvar, 2);
     get_method_name = get_method_name(relvar);
     lookup_method_name = lookup_method_name(relvar);
-    rel_name = to_c_var_decl_name(relvar);
+    rel_name = native_var_decl_name(relvar);
     relvar_path = full_path(relvar);
     ret_types = (return_value_type(t) : t <- output_types);
     args_types = (input_arg_type(t) : t <- input_types);
@@ -266,7 +266,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
       (import_code(it, "arg" & printed(i), "Obj argObj" & printed(i) & " = ") : it @ i <- input_types)
     );
 
-    rel_name = to_c_var_decl_name(relvar);
+    rel_name = native_var_decl_name(relvar);
     in_method_name = in_method_name(relvar, 3);
     get_method_name = get_method_name(relvar);
     relvar_path = full_path(relvar);
@@ -403,7 +403,7 @@ implicit typedefs : [TypeName -> NeType] {
       ;
     ;
 
-    db_name = to_c_name(root_block.name);
+    db_name = native_name(root_block.name);
     updater_name = aux_struct_c_name(root_block.name);
     has_any_updates = root_block.msg_memb_pred != nothing;
 

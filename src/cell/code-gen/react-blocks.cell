@@ -8,11 +8,11 @@ implicit {
   String* native_react_block_decl(ReactBlock block) {
     has_time_rules = block.time_rules_count != 0;
 
-    class_name = to_c_name(block.name);
+    class_name = native_name(block.name);
 
     memb_vars_decl = (memb_var_decl(v) : v <- isort(block.memb_vars));
-    auto_vars_decl = (to_c_name(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- isort(block.nested_auto_vars));
-    db_vars_decl = ("public " & to_c_name(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- isort(block.nested_static_blocks));
+    auto_vars_decl = (native_name(t) & " " & native_var_decl_name(v) & ";" : v, t <- isort(block.nested_auto_vars));
+    db_vars_decl = ("public " & native_name(t) & " " & native_var_decl_name(v) & ";" : v, t <- isort(block.nested_static_blocks));
     aux_db_vars_decls = ("public " & aux_struct_c_name(t) & " " & aux_struct_var_decl_name(v) & ";" : v, t <- isort(block.nested_static_blocks));
 
     vars_decls = memb_vars_decl & auto_vars_decl & db_vars_decl & aux_db_vars_decls;
@@ -57,7 +57,7 @@ implicit {
     apply_method_sgn = "public void " & apply_method_name(block.name) & "(Env env) {";
     apply_method_code = (apply_method_sgn) & indent_lines(apply_method_body) & ("}");
 
-    time_arg = if has_time_rules then "long " & to_c_var_decl_name(curr_time) & ", " else "";
+    time_arg = if has_time_rules then "long " & native_var_decl_name(curr_time) & ", " else "";
     node_update_methods_code = [{
         sgn = "void " & node_update_method_name(block.name, id) & "(" & time_arg & "Env env) {";
         loc_vars_decls = gen_vars_decls(body);
@@ -110,7 +110,7 @@ implicit {
 
   String* gen_queue_update_method(AutoSymbol block_name, BlockNodeId node_id, Instr* body, IntVar* args) {
     method_name = queue_update_method_name(block_name, node_id);
-    args_str = append((var_c_type(v) & " " & to_c_var_decl_name(v) : v <- args), ", ");
+    args_str = append((native_var_type(v) & " " & native_var_decl_name(v) : v <- args), ", ");
     sgn = "void " & method_name & "(" & args_str & ") {";
     vars_decl_text = gen_vars_decls(body);
     vars_decl_text = (vars_decl_text | "") if vars_decl_text != ();
@@ -145,12 +145,12 @@ implicit {
 
 
   String gen_const_data(AutoSymbol block_name, ConstBlockData const) =
-    "long[] " & to_c_time_slots_table_name(block_name, const.expr_id) & " = {" &
+    "long[] " & time_slots_table_name(block_name, const.expr_id) & " = {" &
     append((printed(l) & "LL" : l <- const.lengths), ", ") & "}; // CONSTANT";
 
 
   String* gen_user_def_method(AutoSymbol block_name, MethodId name, Instr* body) {
-    args_str = append(("Obj " & to_c_var_decl_name(fn_arg(i)) & ", " : i < name.arity));
+    args_str = append(("Obj " & native_var_decl_name(fn_arg(i)) & ", " : i < name.arity));
     sgn = "public Obj " & user_def_method_name(block_name, name) & "(" & args_str & "Env env)";
     vars_decls = gen_vars_decls(body);
     body_text = vars_decls & ("" if vars_decls != ()) & compile_to_c(body, nothing);
@@ -159,8 +159,8 @@ implicit {
 
 
   String* gen_input_setter(AutoSymbol block_name, Atom input_name, Nat node_idx, Bool queue_node) {
-    pending_input_var_str = to_c_var_ref_name(pending_input_var(input_name));
-    up_to_date_var = to_c_var_ref_name(up_to_date_var(std_block_node_id(input_name)));
+    pending_input_var_str = native_var_ref_name(pending_input_var(input_name));
+    up_to_date_var = native_var_ref_name(up_to_date_var(std_block_node_id(input_name)));
     return (
       "public void " & input_set_method_name(block_name, input_name) & "(Obj value) {",
       "  if (!" & up_to_date_var & ") {",
@@ -224,11 +224,11 @@ implicit {
 
 
 String memb_var_decl(MembIntVectVar var) {
-  native_type = var_c_type(var);
-  name = to_c_var_decl_name(var);
+  native_type = native_var_type(var);
+  name = native_var_decl_name(var);
   return "public " & native_type & " " & name & " = new long[" & printed(var.size) & "];";
 }
 
 
 String memb_var_decl(<SignalVar, MembObjVar, PendingInputVar, MembIntVar, MembBoolVar> var) =
-  "public " & var_c_type(var) & " " & to_c_var_decl_name(var) & ";";
+  "public " & native_var_type(var) & " " & native_var_decl_name(var) & ";";

@@ -10,7 +10,7 @@ implicit {
     copy_table()              = native_copy_table_code(var, expr.relvar, expr.table, expr.perm),
     copy_persistent_state()   = native_method_call(var, expr.var, copy_state_proc_name(expr.type), ()),
     lookup_surrogate()        = native_method_call(var, expr.store, "LookupSurrogate", (expr.surrogate)),
-    read_pending_var(v?)      = to_c_var_ref_name(var) & " = " & to_c_var_ref_name(v) & ";";
+    read_pending_var(v?)      = native_var_ref_name(var) & " = " & native_var_ref_name(v) & ";";
 
 
   String native_copy_table_code(WriteObjVar res_var, RelVar relvar, Table table, Nat+ perm) {
@@ -31,7 +31,7 @@ implicit {
     insert_timer()        = (native_method_call("this", insert_timer_method_name(instr.type), (instr.idx, instr.time))),
     clear_timer()         = (native_method_call("this", clear_timer_method_name(instr.type), (instr.idx))),
 
-    auto_pre_init()       = (native_new_call(instr.var, to_c_name(instr.type), ("env"))),
+    auto_pre_init()       = (native_new_call(instr.var, native_name(instr.type), ("env"))),
     auto_cleanup()        = (), //(native_method_call(instr.var, cleanup_method_name(instr.type), ())),
     clear_input()         = (native_method_call(if instr.var? then instr.var else "this", input_set_method_name(instr.type, instr.input), ("NullObj.Singleton()"))),
     auto_update_node()    = (native_method_call("this", node_update_method_name(instr.type, instr.node), (instr.time_var if instr.time_var?, "env"))),
@@ -63,7 +63,7 @@ implicit {
 
 
   String* native_init_db_code(AnyDBVar db_var, LocDBVar* links, DBSymbol type) = (
-    native_new_call(db_var, to_c_name(type), (links | "env")),
+    native_new_call(db_var, native_name(type), (links | "env")),
     native_method_call(aux_struct_var_ref_name(db_var), db_var, updater_creation_proc_name(type), ())
       if db_var :: LocDBVar
   );
@@ -74,7 +74,7 @@ implicit {
   ) & indent_lines(compile_to_c(body, block_id)) & (
     "}",
     "catch {",
-    "  " & to_c_var_ref_name(var) & " = NullObj.Singleton();",
+    "  " & native_var_ref_name(var) & " = NullObj.Singleton();",
     "}"
   );
 

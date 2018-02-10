@@ -6,11 +6,11 @@ implicit {
 
 
   String* native_static_block_decl(StaticBlock block) {
-    links_decls = (to_c_name(l) & " *linkedAuto" & printed(i) & ";" : l @ i <- block.links);
-    state_vars_decls = ["public Obj " & to_c_var_decl_name(v) & ";" : v, unused_var <- block.state_vars];
-    value_store_decls = ["public ValueStore " & to_c_var_decl_name(v) & " = new ValueStore();" : v <- block.value_stores];
-    table_decls = ["public " & table_c_type(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- block.tables];
-    nested_blocks_decls = ["public " & to_c_name(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- block.nested_blocks];
+    links_decls = (native_name(l) & " *linkedAuto" & printed(i) & ";" : l @ i <- block.links);
+    state_vars_decls = ["public Obj " & native_var_decl_name(v) & ";" : v, unused_var <- block.state_vars];
+    value_store_decls = ["public ValueStore " & native_var_decl_name(v) & " = new ValueStore();" : v <- block.value_stores];
+    table_decls = ["public " & native_table_type(t) & " " & native_var_decl_name(v) & ";" : v, t <- block.tables];
+    nested_blocks_decls = ["public " & native_name(t) & " " & native_var_decl_name(v) & ";" : v, t <- block.nested_blocks];
 
     memb_decls = links_decls & isort(state_vars_decls) & isort(value_store_decls) & isort(table_decls) & isort(nested_blocks_decls);
 
@@ -37,7 +37,7 @@ implicit {
     methods_code = [native_user_def_method_code(block.name, id, m.code) : id, m <- block.methods];
     updates_code = [native_update_code(block.name, id, b) : id, b <- block.updates_code];
 
-    class_name = to_c_name(block.name);
+    class_name = native_name(block.name);
 
     return join((
       aux_struct_decl(block),
@@ -70,7 +70,7 @@ implicit {
 //      ("") & indent_lines(insert_timer_method_code) if has_time_rules,
 //      ("") & indent_lines(clear_timer_method_code) if has_time_rules,
 
-//    struct_decl = ("struct " & to_c_name(block.name) & " {") & indent_lines(memb_decls) & ("};");
+//    struct_decl = ("struct " & native_name(block.name) & " {") & indent_lines(memb_decls) & ("};");
 //
 //    return join(intermix((
 //        (""), struct_decl, aux_struct_decl,
@@ -85,22 +85,22 @@ implicit {
   String* native_ctor_code(DBSymbol name, DBSymbol* links, [RelVar -> Table] tables, Instr* init_code) {
     links_init_code = ("this.linkedAuto" & printed(i) & " = linkedAuto" & printed(i) & ";" : i < |links|);
     tables_init_code = ({
-        arg_list = append((to_c_var_decl_name(vs) : vs <- t.value_stores), ", ");
-        return to_c_var_ref_name(v) & " = new " & table_c_type(t) & "(" & arg_list & ");";
+        arg_list = append((native_var_decl_name(vs) : vs <- t.value_stores), ", ");
+        return native_var_ref_name(v) & " = new " & native_table_type(t) & "(" & arg_list & ");";
       } : v, t <- isort(tables)
     );
     vars_decl = gen_vars_decls(init_code);
     vars_decl = vars_decl & ("") if vars_decl != ();
     body = vars_decl & links_init_code & tables_init_code & compile_to_c(init_code, nothing);
-    link_args = append((to_c_name(l) & " linkedAuto" & printed(i) & ", " : l @ i <- links));
-    signature = "public " & to_c_name(name) & "(" & link_args & "Env env) {";
+    link_args = append((native_name(l) & " linkedAuto" & printed(i) & ", " : l @ i <- links));
+    signature = "public " & native_name(name) & "(" & link_args & "Env env) {";
     return (signature) & indent_lines(body) & ("}");
   }
 
 
   // (String, String*) compile_cleanup_code_to_c(DBSymbol name, Instr* cleanup_code) {
   //   cleanup_body = compile_to_c(cleanup_code, nothing);
-  //   cleanup_sgn = "void " & cleanup_method_name(name) & "(" & to_c_name(name) & " *self)";
+  //   cleanup_sgn = "void " & cleanup_method_name(name) & "(" & native_name(name) & " *self)";
   //   cleanup_decl = cleanup_sgn & ";";
   //   cleanup_proc = (cleanup_sgn & " {") & indent_lines(cleanup_body) & ("}");
   //   return (cleanup_decl, cleanup_proc);
@@ -231,13 +231,13 @@ implicit {
   //   );
 
   //   nested_blocks_copy_code = [
-  //     mk_gen_call(updates_copy_proc_name(t), ("&" & to_c_var_ref_name(v), aux_struct_var_ref_name(v)), (), ())
+  //     mk_gen_call(updates_copy_proc_name(t), ("&" & native_var_ref_name(v), aux_struct_var_ref_name(v)), (), ())
   //     : v, t <- block.nested_blocks
   //   ];
 
   //   body = vars_copy_code & value_stores_copy_code & isort(nested_blocks_copy_code);
 
-  //   sgn = "void " & updates_copy_proc_name(block.name) & "(" & to_c_name(block.name) &
+  //   sgn = "void " & updates_copy_proc_name(block.name) & "(" & native_name(block.name) &
   //         " *self, " & aux_struct_c_name(block.name) & " *self_aux)";
 
   //   return (sgn & ";", (sgn & " {") & indent_lines(body) & ("}"));
@@ -289,12 +289,12 @@ implicit {
 
   String* aux_struct_decl(StaticBlock block) {
     aux_vars_decls = (
-      "public Obj " & to_c_var_decl_name(pending_state_var(bare_id(v))) & ";"
+      "public Obj " & native_var_decl_name(pending_state_var(bare_id(v))) & ";"
       : v, unused_var <- isort(block.state_vars)
     );
 
     aux_bool_vars_decls = (
-      "public bool " & to_c_var_decl_name(nested_db_spent(v)) & ";"
+      "public bool " & native_var_decl_name(nested_db_spent(v)) & ";"
       : v, unused_var <- isort(block.nested_blocks)
     );
 
@@ -325,10 +325,10 @@ implicit {
 
   String* updater_creation_code(StaticBlock block) {
     var_ids = (bare_id(v) : v <- isort(keys(block.state_vars)));
-    init_vars_code = (to_c_var_ref_name(pending_state_var(id)) & " = BlankObj.Singleton();" : id <- var_ids);
+    init_vars_code = (native_var_ref_name(pending_state_var(id)) & " = BlankObj.Singleton();" : id <- var_ids);
 
     bool_vars_ids = isort(keys(block.nested_blocks));
-    bool_vars_init_code = (to_c_var_ref_name(nested_db_spent(v)) & " = false;" : v <- bool_vars_ids);
+    bool_vars_init_code = (native_var_ref_name(nested_db_spent(v)) & " = false;" : v <- bool_vars_ids);
 
     value_stores_init_code = (
       native_new_call(aux_struct_var_ref_name(vs), "ValueStoreUpdater", (vs))
@@ -361,10 +361,10 @@ implicit {
 
   String* updater_reset_code(StaticBlock block) {
     var_ids = (bare_id(v) : v <- isort(keys(block.state_vars)));
-    vars_reset_code = (to_c_var_ref_name(pending_state_var(id)) & " = BlankObj.Singleton();" : id <- var_ids);
+    vars_reset_code = (native_var_ref_name(pending_state_var(id)) & " = BlankObj.Singleton();" : id <- var_ids);
 
     bool_vars_ids = isort(keys(block.nested_blocks));
-    bool_vars_reset_code = (to_c_var_ref_name(nested_db_spent(v)) & " = false;" : v <- bool_vars_ids);
+    bool_vars_reset_code = (native_var_ref_name(nested_db_spent(v)) & " = false;" : v <- bool_vars_ids);
 
     value_stores_reset_code = (
       native_method_call(aux_struct_var_ref_name(vs), "Reset", ()) : vs <- isort(block.value_stores)
@@ -389,14 +389,14 @@ implicit {
 
 
 //  String* var_copy_code(Atom var_id) {
-//    psv_str = to_c_var_ref_name(pending_state_var(var_id));
+//    psv_str = native_var_ref_name(pending_state_var(var_id));
 //    return (psv_str & " = copy_obj(" & psv_str & ");");
 //  }
 
 
   String* var_apply_code(Atom var_id) {
-    psv_str = to_c_var_ref_name(pending_state_var(var_id));
-    mv_str = to_c_var_ref_name(memb_var(var_id));
+    psv_str = native_var_ref_name(pending_state_var(var_id));
+    mv_str = native_var_ref_name(memb_var(var_id));
     return (
       "if (!" & psv_str & ".IsBlankObj()) {",
       "  " & mv_str & " = " & psv_str & ";",
@@ -406,7 +406,7 @@ implicit {
 
 
   String* native_user_def_method_code(DBSymbol block_name, MethodId method_id, Instr* body) {
-    args_str = append(("Obj " & to_c_var_decl_name(fn_arg(i)) & ", " : i < method_id.arity));
+    args_str = append(("Obj " & native_var_decl_name(fn_arg(i)) & ", " : i < method_id.arity));
     sgn = "public Obj " & user_def_method_name(block_name, method_id) & "(" & args_str & "Env env) {";
     vars_decls = gen_vars_decls(body);
     body_text = vars_decls & ("" if vars_decls != ()) & compile_to_c(body, nothing);
@@ -415,7 +415,7 @@ implicit {
 
 
   String* native_update_code(DBSymbol block_name, UpdateId update_id, Instr* body) {
-    args_strs = ("Obj " & to_c_var_decl_name(fn_arg(i)) & ", " : i < arity(update_id));
+    args_strs = ("Obj " & native_var_decl_name(fn_arg(i)) & ", " : i < arity(update_id));
     sgn = "public void " & update_name(block_name, update_id) & "(" & append(args_strs) & aux_struct_c_name(block_name) & " updater, Env env) {";
     vars_decls = gen_vars_decls(body);
     body_text = vars_decls & ("" if vars_decls != ()) & compile_to_c(body, nothing);

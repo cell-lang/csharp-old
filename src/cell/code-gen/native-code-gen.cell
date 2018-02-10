@@ -115,10 +115,10 @@
 String* gen_env_decl(CompiledPrg prg) {
   all_impl_args = union([p.impl_args : p <- prg.procs]);
 
-  env_decl = ("class Env {") & ("  public Obj " & to_c_var_decl_name(impl_arg(bare_id(a))) & ";" : a <- isort(all_impl_args));
+  env_decl = ("class Env {") & ("  public Obj " & native_var_decl_name(impl_arg(bare_id(a))) & ";" : a <- isort(all_impl_args));
 
   semi_consts_cache_vars = isort([p.name : p <- prg.procs, p.cached and p.impl_args != []]);
-  semi_consts_cache_vars_decls = ("  public Obj " & to_c_memo_var_name(v) & ";" : v <- semi_consts_cache_vars);
+  semi_consts_cache_vars_decls = ("  public Obj " & memo_var_name(v) & ";" : v <- semi_consts_cache_vars);
   env_decl = (env_decl | "") & semi_consts_cache_vars_decls if semi_consts_cache_vars_decls != ();
 
   env_decl = env_decl & ("};");
@@ -278,9 +278,9 @@ implicit {
     var_decls = gen_vars_decls(body);
 
     auto_vars = isort(keys(auto_vars_types));
-    auto_var_decls = (to_c_name(auto_vars_types[v]) & " " & to_c_var_decl_name(v) & ";" : v <- auto_vars);
+    auto_var_decls = (native_name(auto_vars_types[v]) & " " & native_var_decl_name(v) & ";" : v <- auto_vars);
 
-    db_vars_decls = (to_c_name(t) & " " & to_c_var_decl_name(v) & ";" : v, t <- isort(db_vars_types));
+    db_vars_decls = (native_name(t) & " " & native_var_decl_name(v) & ";" : v, t <- isort(db_vars_types));
     aux_db_vars_decls = (aux_struct_c_name(t) & " " & aux_struct_var_decl_name(v) & ";" : v, t <- isort(db_vars_types));
 
     comp_body = compile_to_c(body, nothing);
@@ -292,7 +292,7 @@ implicit {
 
     if cached:
       is_real_const = pd.cached? and pd.impl_args == [];
-      cache_var_name = if is_real_const then fn_name & "__Cached" else "env." & to_c_memo_var_name(pd.name);
+      cache_var_name = if is_real_const then fn_name & "__Cached" else "env." & memo_var_name(pd.name);
 
       wrapper_code = (
         "",
@@ -320,12 +320,12 @@ implicit {
       bool_proc_def()   = "bool ";
 
     String gen_fn_arg(ObjProcPar par, Nat pos) =
-      obj   = "Obj " & to_c_var_decl_name(fn_arg(pos)),
-      cls() = "Lambda " & to_c_var_decl_name(if par.name? then par.name else cls_var(pos));
+      obj   = "Obj " & native_var_decl_name(fn_arg(pos)),
+      cls() = "Lambda " & native_var_decl_name(if par.name? then par.name else cls_var(pos));
 
     String* gen_fn_pars(ProcDef pd) =
       obj_proc_def()  = (gen_fn_arg(p, i) : p @ i <- pd.args) & ("Env env"),
-      bool_proc_def() = ("Obj " & to_c_var_decl_name(fn_arg(n)) : n < arity(pd));
+      bool_proc_def() = ("Obj " & native_var_decl_name(fn_arg(n)) : n < arity(pd));
   }
 
 
@@ -376,7 +376,7 @@ implicit {
 
   ## DUPLICATED CODE
   // String* compile_to_c(ClsDef cd, Nat id) {
-  //   par_list  = ("Obj " & to_c_var_decl_name(fn_arg(n)) : n < cd.arity) & ("const Obj *captured", "const CLS *captured_cls", "ENV &env"); ## BAD
+  //   par_list  = ("Obj " & native_var_decl_name(fn_arg(n)) : n < cd.arity) & ("const Obj *captured", "const CLS *captured_cls", "ENV &env"); ## BAD
   //   signature = "Obj lambda_" & printed(id) & "(" & append(par_list, ", ") & ")";
 
   //   vars_decls = gen_vars_decls(cd.body);
@@ -404,9 +404,9 @@ implicit {
     set_bvar()            |
     set_ivar()            = mk_assignment(instr.var, instr.value),
     set_rc_var()          = (compile_to_c(instr.value, instr.var)),
-    init_memb_var()       = (to_c_var_ref_name(instr.var) & " = " & to_c_const(instr.new_state) & ";"),
-    reset_memb_var()      = (to_c_var_ref_name(instr.var) & " = " & to_c_const(instr.new_state) & ";"),
-    clear_loc_var(v?)     = (to_c_var_ref_name(v) & " = NullObj.Singleton();"),
+    init_memb_var()       = (native_var_ref_name(instr.var) & " = " & to_c_const(instr.new_state) & ";"),
+    reset_memb_var()      = (native_var_ref_name(instr.var) & " = " & to_c_const(instr.new_state) & ";"),
+    clear_loc_var(v?)     = (native_var_ref_name(v) & " = NullObj.Singleton();"),
     terminate             = ("Miscellanea.SoftFail();", "throw new Exception();"),
     add_ref(v?)           = undefined,
     release(v?)           = undefined,
@@ -433,7 +433,7 @@ implicit {
 
   String compiled_push_call_info(ObjFnName fn_name, Maybe[FnArg]* args) {
     fn_name_str = printed(user_repr(fn_name));
-    args_strs = (if a != nothing then to_c_var_ref_name(value(a)) else "NullObj.Singleton()" : a <- args);
+    args_strs = (if a != nothing then native_var_ref_name(value(a)) else "NullObj.Singleton()" : a <- args);
     argv_str = if args != () then "new Obj[] {" & append(args_strs, ", ") & "}" else "null";
     return native_static_call("Miscellanea.PushCallInfo", (fn_name_str, argv_str));
   }
@@ -473,7 +473,7 @@ implicit {
   String* gen_cache_clearing_code(ImplArg arg) {
     code = ();
     for fn_id <- isort(lookup(cached_semi_consts_by_impl_arg, arg, [])):
-      cache_var_name = to_c_memo_var_name(fn_id);
+      cache_var_name = memo_var_name(fn_id);
       code = (code | "env." & cache_var_name & " = null;");
     ;
     return code;
@@ -546,7 +546,7 @@ implicit {
   String compile_build_const_int_seq_to_c(Nat seq_id, ObjVar var) {
     type, len = int_seqs_types_and_lengths(seq_id);
     seq_name = const_int_seq_c_name(seq_id);
-    return to_c_var_ref_name(var) & " = Builder.BuildConstIntSeq(" & seq_name & ");";
+    return native_var_ref_name(var) & " = Builder.BuildConstIntSeq(" & seq_name & ");";
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -605,7 +605,7 @@ implicit {
       "  Miscellanea.PrintAssertionFailedMsg(" & _print_(file) & ", " & printed(line) & ", " & text_arg & ");"
     );
 
-    vars_content = ("  Miscellanea.DumpVar(" & printed(_str_(bare_id(v))) & ", " & to_c_var_ref_name(v) & ");" : v <- vars);
+    vars_content = ("  Miscellanea.DumpVar(" & printed(_str_(bare_id(v))) & ", " & native_var_ref_name(v) & ");" : v <- vars);
     footer = (
       "  return Miscellanea.HardFail();",
       "}"
@@ -625,7 +625,7 @@ implicit {
     fn_name & "(" & append(leading_params & (to_c_arg(p) : p <- params) & trailing_params, ", ") & ");";
 
   String mk_gen_call(AnyVar var, String fn_name, String* leading_params, FnCallParam* params, String* trailing_params) =
-    to_c_var_ref_name(var) & " = " & mk_gen_call(fn_name, leading_params, params, trailing_params);
+    native_var_ref_name(var) & " = " & mk_gen_call(fn_name, leading_params, params, trailing_params);
 
   String mk_gen_call(AnyVar var, String fn_name, String* params) = mk_gen_call(var, fn_name, params, (), ());
 
@@ -638,13 +638,13 @@ implicit {
   String* mk_fn_call(AnyVar var, String fn_name, FnCallParam* params) = (mk_gen_call(var, fn_name, (), params, ("env")));
 
   ## AnyVar IS WRONG HERE, SHOULD ONLY BE OBJ/BOOL/INT VARS
-  String* mk_assignment(AnyVar var, AnyTypeExpr value) = (to_c_var_ref_name(var) & " = " & native_expr(value) & ";");
+  String* mk_assignment(AnyVar var, AnyTypeExpr value) = (native_var_ref_name(var) & " = " & native_expr(value) & ";");
 
 
   String* mk_cls_call(AnyClsVar cls_var, ObjVar var, ObjExpr+ args) =
     ## NO NEED FOR NOW TO HANDLE THE CASE cls_var(Nat), AS THOSE VARIABLES ARE NEVER "CALLED", ONLY PASSED ON
     cls_var(<+> symb?) | capt_cls_var(symb?) = {
-      name = to_c_var_ref_name(cls_var);
+      name = native_var_ref_name(cls_var);
       return (mk_gen_call(var, name & ".Invoke", (), args, ("env")));
     };
 }

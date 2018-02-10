@@ -5,7 +5,7 @@ String native_expr(InlineObj) =
   empty_rel         = "EmptyRelObj.Singleton()";
 
 
-String native_expr(StdObjVar var) = to_c_var_ref_name(var);
+String native_expr(StdObjVar var) = native_var_ref_name(var);
 
 
 String native_expr(NatObjOp expr) =
@@ -15,7 +15,7 @@ String native_expr(NatObjOp expr) =
   get_tag(e?)         = native_expr(e)           & ".GetTag()",
   get_inner_obj(e?)   = native_expr(e)           & ".GetInnerObj()",
   obj_neg(e?)         = native_expr(e)           & ".Negate()",
-  get_curr_obj(v?)    = to_c_var_ref_name(v)   & ".Get()",
+  get_curr_obj(v?)    = native_var_ref_name(v)   & ".Get()",
   rand_elem(e?)       = native_expr(e)           & ".RandElem()",
   bool_obj(e?)        = "SymbObj.Get(" & native_expr(e, true) & " ? " & symb_idx_name(true) & " : " & symb_idx_name(false) & ")",
   int_obj(e?)         = "IntObj.Get("  & native_expr(e) & ")",
@@ -50,12 +50,12 @@ String native_float_literal(FloatLit literal) {
 
 String native_get_curr_arg_expr(BinRelItVar var, <0..2> arg) {
   assert arg != 2;
-  return to_c_var_ref_name(var) & ".Get" & printed(arg+1) & "()";
+  return native_var_ref_name(var) & ".Get" & printed(arg+1) & "()";
 }
 
 
 String native_get_curr_arg_expr(TernRelItVar var, <0..2> arg) =
-  to_c_var_ref_name(var) & ".Get" & printed(arg+1) & "()";
+  native_var_ref_name(var) & ".Get" & printed(arg+1) & "()";
 
 
 String native_expr(BoolExpr expr)       = native_expr(expr, false);
@@ -63,7 +63,7 @@ String native_expr(ObjExpr expr, Bool)  = native_expr(expr);
 
 
 String native_expr(BoolExpr expr, Bool parentesised) {
-  return to_c_var_ref_name(expr) if expr :: BoolVar;
+  return native_var_ref_name(expr) if expr :: BoolVar;
   return match (expr)
     true                  = "true",
     false                 = "false",
@@ -96,10 +96,10 @@ String native_expr(BoolExpr expr, Bool parentesised) {
     is_flt(e1?, e2?)      = to_float_op(" < ",  e1, e2, parentesised),
     is_fle(e1?, e2?)      = to_float_op(" <= ", e1, e2, parentesised),
 
-    is_out_of_range(v?)   = to_c_var_ref_name(v) & ".Done()",
+    is_out_of_range(v?)   = native_var_ref_name(v) & ".Done()",
 
-    is_blank(v?)          = to_c_var_ref_name(v) & ".IsBlankObj()",
-    is_null(v?)           = to_c_var_ref_name(v) & ".IsNullObj()",
+    is_blank(v?)          = native_var_ref_name(v) & ".IsBlankObj()",
+    is_null(v?)           = native_var_ref_name(v) & ".IsNullObj()",
 
     has_elem()            = native_expr(expr.set) & ".HasElem(" & native_expr(expr.elt) & ")",
     has_field()           = native_expr(expr.record) & ".HasField(" & symb_idx_name(expr.field) & ")",
@@ -108,7 +108,7 @@ String native_expr(BoolExpr expr, Bool parentesised) {
     table_contains()      = native_method_call_expr(expr.table, "Contains", expr.tuple),
 
     is_member()           = to_c_fn_name(expr.pred) & "(" & native_expr(expr.obj) & ")",
-    state_is_def()        = to_c_var_ref_name(expr.auto_var) & "." & state_is_def_proc_name(expr.type) & "()",
+    state_is_def()        = native_var_ref_name(expr.auto_var) & "." & state_is_def_proc_name(expr.type) & "()",
 
     neg(e?)               = parentesize("!" & native_expr(e, true), parentesised),
 
@@ -147,9 +147,9 @@ String native_expr(IntExpr expr) = native_expr(expr, false);
 String native_expr(Int expr, Bool parentesised) = printed(expr);
 
 String native_expr(IntConst expr, Bool parentesised) =
-  to_c_time_slots_table_name(expr.automaton, expr.expr_id) & "[" & native_expr(expr.time_slot) & "]";
+  time_slots_table_name(expr.automaton, expr.expr_id) & "[" & native_expr(expr.time_slot) & "]";
 
-String native_expr(IntVar expr, Bool parentesised) = to_c_var_ref_name(expr);
+String native_expr(IntVar expr, Bool parentesised) = native_var_ref_name(expr);
 
 String native_expr(NatIntOp expr, Bool parentesised) =
   get_int_val(e?)       = native_expr(e) & ".GetLong()",
@@ -170,20 +170,20 @@ String native_expr(NatIntOp expr, Bool parentesised) =
   lookup_value()        = native_method_call_expr(expr.store, "LookupValue", (expr.value)),
   lookup_value_ex()     = native_method_call_expr(aux_struct_var_ref_name(expr.store), "LookupValueEx", (expr.value)),
   get_tuple_field()     = if expr.iter.arity == 1
-                            then to_c_var_ref_name(expr.iter) & ".Get()"
-                            else to_c_var_ref_name(expr.iter) & ".GetField" & printed(expr.field+1) & "()",
+                            then native_var_ref_name(expr.iter) & ".Get()"
+                            else native_var_ref_name(expr.iter) & ".GetField" & printed(expr.field+1) & "()",
   unique_nat            = "Miscellanea.UniqueNat()",
   ticks                 = "Miscellanea.GetTickCount()";
 
 
 String native_expr(
   <ElemVar, VecVar, ItVar, StreamVar, AnyClsVar, AnyRelVar, AnyValueStoreId, AnyAutoVar, AnyDBVar> var
-) = to_c_var_ref_name(var);
+) = native_var_ref_name(var);
 
 String native_expr(<blank_obj>) = "BlankObj.Singleton()";
 String native_expr(<null_obj>) = "NullObj.Singleton()";
 
-// String native_expr(ClsVar v) = to_c_var_ref_name(v);
+// String native_expr(ClsVar v) = native_var_ref_name(v);
 
 String native_nary_op(String op, AnyTypeExpr+ exprs, Bool parentesised) {
   expr = append((native_expr(e, true) : e <- exprs), op);

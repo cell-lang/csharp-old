@@ -1,6 +1,6 @@
 implicit block : ReactBlock {
   String auto_class_name = upper_camel_case(bare_id(block.name));
-  String auto_struct_ptr = "((" & to_c_name(block.name) & " *) ptr)";
+  String auto_struct_ptr = "((" & native_name(block.name) & " *) ptr)";
 
   [String] duplicate_names {
     inputs = keys(block.inputs);
@@ -107,7 +107,7 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
     ret_type = return_value_type(inter_type);
 
     name = safe_name(id);
-    var_name = to_c_var_decl_name(signal_var(id));
+    var_name = native_var_decl_name(signal_var(id));
 
     code = (
       "",
@@ -150,19 +150,19 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
     is_time_sensitive = block.memb_vars(elapsed_time); ## BAD BAD: NOT A RELIABLE WAY TO DO IT...
     apply_ret_type = if is_time_sensitive then "bool" else "void";
 
-    auto_name = to_c_name(block.name);
+    auto_name = native_name(block.name);
 
     pre_init_method_name = pre_init_method_name(block.name);
     cleanup_method_name = cleanup_method_name(block.name);
     apply_method_name = apply_method_name(block.name);
 
     input_set_methods_names = (input_set_method_name(block.name, i) : i <- ord_inputs);
-    output_vars_names = (to_c_var_decl_name(signal_var(o)) : o <- ord_outputs);
+    output_vars_names = (native_var_decl_name(signal_var(o)) : o <- ord_outputs);
 
     input_memb_test_pred_name = (to_c_fn_name(block.input_memb_preds[i]) : i <- ord_inputs);
 
-    elapsed_time_var_name = to_c_var_decl_name(elapsed_time);
-    changed_outputs_count_var_name = to_c_var_decl_name(changed_outputs_count);
+    elapsed_time_var_name = native_var_decl_name(elapsed_time);
+    changed_outputs_count_var_name = native_var_decl_name(changed_outputs_count);
 
     input_setters, input_setters_docs = (join(ls) : ls <- unzip((input_setter(i) : i <- ord_inputs)));
     output_getters, output_getters_docs = (join(ls) : ls <- unzip((output_getter(o) : o <- ord_outputs)));
