@@ -1,39 +1,45 @@
-implicit block_name : DBSymbol, db_var_chain : NestedDBVar*,
-         root_block_name : DBSymbol, duplicate_ids : [String, Nat] {
+implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : DBSymbol {
+  String external_name(<MembVar, RelVar, MethodSymbol> member) =
+    append((sentence_case(bare_id(x)) : x <- (db_var_chain | member)), "_");
 
-  String external_name(<MembVar, RelVar, MethodSymbol> var) =
-    append((sentence_case(bare_id(v)) : v <- (db_var_chain | var)), "_");
+  String pretty_name(<MembVar, RelVar, MethodSymbol> member) =
+    append((upper_camel_case(bare_id(x)) : x <- (db_var_chain | member)), "_");
 
   String path_prefix = "automaton." & append((native_var_decl_name(v) & "." : v <- db_var_chain));
 
   String full_path(<MembVar, RelVar> var) = path_prefix & native_var_decl_name(var);
 
   String db_class_name = upper_camel_case(bare_id(root_block_name));
+}
+
+
+implicit block_name : DBSymbol, db_var_chain : NestedDBVar*,
+         root_block_name : DBSymbol, duplicate_names : [String, Nat] {
 
   String get_method_name(MembVar var) =
     if pretty_name_has_conflicts(var, 0)
       then get_method_name_fallback(var)
-      else upper_camel_case(bare_id(var));
+      else pretty_name(var);
 
   String in_method_name(RelVar relvar, Nat arity) =
     if pretty_name_has_conflicts(relvar, arity)
       then in_method_name_fallback(relvar)
-      else upper_camel_case(bare_id(relvar));
+      else pretty_name(relvar);
 
   String get_method_name(RelVar relvar) =
     if pretty_name_has_conflicts(relvar, 0)
       then get_method_name_fallback(relvar)
-      else upper_camel_case(bare_id(relvar));
+      else pretty_name(relvar);
 
   String lookup_method_name(RelVar relvar) =
     if pretty_name_has_conflicts(relvar, 1)
       then get_method_name_fallback(relvar)
-      else upper_camel_case(bare_id(relvar));
+      else pretty_name(relvar);
 
   String call_method_name(MethodId method_id) =
     if pretty_name_has_conflicts(method_id.symbol, method_id.arity)
       then call_method_name_fallback(method_id)
-      else upper_camel_case(bare_id(method_id.symbol));
+      else pretty_name(method_id.symbol);
 
   String get_method_name_fallback(MembVar var) = "Get_" & external_name(var);
   String in_method_name_fallback(RelVar relvar) = "In_" & external_name(relvar);
@@ -43,11 +49,11 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*,
 
 
   Bool pretty_name_has_conflicts(<MembVar, RelVar, MethodSymbol> member, Nat arity) {
-    pretty_name = upper_camel_case(bare_id(member));
+    pretty_name = pretty_name(member);
     builtin_methods = builtin_methods;
     return pretty_name == db_class_name or
            builtin_methods(pretty_name, arity) or
-           duplicate_ids(pretty_name, arity);
+           duplicate_names(pretty_name, arity);
 
     [String, Nat] builtin_methods = [
       // Object class instance methods
@@ -72,7 +78,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*,
 
 
 implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : DBSymbol,
-         duplicate_ids : [String, Nat], typedefs : [TypeName -> NeType] {
+         duplicate_names : [String, Nat], typedefs : [TypeName -> NeType] {
 
   (String*, String*) state_var_accessor(MembVar var, NeType var_type) {
     inter_type = output_interface_type(var_type);
@@ -389,15 +395,27 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
 ////////////////////////////////////////////////////////////////////////////////
 
+implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : DBSymbol {
+  (String, Nat)* pretty_names(StaticBlock block, [DBSymbol -> StaticBlock] blocks) {
+    state_vars_names = ((pretty_name(v), 0) : v, unused_var <- isort(block.state_vars));
+    relvars_names = ((pretty_name(v), arity(t)) : v, t <- isort(block.tables));
+    methods_names = (
+      (pretty_name(id.symbol), id.arity) : id, unused_var <- isort(block.methods), not id.id?
+    );
+    nested_names = join((
+      pretty_names(blocks(b, !!), blocks, block_name = b, db_var_chain = (db_var_chain | v))
+      : v, b <- isort(block.nested_blocks))
+    );
+    return state_vars_names & relvars_names & methods_names & nested_names;
+  }
+}
+
+
 implicit typedefs : [TypeName -> NeType] {
   (String*, String*) static_auto_wrapper(StaticBlock root_block, [DBSymbol -> StaticBlock] blocks) {
-    state_var_ids = ((upper_camel_case(bare_id(v)), 0) : v, unused_var <- isort(root_block.state_vars));
-    relvar_ids = ((upper_camel_case(bare_id(v)), arity(t)) : v, t <- isort(root_block.tables));
-    method_ids = ((upper_camel_case(bare_id(id.symbol)), id.arity) : id, unused_var <- isort(root_block.methods), not id.id?);
-    duplicate_ids = [id(0), id(1) : id <- duplicates(state_var_ids & relvar_ids & method_ids)];
-
     let block_name = root_block.name, db_var_chain = (), root_block_name = root_block.name:
-      let duplicate_ids = duplicate_ids:
+      dup_names = [id(0), id(1) : id <- duplicates(pretty_names(root_block, blocks))];
+      let duplicate_names = dup_names:
         accessors_code, accessors_docs = static_auto_accessors(root_block, blocks);
         class_name = db_class_name;
       ;

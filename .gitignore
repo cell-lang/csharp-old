@@ -48,3 +48,4 @@ codegen
 chat-server-mixed.exe
 runtime/
 bin/cellc-cs
+interface.txt

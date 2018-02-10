@@ -8,53 +8,15 @@ UNIT-TESTS-FILES=$(shell ls src/unit-tests/*)
 ################################################################################
 ####################### Level 3 AST -> C# code generator #######################
 
-codegen-dbg tmp/generated.cpp: $(SRC-FILES)
+tmp/codegen.cs: $(SRC-FILES)
+	cellc-cs -d -nrt projects/codegen.txt
 	rm -rf tmp/
 	mkdir tmp
-	cellc -p projects/codegen.txt
-	mv dump-opt-code.txt codegen.txt
-	rm dump-*.txt
-	mv generated.* tmp/
-	g++ -O1 tmp/generated.cpp -o codegen-dbg
+	bin/apply-hacks < generated.cs > tmp/codegen.cs
+	mv generated.cs tmp/
 
-codegen-rel: tmp/generated.cpp
-	g++ -O1 -DNDEBUG tmp/generated.cpp -o codegen-rel
-
-codegen-opt: tmp/generated.cpp
-	g++ -O3 -DNDEBUG tmp/generated.cpp -o codegen-opt
-
-# gen-html-dbg: codegen-dbg $(RUNTIME-FILES)
-# 	bin/codegen gen-html.txt
-# 	mcs -debug -d:DEBUG generated.cs $(RUNTIME-FILES) -out:gen-html-dbg
-
-# recompile-generated:
-# 	mcs -debug -d:DEBUG generated.cs $(RUNTIME-FILES) -out:gen-html-dbg
-
-codegen.txt: $(SRC-FILES)
-	rm -rf tmp/
-	mkdir tmp
-	cellc -p projects/codegen.txt
-	mv dump-opt-code.txt codegen.txt
-	rm dump-*.txt
-	mv generated.* tmp/
-
-codegen.cs: codegen.txt
-	bin/codegen codegen.txt
-	mv generated.cs codegen.cs
-	# bin/apply-hacks < generated.cs > codegen.cs
-
-codegen.exe: codegen.cs $(CORE-RUNTIME-FILES)
-	mcs -nowarn:219 codegen.cs $(CORE-RUNTIME-FILES) -out:codegen.exe
-
-codegen-dbg.cs: codegen.exe codegen.txt
-	./codegen.exe -d codegen.txt
-	bin/apply-hacks < generated.cs > codegen-dbg.cs
-
-codegen-dbg.exe: codegen-dbg.cs $(CORE-RUNTIME-FILES)
-	mcs -nowarn:219 codegen-dbg.cs $(CORE-RUNTIME-FILES) -out:codegen-dbg.exe
-
-codegen-rel.exe: codegen.cs $(CORE-RUNTIME-FILES)
-	mcs -optimize -nowarn:219 codegen.cs $(CORE-RUNTIME-FILES) -out:codegen-rel.exe
+codegen.exe: tmp/codegen.cs $(CORE-RUNTIME-FILES)
+	mcs -nowarn:219 tmp/codegen.cs $(CORE-RUNTIME-FILES) src/hacks.cs -out:codegen.exe
 
 ################################################################################
 ############################# Cell -> C# compiler ##############################
@@ -93,6 +55,16 @@ cellc-cs.exe:  $(SRC-FILES) runtime/runtime-sources.cell runtime/runtime-sources
 
 # cellcd-cs.exe: compiler-dbg.cs $(CORE-RUNTIME-FILES)
 # 	mcs -nowarn:219 compiler-dbg.cs $(CORE-RUNTIME-FILES) -out:cellcd-cs.exe
+
+################################################################################
+################################################################################
+
+test.cs: test.cell cellc-cs.exe
+	./cellc-cs.exe -d -nrt projects/test.txt
+	mv generated.cs test.cs
+
+test.exe: test.cs $(RUNTIME-FILES)
+	mcs -nowarn:219 test.cs $(RUNTIME-FILES) -out:test.exe
 
 ################################################################################
 ################################################################################
@@ -161,16 +133,6 @@ desugar.cs: codegen.exe tests/desugar.txt $(SRC-FILES)
 
 desugar.exe: desugar.cs $(RUNTIME-FILES)
 	mcs -nowarn:219 desugar.cs $(RUNTIME-FILES) -out:desugar.exe
-
-test.cs: test.cell codegen.exe
-	cellc -p projects/test.txt
-	mv dump-opt-code.txt test.txt
-	rm dump-*
-	./codegen.exe -d test.txt
-	mv generated.cs test.cs
-
-test.exe: test.cs $(RUNTIME-FILES)
-	mcs -nowarn:219 test.cs $(RUNTIME-FILES) -out:test.exe
 
 test-mixed.exe: main.cs test.cs $(RUNTIME-FILES)
 	mcs -nowarn:219 main.cs test.cs $(RUNTIME-FILES) -out:test-mixed.exe
