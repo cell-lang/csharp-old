@@ -68,6 +68,8 @@
       "using System.Diagnostics;",
       "using System.IO;",
       "",
+      "#pragma warning disable CS0162 CS0168 CS0414",
+      "",
       ""
     ),
 
@@ -409,7 +411,7 @@ implicit {
     add_ref(v?)           = undefined,
     release(v?)           = undefined,
     print_obj()           = (native_method_call(instr.obj, "Print", ())),
-    ret_val(e?)           = ("return " & to_c_expr(e) & ";"),
+    ret_val(e?)           = ("return " & native_expr(e) & ";"),
     no_op                 = (),
     repeat(body?)         = compile_repeat_to_c(body, block_id),
     break_loop            = ("break;"),
@@ -458,7 +460,7 @@ implicit {
   String* compile_repeat_to_c(Instr+ body, Maybe[Nat] block_id) {
     head = body(0);
     if head :: <branch(cond: BoolExpr, when_true: (<break_loop>), when_false: ())>:
-      cond_str = to_c_expr(neg(head.cond));
+      cond_str = native_expr(neg(head.cond));
       body_text = indent_lines(compile_to_c(tail(body), block_id)) & ("}");
       return ("while (" & cond_str & ") {") & body_text;
     else
@@ -491,7 +493,7 @@ implicit {
       ("case " & printed(i) & ":") & indent_lines((compile_to_c(c, block_id) | "break;", ""))
       : c @ i <- cases
     );
-    return ("switch (" & to_c_expr(value) & ") {") & indent_lines(join(cases_code)) & ("}");
+    return ("switch (" & native_expr(value) & ") {") & indent_lines(join(cases_code)) & ("}");
   }
 
 
@@ -499,8 +501,8 @@ implicit {
   ## TERMIMATE AN OUTER LOOP, THAT BREAK WILL TERMINATE THE SWITCH/CASE INSTEAD.
   String* compile_symb_switch_to_c(ObjExpr value, [+([+SymbObj], Instr+)] cases, Instr* else, Maybe[Nat] block_id) {
     value_str = match (value)
-      get_tag(tag_obj?)   = to_c_expr(tag_obj) & ".GetTagId()",
-      _                   = to_c_expr(value) & ".GetSymbId()";
+      get_tag(tag_obj?)   = native_expr(tag_obj) & ".GetTagId()",
+      _                   = native_expr(value) & ".GetSymbId()";
 
     body_code = (
       ("" if i > 0) &
@@ -566,14 +568,14 @@ implicit {
       bound_cls()     = {
         par_id = _counter_(:any_value_will_do);
         par_var = cls_var(par_id);
-        par_name = to_c_expr(par_var);
+        par_name = native_expr(par_var);
 
         capt_var_array = if p.capt_vars != ()
-          then "new Obj[] {" & append((to_c_expr(v) : v <- p.capt_vars), ", ") & "}"
+          then "new Obj[] {" & append((native_expr(v) : v <- p.capt_vars), ", ") & "}"
           else "null";
 
         capt_cls_var_array = if p.capt_cls_vars != ()
-          then "new Lambda[] {" & append((to_c_expr(v) : v <- p.capt_cls_vars), ", ") & "}"
+          then "new Lambda[] {" & append((native_expr(v) : v <- p.capt_cls_vars), ", ") & "}"
           else "null";
 
         instr = "Lambda " & par_name & " = new Lambda" & printed(cls2id(p.cls)) &
@@ -586,7 +588,7 @@ implicit {
 
   String* compile_branch_to_c(BoolExpr cond, Instr* when_true, Instr* when_false, Maybe[Nat] block_id) {
     assert when_true != ();
-    code = ("if (" & to_c_expr(cond) & ") {") &
+    code = ("if (" & native_expr(cond) & ") {") &
            indent_lines(compile_to_c(when_true, block_id)) &
            ("}");
     if when_false != ():
@@ -599,7 +601,7 @@ implicit {
   String* compile_runtime_check_to_c(AtomicExpr cond, String file, NzNat line, Maybe[String] text, <StdVar, ImplArg>* vars) {
     text_arg = if text != nothing then _print_(value(text)) else "null";
     header = (
-      "if (" & to_c_expr(cond) & ".IsSymb(" & symb_idx_name(false) & ")) {",
+      "if (" & native_expr(cond) & ".IsSymb(" & symb_idx_name(false) & ")) {",
       "  Miscellanea.PrintAssertionFailedMsg(" & _print_(file) & ", " & printed(line) & ", " & text_arg & ");"
     );
 
@@ -616,7 +618,7 @@ implicit {
 
   String to_c_arg(FnCallParam arg) {
     by_ref = arg :: <TableItVar, AnyRelVar>;
-    return #(if by_ref then "&" else "") & to_c_expr(arg);
+    return #(if by_ref then "&" else "") & native_expr(arg);
   }
 
   String mk_gen_call(String fn_name, String* leading_params, FnCallParam* params, String* trailing_params) =
@@ -636,7 +638,7 @@ implicit {
   String* mk_fn_call(AnyVar var, String fn_name, FnCallParam* params) = (mk_gen_call(var, fn_name, (), params, ("env")));
 
   ## AnyVar IS WRONG HERE, SHOULD ONLY BE OBJ/BOOL/INT VARS
-  String* mk_assignment(AnyVar var, AnyTypeExpr value) = (to_c_var_ref_name(var) & " = " & to_c_expr(value) & ";");
+  String* mk_assignment(AnyVar var, AnyTypeExpr value) = (to_c_var_ref_name(var) & " = " & native_expr(value) & ";");
 
 
   String* mk_cls_call(AnyClsVar cls_var, ObjVar var, ObjExpr+ args) =
@@ -649,7 +651,7 @@ implicit {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-String native_code(FnCallParam arg) = to_c_expr(arg);
+String native_code(FnCallParam arg) = native_expr(arg);
 String native_code(String str)      = str;
 
 protocol Encodable:
@@ -666,13 +668,13 @@ String native_method_call(Encodable res, Encodable target, String method_name, E
   native_code(res) & " = " & native_method_call(target, method_name, args);
 
 // String native_method_call(Encodable target, String method_name, Encodable* args, String+ extra_args) =
-//   to_c_expr(target) & "." & method_name & "(" & append((to_c_expr(a) : a <- args) & extra_args, ", ") & ");";
+//   native_expr(target) & "." & method_name & "(" & append((native_expr(a) : a <- args) & extra_args, ", ") & ");";
 //
 // String native_method_call(Encodable target, String method_name, Encodable* args, String extra_arg) =
 //   native_method_call(target, method_name, args, (extra_arg));
 //
 // String native_method_call(AnyVar res, Encodable target, String method_name, Encodable* args, String extra_arg) =
-//   to_c_expr(res) & " = " & native_method_call(target, method_name, args, extra_arg);
+//   native_expr(res) & " = " & native_method_call(target, method_name, args, extra_arg);
 
 String native_static_call(String static_name, Encodable* args) =
   static_name & "(" & append((native_code(a) : a <- args), ", ") & ");";

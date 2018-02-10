@@ -1,34 +1,34 @@
-String to_c_expr(InlineObj) =
+String native_expr(InlineObj) =
   object(<+> a?)    = "SymbObj.Get(" & symb_idx_name(a) & ")",
   object(<*..*> n?) = "IntObj.Get(" & printed(n) & ")",
   empty_seq         = "SeqObj.Empty()",
   empty_rel         = "EmptyRelObj.Singleton()";
 
 
-String to_c_expr(StdObjVar var) = to_c_var_ref_name(var);
+String native_expr(StdObjVar var) = to_c_var_ref_name(var);
 
 
-String to_c_expr(NatObjOp expr) =
-  at()                = to_c_expr(expr.seq)    & ".GetItem("     & to_c_expr(expr.idx) & ")",
-  lookup()            = to_c_expr(expr.rel)    & ".Lookup("      & to_c_expr(expr.key) & ")",
-  lookup_field()      = to_c_expr(expr.record) & ".LookupField(" & symb_idx_name(expr.field) & ")",
-  get_tag(e?)         = to_c_expr(e)           & ".GetTag()",
-  get_inner_obj(e?)   = to_c_expr(e)           & ".GetInnerObj()",
-  obj_neg(e?)         = to_c_expr(e)           & ".Negate()",
+String native_expr(NatObjOp expr) =
+  at()                = native_expr(expr.seq)    & ".GetItem("     & native_expr(expr.idx) & ")",
+  lookup()            = native_expr(expr.rel)    & ".Lookup("      & native_expr(expr.key) & ")",
+  lookup_field()      = native_expr(expr.record) & ".LookupField(" & symb_idx_name(expr.field) & ")",
+  get_tag(e?)         = native_expr(e)           & ".GetTag()",
+  get_inner_obj(e?)   = native_expr(e)           & ".GetInnerObj()",
+  obj_neg(e?)         = native_expr(e)           & ".Negate()",
   get_curr_obj(v?)    = to_c_var_ref_name(v)   & ".Get()",
-  rand_elem(e?)       = to_c_expr(e)           & ".RandElem()",
-  bool_obj(e?)        = "SymbObj.Get(" & to_c_expr(e, true) & " ? " & symb_idx_name(true) & " : " & symb_idx_name(false) & ")",
-  int_obj(e?)         = "IntObj.Get("  & to_c_expr(e) & ")",
-  to_symb(e?)         = "Parser.ParseSymb(" & to_c_expr(e) & ")",
-  get_curr_arg()      = get_curr_arg_to_c_expr(expr.var, expr.arg);
+  rand_elem(e?)       = native_expr(e)           & ".RandElem()",
+  bool_obj(e?)        = "SymbObj.Get(" & native_expr(e, true) & " ? " & symb_idx_name(true) & " : " & symb_idx_name(false) & ")",
+  int_obj(e?)         = "IntObj.Get("  & native_expr(e) & ")",
+  to_symb(e?)         = "Parser.ParseSymb(" & native_expr(e) & ")",
+  get_curr_arg()      = native_get_curr_arg_expr(expr.var, expr.arg);
 
 
-String unboxed_float(AtomicExpr e) = to_c_expr(e, true) & ".GetDouble()";
+String unboxed_float(AtomicExpr e) = native_expr(e, true) & ".GetDouble()";
 
-String to_c_expr(FloatExpr expr) =
-  float_lit()           = to_c_float_literal(expr),
+String native_expr(FloatExpr expr) =
+  float_lit()           = native_float_literal(expr),
   mk_float()            = "new FloatObj(" & printed(expr.mantissa) & "e" & printed(expr.dec_exp) & ")",
-  int_to_float(e?)      = "new FloatObj(" & to_c_expr(e, true) & ".GetLong())",
+  int_to_float(e?)      = "new FloatObj(" & native_expr(e, true) & ".GetLong())",
   neg_float(e?)         = "new FloatObj(-" & unboxed_float(e) & ")",
   add_floats(e1?, e2?)  = "new FloatObj(" & unboxed_float(e1) & " + " & unboxed_float(e2) & ")",
   sub_floats(e1?, e2?)  = "new FloatObj(" & unboxed_float(e1) & " - " & unboxed_float(e2) & ")",
@@ -40,7 +40,7 @@ String to_c_expr(FloatExpr expr) =
   ceiling_op(e?)        = undefined;
 
 
-String to_c_float_literal(FloatLit literal) {
+String native_float_literal(FloatLit literal) {
   res = string((nat(ascii_0 + d) : d <- literal.mantissa));
   res = "-" & res if literal.negative;
   res = res & "e" & printed(literal.dec_exp) if literal.dec_exp != 0;
@@ -48,50 +48,50 @@ String to_c_float_literal(FloatLit literal) {
 }
 
 
-String get_curr_arg_to_c_expr(BinRelItVar var, <0..2> arg) {
+String native_get_curr_arg_expr(BinRelItVar var, <0..2> arg) {
   assert arg != 2;
   return to_c_var_ref_name(var) & ".Get" & printed(arg+1) & "()";
 }
 
 
-String get_curr_arg_to_c_expr(TernRelItVar var, <0..2> arg) =
+String native_get_curr_arg_expr(TernRelItVar var, <0..2> arg) =
   to_c_var_ref_name(var) & ".Get" & printed(arg+1) & "()";
 
 
-String to_c_expr(BoolExpr expr)       = to_c_expr(expr, false);
-String to_c_expr(ObjExpr expr, Bool)  = to_c_expr(expr);
+String native_expr(BoolExpr expr)       = native_expr(expr, false);
+String native_expr(ObjExpr expr, Bool)  = native_expr(expr);
 
 
-String to_c_expr(BoolExpr expr, Bool parentesised) {
+String native_expr(BoolExpr expr, Bool parentesised) {
   return to_c_var_ref_name(expr) if expr :: BoolVar;
   return match (expr)
     true                  = "true",
     false                 = "false",
 
-    is_symb(e?)           = to_c_expr(e) & ".IsSymb()",
-    is_int(e?)            = to_c_expr(e) & ".IsInt()",
-    is_float(e?)          = to_c_expr(e) & ".IsFloat()",
-    is_ne_seq(e?)         = to_c_expr(e) & ".IsNeSeq()",
-    is_ne_set(e?)         = to_c_expr(e) & ".IsNeSet()",
-    is_ne_map(e?)         = to_c_expr(e) & ".IsNeMap()",
-    is_ne_bin_rel(e?)     = to_c_expr(e) & ".IsNeBinRel()",
-    is_ne_tern_rel(e?)    = to_c_expr(e) & ".IsNeTernRel()",
-    is_tagged_obj(e?)     = to_c_expr(e) & ".IsTagged()",
+    is_symb(e?)           = native_expr(e) & ".IsSymb()",
+    is_int(e?)            = native_expr(e) & ".IsInt()",
+    is_float(e?)          = native_expr(e) & ".IsFloat()",
+    is_ne_seq(e?)         = native_expr(e) & ".IsNeSeq()",
+    is_ne_set(e?)         = native_expr(e) & ".IsNeSet()",
+    is_ne_map(e?)         = native_expr(e) & ".IsNeMap()",
+    is_ne_bin_rel(e?)     = native_expr(e) & ".IsNeBinRel()",
+    is_ne_tern_rel(e?)    = native_expr(e) & ".IsNeTernRel()",
+    is_tagged_obj(e?)     = native_expr(e) & ".IsTagged()",
 
-    neg(is_eq_bool() e?)  = to_nary_op(" != ", (e.expr1, e.expr2), parentesised),
-    neg(is_eq_int() e?)   = to_nary_op(" != ", (e.expr1, e.expr2), parentesised),
+    neg(is_eq_bool() e?)  = native_nary_op(" != ", (e.expr1, e.expr2), parentesised),
+    neg(is_eq_int() e?)   = native_nary_op(" != ", (e.expr1, e.expr2), parentesised),
 
-    is_eq_bool()          = to_nary_op(" == ", (expr.expr1, expr.expr2), parentesised),
-    is_eq_int()           = to_nary_op(" == ", (expr.expr1, expr.expr2), parentesised),
+    is_eq_bool()          = native_nary_op(" == ", (expr.expr1, expr.expr2), parentesised),
+    is_eq_int()           = native_nary_op(" == ", (expr.expr1, expr.expr2), parentesised),
 
-    is_eq()               = to_c_expr(expr.expr1) & ".IsEq(" & to_c_expr(expr.expr2) & ")",
+    is_eq()               = native_expr(expr.expr1) & ".IsEq(" & native_expr(expr.expr2) & ")",
 
-    // is_gt()               = to_nary_op(" > ",  (expr.expr1, expr.expr2), parentesised),
-    // is_ge()               = to_nary_op(" >= ", (expr.expr1, expr.expr2), parentesised),
-    is_lt()               = to_nary_op(" < ",  (expr.expr1, expr.expr2), parentesised),
-    is_le()               = to_nary_op(" <= ", (expr.expr1, expr.expr2), parentesised),
+    // is_gt()               = native_nary_op(" > ",  (expr.expr1, expr.expr2), parentesised),
+    // is_ge()               = native_nary_op(" >= ", (expr.expr1, expr.expr2), parentesised),
+    is_lt()               = native_nary_op(" < ",  (expr.expr1, expr.expr2), parentesised),
+    is_le()               = native_nary_op(" <= ", (expr.expr1, expr.expr2), parentesised),
 
-    inline_is_eq()        = inline_is_eq_to_c_expr(expr.expr, expr.value, parentesised),
+    inline_is_eq()        = native_inline_is_eq_expr(expr.expr, expr.value, parentesised),
 
     is_flt(e1?, e2?)      = to_float_op(" < ",  e1, e2, parentesised),
     is_fle(e1?, e2?)      = to_float_op(" <= ", e1, e2, parentesised),
@@ -101,27 +101,27 @@ String to_c_expr(BoolExpr expr, Bool parentesised) {
     is_blank(v?)          = to_c_var_ref_name(v) & ".IsBlankObj()",
     is_null(v?)           = to_c_var_ref_name(v) & ".IsNullObj()",
 
-    has_elem()            = to_c_expr(expr.set) & ".HasElem(" & to_c_expr(expr.elt) & ")",
-    has_field()           = to_c_expr(expr.record) & ".HasField(" & symb_idx_name(expr.field) & ")",
+    has_elem()            = native_expr(expr.set) & ".HasElem(" & native_expr(expr.elt) & ")",
+    has_field()           = native_expr(expr.record) & ".HasField(" & symb_idx_name(expr.field) & ")",
 
-    contains()            = contains_to_c_expr(expr.coll, expr.entry),
+    contains()            = native_contains_expr(expr.coll, expr.entry),
     table_contains()      = native_method_call_expr(expr.table, "Contains", expr.tuple),
 
-    is_member()           = to_c_fn_name(expr.pred) & "(" & to_c_expr(expr.obj) & ")",
+    is_member()           = to_c_fn_name(expr.pred) & "(" & native_expr(expr.obj) & ")",
     state_is_def()        = to_c_var_ref_name(expr.auto_var) & "." & state_is_def_proc_name(expr.type) & "()",
 
-    neg(e?)               = parentesize("!" & to_c_expr(e, true), parentesised),
+    neg(e?)               = parentesize("!" & native_expr(e, true), parentesised),
 
-    and(es?)              = to_nary_op(" & ",  es, parentesised),
-    or(es?)               = to_nary_op(" | ",  es, parentesised),
-    and_then(es?)         = to_nary_op(" && ", es, parentesised),
-    or_else(es?)          = to_nary_op(" || ", es, parentesised);
+    and(es?)              = native_nary_op(" & ",  es, parentesised),
+    or(es?)               = native_nary_op(" | ",  es, parentesised),
+    and_then(es?)         = native_nary_op(" && ", es, parentesised),
+    or_else(es?)          = native_nary_op(" || ", es, parentesised);
 }
 
 
-String contains_to_c_expr(ObjExpr rel, ObjExpr+ tuple) {
+String native_contains_expr(ObjExpr rel, ObjExpr+ tuple) {
   fn_name = fn_names_by_arity[|tuple|];
-  return to_c_expr(rel) & "." & fn_name & "(" & append((to_c_expr(a) : a <- tuple), ", ") & ")";
+  return native_expr(rel) & "." & fn_name & "(" & append((native_expr(a) : a <- tuple), ", ") & ")";
 
   [NzNat -> String] fn_names_by_arity = [
     1 -> "HasElem",
@@ -131,8 +131,8 @@ String contains_to_c_expr(ObjExpr rel, ObjExpr+ tuple) {
 }
 
 
-String inline_is_eq_to_c_expr(ObjExpr expr, InlineObj value, Bool parentesised) {
-  expr_str = to_c_expr(expr, false);
+String native_inline_is_eq_expr(ObjExpr expr, InlineObj value, Bool parentesised) {
+  expr_str = native_expr(expr, false);
   return match (value)
     object(<+> a?)    = expr_str & ".IsSymb(" & symb_idx_name(a) & ")",
     object(<*..*> n?) = expr_str & ".IsInt(" & printed(n) & ")",
@@ -141,32 +141,32 @@ String inline_is_eq_to_c_expr(ObjExpr expr, InlineObj value, Bool parentesised) 
 }
 
 
-String to_c_expr(IntExpr expr) = to_c_expr(expr, false);
+String native_expr(IntExpr expr) = native_expr(expr, false);
 
 
-String to_c_expr(Int expr, Bool parentesised) = printed(expr);
+String native_expr(Int expr, Bool parentesised) = printed(expr);
 
-String to_c_expr(IntConst expr, Bool parentesised) =
-  to_c_time_slots_table_name(expr.automaton, expr.expr_id) & "[" & to_c_expr(expr.time_slot) & "]";
+String native_expr(IntConst expr, Bool parentesised) =
+  to_c_time_slots_table_name(expr.automaton, expr.expr_id) & "[" & native_expr(expr.time_slot) & "]";
 
-String to_c_expr(IntVar expr, Bool parentesised) = to_c_var_ref_name(expr);
+String native_expr(IntVar expr, Bool parentesised) = to_c_var_ref_name(expr);
 
-String to_c_expr(NatIntOp expr, Bool parentesised) =
-  get_int_val(e?)       = to_c_expr(e) & ".GetLong()",
-  get_size(e?)          = to_c_expr(e) & ".GetSize()",
-  minus(e?)             = "-" & to_c_expr(e, true),
-  add()                 = to_nary_op(" + ", (expr.val1, expr.val2), parentesised),
-  sub()                 = to_nary_op(" - ", (expr.val1, expr.val2), parentesised),
-  mult()                = to_nary_op(" * ", (expr.val1, expr.val2), parentesised),
-  div()                 = to_nary_op(" / ", (expr.val1, expr.val2), parentesised),
-  mod()                 = to_nary_op(" % ", (expr.val1, expr.val2), parentesised),
-  bitwise_and(e1?, e2?) = to_nary_op(" & ", (e1, e2), parentesised),
-  bitwise_or(e1?, e2?)  = to_nary_op(" | ", (e1, e2), parentesised),
-  bitwise_xor(e1?, e2?) = to_nary_op(" ^ ", (e1, e2), parentesised),
-  float_bits(e?)        = to_c_expr(e) & ".FloatBits()",
-  mantissa(e?)          = to_c_expr(e) & ".Mantissa()",
-  dec_exp(e?)           = to_c_expr(e) & ".DecExp()",
-  rand_nat(e?)          = "Miscellanea.RandNat(" & to_c_expr(e) & ")",
+String native_expr(NatIntOp expr, Bool parentesised) =
+  get_int_val(e?)       = native_expr(e) & ".GetLong()",
+  get_size(e?)          = native_expr(e) & ".GetSize()",
+  minus(e?)             = "-" & native_expr(e, true),
+  add()                 = native_nary_op(" + ", (expr.val1, expr.val2), parentesised),
+  sub()                 = native_nary_op(" - ", (expr.val1, expr.val2), parentesised),
+  mult()                = native_nary_op(" * ", (expr.val1, expr.val2), parentesised),
+  div()                 = native_nary_op(" / ", (expr.val1, expr.val2), parentesised),
+  mod()                 = native_nary_op(" % ", (expr.val1, expr.val2), parentesised),
+  bitwise_and(e1?, e2?) = native_nary_op(" & ", (e1, e2), parentesised),
+  bitwise_or(e1?, e2?)  = native_nary_op(" | ", (e1, e2), parentesised),
+  bitwise_xor(e1?, e2?) = native_nary_op(" ^ ", (e1, e2), parentesised),
+  float_bits(e?)        = native_expr(e) & ".FloatBits()",
+  mantissa(e?)          = native_expr(e) & ".Mantissa()",
+  dec_exp(e?)           = native_expr(e) & ".DecExp()",
+  rand_nat(e?)          = "Miscellanea.RandNat(" & native_expr(e) & ")",
   lookup_value()        = native_method_call_expr(expr.store, "LookupValue", (expr.value)),
   lookup_value_ex()     = native_method_call_expr(aux_struct_var_ref_name(expr.store), "LookupValueEx", (expr.value)),
   get_tuple_field()     = if expr.iter.arity == 1
@@ -176,23 +176,23 @@ String to_c_expr(NatIntOp expr, Bool parentesised) =
   ticks                 = "Miscellanea.GetTickCount()";
 
 
-String to_c_expr(
+String native_expr(
   <ElemVar, VecVar, ItVar, StreamVar, AnyClsVar, AnyRelVar, AnyValueStoreId, AnyAutoVar, AnyDBVar> var
 ) = to_c_var_ref_name(var);
 
-String to_c_expr(<blank_obj>) = "BlankObj.Singleton()";
-String to_c_expr(<null_obj>) = "NullObj.Singleton()";
+String native_expr(<blank_obj>) = "BlankObj.Singleton()";
+String native_expr(<null_obj>) = "NullObj.Singleton()";
 
-// String to_c_expr(ClsVar v) = to_c_var_ref_name(v);
+// String native_expr(ClsVar v) = to_c_var_ref_name(v);
 
-String to_nary_op(String op, AnyTypeExpr+ exprs, Bool parentesised) {
-  expr = append((to_c_expr(e, true) : e <- exprs), op);
+String native_nary_op(String op, AnyTypeExpr+ exprs, Bool parentesised) {
+  expr = append((native_expr(e, true) : e <- exprs), op);
   expr = "(" & expr & ")" if |exprs| > 1 and parentesised;
   return expr;
 }
 
 String to_float_op(String op, ObjExpr expr1, ObjExpr expr2, Bool parentesised) {
-  expr = to_c_expr(expr1, false) & ".GetDouble() " & op & to_c_expr(expr2, false) & ".GetDouble()";
+  expr = native_expr(expr1, false) & ".GetDouble() " & op & native_expr(expr2, false) & ".GetDouble()";
   expr = "(" & expr & ")" if parentesised;
   return expr;
 }

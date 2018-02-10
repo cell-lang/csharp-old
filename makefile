@@ -44,17 +44,17 @@ codegen.cs: codegen.txt
 	# bin/apply-hacks < generated.cs > codegen.cs
 
 codegen.exe: codegen.cs $(CORE-RUNTIME-FILES)
-	mcs -nowarn:162,168,219,414 codegen.cs $(CORE-RUNTIME-FILES) -out:codegen.exe
+	mcs -nowarn:219 codegen.cs $(CORE-RUNTIME-FILES) -out:codegen.exe
 
 codegen-dbg.cs: codegen.exe codegen.txt
 	./codegen.exe -d codegen.txt
 	bin/apply-hacks < generated.cs > codegen-dbg.cs
 
 codegen-dbg.exe: codegen-dbg.cs $(CORE-RUNTIME-FILES)
-	mcs -nowarn:162,168,219,414 codegen-dbg.cs $(CORE-RUNTIME-FILES) -out:codegen-dbg.exe
+	mcs -nowarn:219 codegen-dbg.cs $(CORE-RUNTIME-FILES) -out:codegen-dbg.exe
 
 codegen-rel.exe: codegen.cs $(CORE-RUNTIME-FILES)
-	mcs -optimize -nowarn:162,168,219,414 codegen.cs $(CORE-RUNTIME-FILES) -out:codegen-rel.exe
+	mcs -optimize -nowarn:219 codegen.cs $(CORE-RUNTIME-FILES) -out:codegen-rel.exe
 
 ################################################################################
 ############################# Cell -> C# compiler ##############################
@@ -84,7 +84,7 @@ cellc-cs.exe:  $(SRC-FILES) runtime/runtime-sources.cell runtime/runtime-sources
 	mkdir tmp
 	cat generated.cs | bin/apply-hacks > tmp/cellc-cs.cs
 	mv generated.cs tmp/
-	mcs -nowarn:162,168,219,414 tmp/cellc-cs.cs src/hacks.cs -out:cellc-cs.exe
+	mcs -nowarn:219 tmp/cellc-cs.cs src/hacks.cs -out:cellc-cs.exe
 
 # compiler-dbg.cs: codegen.exe $(SRC-FILES)
 # 	./codegen.exe -d tests/compiler.txt
@@ -92,7 +92,7 @@ cellc-cs.exe:  $(SRC-FILES) runtime/runtime-sources.cell runtime/runtime-sources
 # 	mv generated.cs tmp/
 
 # cellcd-cs.exe: compiler-dbg.cs $(CORE-RUNTIME-FILES)
-# 	mcs -nowarn:162,168,219,414 compiler-dbg.cs $(CORE-RUNTIME-FILES) -out:cellcd-cs.exe
+# 	mcs -nowarn:219 compiler-dbg.cs $(CORE-RUNTIME-FILES) -out:cellcd-cs.exe
 
 ################################################################################
 ################################################################################
@@ -102,7 +102,7 @@ regression.cs: codegen.exe
 	mv generated.cs regression.cs
 
 regression.exe: regression.cs
-	mcs -nowarn:162,168,219,414 regression.cs $(RUNTIME-FILES) -out:regression.exe
+	mcs -nowarn:219 regression.cs $(RUNTIME-FILES) -out:regression.exe
 
 regression-mixed.cs: codegen.exe
 	./codegen.exe tests/regression-mixed.txt
@@ -110,28 +110,28 @@ regression-mixed.cs: codegen.exe
 	mv interfaces.txt regression-mixed-interfaces.cs
 
 regression-mixed.exe: regression-mixed.cs ../regression-tests/mixed/*.cs
-	mcs -nowarn:162,168,219,414 ../regression-tests/mixed/*.cs regression-mixed.cs $(RUNTIME-FILES) -out:regression-mixed.exe
+	mcs -nowarn:219 ../regression-tests/mixed/*.cs regression-mixed.cs $(RUNTIME-FILES) -out:regression-mixed.exe
 
 water-sensor.cs: codegen.exe
 	./codegen.exe tests/water-sensor.txt
 	mv generated.cs water-sensor.cs
 
 water-sensor.exe: water-sensor.cs
-	mcs -nowarn:162,168,219,414 water-sensor.cs $(RUNTIME-FILES) -out:water-sensor.exe
+	mcs -nowarn:219 water-sensor.cs $(RUNTIME-FILES) -out:water-sensor.exe
 
 send-msgs.cs: codegen.exe
 	./codegen.exe tests/send-msgs.txt
 	mv generated.cs send-msgs.cs
 
 send-msgs.exe: send-msgs.cs
-	mcs -nowarn:162,168,219,414 send-msgs.cs $(RUNTIME-FILES) -out:send-msgs.exe
+	mcs -nowarn:219 send-msgs.cs $(RUNTIME-FILES) -out:send-msgs.exe
 
 chat-server.cs: codegen.exe
 	./codegen.exe tests/chat-server.txt
 	mv generated.cs chat-server.cs
 
 chat-server.exe: chat-server.cs
-	mcs -nowarn:162,168,219,414 chat-server.cs $(RUNTIME-FILES) -out:chat-server.exe
+	mcs -nowarn:219 chat-server.cs $(RUNTIME-FILES) -out:chat-server.exe
 
 chat-server-mixed.cs: codegen.exe
 	./codegen.exe tests/chat-server-mixed.txt
@@ -139,7 +139,7 @@ chat-server-mixed.cs: codegen.exe
 	mv interfaces.txt chat-server-interface.cs
 
 chat-server-mixed.exe: chat-server-mixed.cs ../download/examples/chat-server/main.cs $(RUNTIME-FILES)
-	mcs -nowarn:162,168,219,414 chat-server-mixed.cs ../download/examples/chat-server/main.cs $(RUNTIME-FILES) -out:chat-server-mixed.exe
+	mcs -nowarn:219 chat-server-mixed.cs ../download/examples/chat-server/main.cs $(RUNTIME-FILES) -out:chat-server-mixed.exe
 
 water-sensor-mixed.cs: codegen.exe
 	./codegen.exe tests/water-sensor-mixed.txt
@@ -147,7 +147,7 @@ water-sensor-mixed.cs: codegen.exe
 	mv interfaces.txt water-sensor-mixed-interface.cs
 
 water-sensor-mixed.exe: water-sensor-mixed.cs ../download/examples/water-sensor-mixed/main.cs $(RUNTIME-FILES)
-	mcs -nowarn:162,168,219,414 water-sensor-mixed.cs ../download/examples/water-sensor-mixed/main.cs $(RUNTIME-FILES) -out:water-sensor-mixed.exe
+	mcs -nowarn:219 water-sensor-mixed.cs ../download/examples/water-sensor-mixed/main.cs $(RUNTIME-FILES) -out:water-sensor-mixed.exe
 
 tests/desugar.txt: $(SRC-FILES)
 	cellc -p projects/desugar.txt
@@ -160,7 +160,7 @@ desugar.cs: codegen.exe tests/desugar.txt $(SRC-FILES)
 	mv generated.cs tmp/
 
 desugar.exe: desugar.cs $(RUNTIME-FILES)
-	mcs -nowarn:162,168,219,414 desugar.cs $(RUNTIME-FILES) -out:desugar.exe
+	mcs -nowarn:219 desugar.cs $(RUNTIME-FILES) -out:desugar.exe
 
 test.cs: test.cell codegen.exe
 	cellc -p projects/test.txt
@@ -170,10 +170,10 @@ test.cs: test.cell codegen.exe
 	mv generated.cs test.cs
 
 test.exe: test.cs $(RUNTIME-FILES)
-	mcs -nowarn:162,168,219,414 test.cs $(RUNTIME-FILES) -out:test.exe
+	mcs -nowarn:219 test.cs $(RUNTIME-FILES) -out:test.exe
 
 test-mixed.exe: main.cs test.cs $(RUNTIME-FILES)
-	mcs -nowarn:162,168,219,414 main.cs test.cs $(RUNTIME-FILES) -out:test-mixed.exe
+	mcs -nowarn:219 main.cs test.cs $(RUNTIME-FILES) -out:test-mixed.exe
 
 test.cpp: test.cell
 	cellc projects/test.txt
