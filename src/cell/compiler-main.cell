@@ -278,7 +278,7 @@ Int Main(String* args) {
     ok = FileWrite("generated.cs", chars(body));
     if docs != ():
       header = append(docs, "\n");
-      ok = FileWrite("interface.txt", chars(header));
+      ok = FileWrite("interfaces.txt", chars(header));
     ;
   ;
 

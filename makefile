@@ -66,15 +66,15 @@ test.cs: test.cell cellc-cs.exe
 test.exe: test.cs $(RUNTIME-FILES)
 	mcs -nowarn:219 test.cs $(RUNTIME-FILES) -out:test.exe
 
-################################################################################
-################################################################################
-
 regression.cs: codegen.exe
-	./codegen.exe tests/regression.txt
+	./codegen.exe -d tests/regression.txt
 	mv generated.cs regression.cs
 
-regression.exe: regression.cs
+regression.exe: regression.cs $(RUNTIME-FILES)
 	mcs -nowarn:219 regression.cs $(RUNTIME-FILES) -out:regression.exe
+
+################################################################################
+################################################################################
 
 regression-mixed.cs: codegen.exe
 	./codegen.exe tests/regression-mixed.txt

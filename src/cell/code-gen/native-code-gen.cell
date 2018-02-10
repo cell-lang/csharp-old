@@ -560,8 +560,8 @@ implicit {
     pars_info = (gen_par_info(p) : p <- params);
     code_frags, args = unzip(pars_info);
     call_code = if var != nothing
-      then native_static_call(value(var), native_fn_name(name), args)
-      else native_static_call(native_fn_name(name), args);
+      then native_static_call(value(var), native_fn_name(name), (args | "env"))
+      else native_static_call(native_fn_name(name), (args | "env"));
     return (join(code_frags) | call_code);
 
     (String*, FnCallParam) gen_par_info(ObjExpr p) = ((), p);
