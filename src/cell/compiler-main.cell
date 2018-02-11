@@ -54,7 +54,7 @@ Maybe[(String*, String*)] Compile(
   ;
 
   if print_intermediate:
-    ok = FileWrite("dump-syn-prg.txt", chars(printed(syn_prg, 100)));
+    ok = FileWrite("dump-syn-prg.txt", chars(_print_(syn_prg)));
   ;
 
   errs = prg_wf_errors(syn_prg=syn_prg);
@@ -80,7 +80,7 @@ Maybe[(String*, String*)] Compile(
   ;
 
   if print_intermediate:
-    ok = FileWrite("dump-prg.txt", chars(printed(prg, 100)));
+    ok = FileWrite("dump-prg.txt", chars(_print_(prg)));
   ;
 
   errs = core_wf_errors(prg);
@@ -129,7 +129,7 @@ Maybe[(String*, String*)] Compile(
   ;
 
   if print_intermediate:
-    ok = FileWrite("dump-code.txt", chars(printed(code, 100)));
+    ok = FileWrite("dump-code.txt", chars(_print_(code)));
   ;
 
   opt_code = compiled_prg(
@@ -147,7 +147,7 @@ Maybe[(String*, String*)] Compile(
   ;
 
   if print_intermediate:
-    ok = FileWrite("dump-opt-code.txt", chars(printed(opt_code, 100)));
+    ok = FileWrite("dump-opt-code.txt", chars(_print_(opt_code)));
   ;
 
   cs_code  = native_code(opt_code, include_runtime, debug_mode);

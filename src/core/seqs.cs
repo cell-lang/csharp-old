@@ -133,7 +133,6 @@ namespace CellLang {
     }
 
     override public void Print(TextWriter writer, int maxLineLen, bool newLine, int indentLevel) {
-      int len = items.Length;
       int offset = Offset();
       bool breakLine = MinPrintedSize() > maxLineLen;
 
@@ -149,7 +148,7 @@ namespace CellLang {
           writer.WriteIndentedNewLine(indentLevel + 1);
       }
 
-      for (int i=0 ; i < len ; i++) {
+      for (int i=0 ; i < length ; i++) {
         if (i > 0) {
           writer.Write(',');
           if (breakLine)
@@ -168,10 +167,9 @@ namespace CellLang {
 
     override public int MinPrintedSize() {
       if (minPrintedSize == -1) {
-        int len = items.Length;
         int offset = Offset();
-        minPrintedSize = 2 * len;
-        for (int i=0 ; i < len ; i++)
+        minPrintedSize = 2 * length;
+        for (int i=0 ; i < length ; i++)
           minPrintedSize += items[offset+i].MinPrintedSize();
       }
       return minPrintedSize;

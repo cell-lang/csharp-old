@@ -242,7 +242,7 @@ namespace CellLang {
     }
 
     public static void WriteIndentedNewLine(this TextWriter writer, string str, int level) {
-      Console.WriteLine(str);
+      writer.WriteLine(str);
       for (int i=0 ; i < level ; i++)
         writer.Write("  ");
     }

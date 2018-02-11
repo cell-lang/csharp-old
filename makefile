@@ -36,12 +36,12 @@ cellc-cs: $(SRC-FILES) runtime/runtime-sources.cell runtime/runtime-sources-empt
 	g++ -O3 -DNDEBUG tmp/cellc-cs.cpp -o cellc-cs
 
 cellc-cs.exe:  $(SRC-FILES) runtime/runtime-sources.cell runtime/runtime-sources-empty.cell
-	cellc-cs projects/compiler.txt
+	cellc-cs -nrt projects/compiler.txt
 	rm -rf tmp/
 	mkdir tmp
 	cat generated.cs | bin/apply-hacks > tmp/cellc-cs.cs
 	mv generated.cs tmp/
-	mcs -nowarn:219 tmp/cellc-cs.cs src/hacks.cs -out:cellc-cs.exe
+	mcs -nowarn:219 tmp/cellc-cs.cs src/hacks.cs $(CORE-RUNTIME-FILES) -out:cellc-cs.exe
 
 ################################################################################
 ################################################################################
