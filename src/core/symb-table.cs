@@ -65,5 +65,16 @@ namespace CellLang {
     public static string IdxToStr(int idx) {
       return symbTable[idx];
     }
+
+    public static int CompSymbs(int id1, int id2) {
+      if (id1 == id2)
+        return 0;
+      int len = Generated.EmbeddedSymbols.Length;
+      if (id1 < len | id2 < len)
+        return id1 < id2 ? 1 : -1;
+      string str1 = symbTable[id1];
+      string str2 = symbTable[id2];
+      return str1.CompareTo(str2) < 0 ? 1 : -1;
+    }
   }
 }

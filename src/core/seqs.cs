@@ -6,8 +6,8 @@ using System.IO;
 
 namespace CellLang {
   abstract class SeqObj : Obj {
-    internal Obj[] items;
-    internal int length;
+    public Obj[] items;
+    protected int length;
     int minPrintedSize = -1;
 
     protected SeqObj(int length) {
@@ -214,7 +214,7 @@ namespace CellLang {
 
 
   class MasterSeqObj : SeqObj {
-    internal int used;
+    public int used;
 
     public MasterSeqObj(Obj[] items, int length) : base(items, length) {
       for (int i=0 ; i < length ; i++)
@@ -227,7 +227,7 @@ namespace CellLang {
     }
 
     public MasterSeqObj(long length) : base(length > 0 ? (int) length : 0) {
-
+      this.used = (int) length;
     }
 
     override public Obj GetItem(long idx) {
@@ -321,7 +321,7 @@ namespace CellLang {
       else {
         Obj[] newItems = new Obj[length < 16 ? 32 : (3 * length) / 2];
         for (int i=0 ; i < length ; i++)
-          newItems[i] = items[i];
+          newItems[i] = items[offset+i];
         newItems[length] = obj;
         return new MasterSeqObj(newItems, length+1);
 

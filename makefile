@@ -43,6 +43,9 @@ cellc-cs.exe:  $(SRC-FILES) runtime/runtime-sources.cell runtime/runtime-sources
 	mv generated.cs tmp/
 	mcs -nowarn:219 tmp/cellc-cs.cs src/hacks.cs $(CORE-RUNTIME-FILES) -out:cellc-cs.exe
 
+update-cellc-cs.exe:
+	mcs -nowarn:219 tmp/cellc-cs.cs src/hacks.cs $(CORE-RUNTIME-FILES) -out:cellc-cs.exe
+
 ################################################################################
 ################################################################################
 

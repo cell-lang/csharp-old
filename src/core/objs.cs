@@ -283,8 +283,7 @@ namespace CellLang {
     }
 
     override protected int InternalCmp(Obj other) {
-      int other_id = other.GetSymbId();
-      return id == other_id ? 0 : (id < other_id ? 1 : -1);
+      return SymbTable.CompSymbs(id, other.GetSymbId());
     }
   }
 
@@ -1239,7 +1238,7 @@ namespace CellLang {
       string tagStr = SymbTable.IdxToStr(tag);
       writer.Write(tagStr);
 
-      if (obj.IsNeRecord() | obj.IsNeSeq()) {
+      if (obj.IsNeRecord() | (obj.IsNeSeq() && obj.GetSize() > 1)) {
         obj.Print(writer, maxLineLen, false, indentLevel);
         return;
       }
@@ -1298,7 +1297,7 @@ namespace CellLang {
 
     override public int CmpTaggedObj(int other_tag, Obj other_obj) {
       if (other_tag != tag)
-        return other_tag < tag ? 1 : -1;
+        return SymbTable.CompSymbs(other_tag, tag);
       else
         return other_obj.Cmp(obj);
     }
