@@ -50,19 +50,25 @@ update-cellc-cs.exe:
 ################################################################################
 
 compiler-test-loop: cellc-cs.exe
-	./cellc-cs.exe projects/compiler.txt
+	mv cellc-cs.exe tmp/cellc-cs-0.exe
+	mv tmp/cellc-cs.cs tmp/cellc-cs-0.cs
+	mv tmp/generated.cs tmp/generated-0.cs
+	tmp/cellc-cs-0.exe projects/compiler.txt
 	cat generated.cs | bin/apply-hacks > tmp/cellc-cs-1.cs
 	mv generated.cs tmp/generated-1.cs
-	mcs -nowarn:219 tmp/cellc-cs-1.cs src/hacks.cs -out:cellc-cs-1.exe
-	./cellc-cs-1.exe projects/compiler.txt
+	mcs -nowarn:219 tmp/cellc-cs-1.cs src/hacks.cs -out:cellc-cs.exe
+	./cellc-cs.exe projects/compiler.txt
 	cmp generated.cs tmp/generated-1.cs
 
 compiler-test-loop-no-runtime: cellc-cs.exe
-	./cellc-cs.exe -nrt projects/compiler.txt
+	mv cellc-cs.exe tmp/cellc-cs-0.exe
+	mv tmp/cellc-cs.cs tmp/cellc-cs-0.cs
+	mv tmp/generated.cs tmp/generated-0.cs
+	tmp/cellc-cs-0.exe -nrt projects/compiler.txt
 	cat generated.cs | bin/apply-hacks > tmp/cellc-cs-1.cs
 	mv generated.cs tmp/generated-1.cs
-	mcs -nowarn:219 tmp/cellc-cs-1.cs src/hacks.cs $(RUNTIME-FILES) -out:cellc-cs-1.exe
-	./cellc-cs-1.exe -nrt projects/compiler.txt
+	mcs -nowarn:219 tmp/cellc-cs-1.cs src/hacks.cs $(RUNTIME-FILES) -out:cellc-cs.exe
+	./cellc-cs.exe -nrt projects/compiler.txt
 	cmp generated.cs tmp/generated-1.cs
 
 ################################################################################

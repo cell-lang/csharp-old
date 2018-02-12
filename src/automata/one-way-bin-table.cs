@@ -293,6 +293,9 @@ namespace CellLang {
       );
     }
 
+    ////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
+
     public void Init() {
       slots = new uint[MinSize];
       for (uint i=0 ; i < MinSize ; i += 16) {
@@ -337,7 +340,7 @@ namespace CellLang {
           return handle;
 
         default:
-          Miscellanea.Assert(false);
+          Miscellanea.InternalFail("Invalid control flow");
           throw new NotImplementedException(); // Control flow cannot get here
       }
     }
@@ -364,7 +367,7 @@ namespace CellLang {
           return DeleteFromHashedBlock(blockIdx, value, handle, Hashcode(value), out deleted);
 
         default:
-          Miscellanea.Assert(false);
+          Miscellanea.InternalFail("Invalid control flow");
           throw new NotImplementedException(); // Control flow cannot get here
       }
     }
@@ -391,7 +394,7 @@ namespace CellLang {
           return InHashedBlock(value, blockIdx, Hashcode(value));
 
         default:
-          Miscellanea.Assert(false);
+          Miscellanea.InternalFail("Invalid control flow");
           throw new NotImplementedException(); // Control flow cannot get here
       }
     }
@@ -421,7 +424,7 @@ namespace CellLang {
           return slots[blockIdx];
 
         default:
-          Miscellanea.Assert(false);
+          Miscellanea.InternalFail("Invalid control flow");
           throw new NotImplementedException(); // Control flow cannot get here
       }
     }
@@ -447,7 +450,7 @@ namespace CellLang {
           return HashedBlockIter(blockIdx);
 
         default:
-          Miscellanea.Assert(false);
+          Miscellanea.InternalFail("Invalid control flow");
           throw new NotImplementedException(); // Control flow cannot get here
       }
     }
@@ -494,16 +497,6 @@ namespace CellLang {
           return i;
       return max;
     }
-
-    // uint CountHashed(uint blockIdx) {
-    //   uint count = 0;
-    //   for (int i=0 ; i < 16 ; i++) {
-    //     uint content = slots[blockIdx+i];
-    //     if (content != EmptyMarker)
-    //       count += Count(content);
-    //   }
-    //   return count;
-    // }
 
     ////////////////////////////////////////////////////////////////////////////
 
@@ -561,7 +554,7 @@ namespace CellLang {
           return;
 
         default:
-          Miscellanea.Assert(false, "Invalid control flow");
+          Miscellanea.InternalFail("Invalid control flow");
           throw new NotImplementedException(); // Control flow cannot get here
       }
     }
@@ -1033,7 +1026,7 @@ namespace CellLang {
           //   break;
 
           default:
-            Miscellanea.Assert(false, "Invalid control flow");
+            Miscellanea.InternalFail("Invalid control flow");
             throw new NotImplementedException(); // Control flow cannot get here
         }
       }
