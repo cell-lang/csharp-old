@@ -84,7 +84,6 @@ namespace CellLang {
 
     public virtual Obj Append(Obj obj)                            {throw new NotImplementedException();}
     public virtual Obj Concat(Obj seq)                            {throw new NotImplementedException();}
-    public virtual Obj ConcatMany()                               {throw new NotImplementedException();}
 
     public virtual void CopyItems(Obj[] items, int offset)        {throw new NotImplementedException();}
 
@@ -95,6 +94,10 @@ namespace CellLang {
     public virtual int CmpTaggedObj(int tag, Obj obj)             {throw new NotImplementedException();}
 
     public virtual ValueBase GetValue()                           {throw new NotImplementedException();}
+
+    public virtual void Dump() {
+      Console.WriteLine("ERROR: NO DUMP AVAILABLE");
+    }
 
     ////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////
@@ -903,7 +906,7 @@ namespace CellLang {
     int[] idxs312;
     int minPrintedSize = -1;
 
-    public void Dump() {
+    override public void Dump() {
       if (idxs231 == null)
         idxs231 = Algs.SortedIndexes(col2, col3, col1);
       if (idxs312 == null)

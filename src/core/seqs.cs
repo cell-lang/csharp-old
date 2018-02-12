@@ -7,7 +7,7 @@ using System.IO;
 namespace CellLang {
   abstract class SeqObj : Obj {
     public Obj[] items;
-    protected int length;
+    public int length;
     int minPrintedSize = -1;
 
     protected SeqObj(int length) {
@@ -93,27 +93,7 @@ namespace CellLang {
       return "(" + string.Join(", ", reprs) + ")";
     }
 
-    override public Obj ConcatMany() {
-      int offset = Offset();
-      int newLen = 0;
-      for (int i=0 ; i < length ; i++)
-        newLen += items[i+offset].GetSize();
-      Obj[] newItems = new Obj[newLen];
-      int targetOffset = 0;
-      for (int i=0 ; i < length ; i++) {
-        Obj seq = items[i+offset];
-        seq.CopyItems(newItems, targetOffset);
-        targetOffset += seq.GetSize();
-      }
-      Miscellanea.Assert(targetOffset == newLen);
-      return new MasterSeqObj(newItems, newLen);
-    }
-
-    override public void CopyItems(Obj[] array, int offset) {
-      Array.Copy(items, Offset(), array, offset, length);
-    }
-
-    protected Obj CopyOnWriteConcat(Obj seq) {
+    override public Obj Concat(Obj seq) {
       int offset = Offset();
       int seqLen = seq.GetSize();
       int minLen = length + seqLen;
@@ -122,6 +102,10 @@ namespace CellLang {
       SeqObj seqObj = (SeqObj) seq;
       Array.Copy(seqObj.items, seqObj.Offset(), newItems, length, seqObj.length);
       return new MasterSeqObj(newItems, minLen);
+    }
+
+    override public void CopyItems(Obj[] array, int offset) {
+      Array.Copy(items, Offset(), array, offset, length);
     }
 
     override public uint Hashcode() {
@@ -216,9 +200,13 @@ namespace CellLang {
   class MasterSeqObj : SeqObj {
     public int used;
 
+    override public void Dump() {
+      Console.WriteLine("items.Length = {0}, length = {1}, used = {2}", items.Length, length, used);
+    }
+
     public MasterSeqObj(Obj[] items, int length) : base(items, length) {
-      for (int i=0 ; i < length ; i++)
-        Miscellanea.Assert(items[i] != null);
+      // for (int i=0 ; i < length ; i++)
+      //   Miscellanea.Assert(items[i] != null);
       this.used = length;
     }
 
@@ -278,10 +266,11 @@ namespace CellLang {
 //        Array.Copy(seqObj.items, seqObj.Offset(), items, length, seqObj.length);
         for (int i=0; i < seqLen ; i++)
           items[length+i] = seq.GetItem(i);
+        used += seqLen;
         return new SliceObj(this, 0, newLen);
       }
 
-      return CopyOnWriteConcat(seq);
+      return base.Concat(seq);
       // return new RopeObj(this, seq);
     }
 
@@ -295,9 +284,18 @@ namespace CellLang {
     MasterSeqObj master;
     int offset;
 
+    override public void Dump() {
+      Console.WriteLine("offset = {0}, length = {1}", offset, length);
+      Console.WriteLine(
+        "master: items.Length = {0}, length = {1}, used = {2}",
+        master.items.Length, master.length, master.used
+      );
+      Miscellanea.Assert(items == master.items);
+    }
+
     public SliceObj(MasterSeqObj master, int offset, int length) : base(master.items, length) {
-      for (int i=0 ; i < offset+length ; i++)
-        Miscellanea.Assert(master.items[i] != null);
+      // for (int i=0 ; i < offset+length ; i++)
+      //   Miscellanea.Assert(master.items[i] != null);
       this.master = master;
       this.offset = offset;
     }
@@ -336,10 +334,11 @@ namespace CellLang {
       if (master.used == used && newLen <= master.items.Length) {
         for (int i=0 ; i < seqLen ; i++)
           master.items[used+i] = seq.GetItem(i);
+        master.used += seqLen;
         return new SliceObj(master, offset, newLen);
       }
 
-      return CopyOnWriteConcat(seq);
+      return base.Concat(seq);
       // return new RopeObj(this, seq);
     }
 
@@ -428,9 +427,6 @@ namespace CellLang {
 //        reprs[i] = array[i].ToString();
 //      return "(" + string.Join(", ", reprs) + ")";
 //    }
-//
-////    override public Obj ConcatMany() {
-////    }
 //
 //    override public uint Hashcode() {
 //      BuildArray();

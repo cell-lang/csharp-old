@@ -1,9 +1,3 @@
-sed 's/static Obj join_F1(/static Obj join_F1(Obj seqs, Env env) {\
-      return seqs.ConcatMany();\
-    }\
-\
-\
-    static Obj join_F1_(/' | \
 sed 's/static Obj attach_F2(/static Obj attach_F2(Obj obj, Obj data, Env env) {\
       Hacks.Attach(obj, data);\
       return obj;\
