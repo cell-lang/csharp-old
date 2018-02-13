@@ -340,7 +340,7 @@ namespace CellLang {
           return handle;
 
         default:
-          Miscellanea.InternalFail("Invalid control flow");
+          Miscellanea.InternalFail();
           throw new NotImplementedException(); // Control flow cannot get here
       }
     }
@@ -367,7 +367,7 @@ namespace CellLang {
           return DeleteFromHashedBlock(blockIdx, value, handle, Hashcode(value), out deleted);
 
         default:
-          Miscellanea.InternalFail("Invalid control flow");
+          Miscellanea.InternalFail();
           throw new NotImplementedException(); // Control flow cannot get here
       }
     }
@@ -394,7 +394,7 @@ namespace CellLang {
           return InHashedBlock(value, blockIdx, Hashcode(value));
 
         default:
-          Miscellanea.InternalFail("Invalid control flow");
+          Miscellanea.InternalFail();
           throw new NotImplementedException(); // Control flow cannot get here
       }
     }
@@ -424,7 +424,7 @@ namespace CellLang {
           return slots[blockIdx];
 
         default:
-          Miscellanea.InternalFail("Invalid control flow");
+          Miscellanea.InternalFail();
           throw new NotImplementedException(); // Control flow cannot get here
       }
     }
@@ -450,7 +450,7 @@ namespace CellLang {
           return HashedBlockIter(blockIdx);
 
         default:
-          Miscellanea.InternalFail("Invalid control flow");
+          Miscellanea.InternalFail();
           throw new NotImplementedException(); // Control flow cannot get here
       }
     }
@@ -554,7 +554,7 @@ namespace CellLang {
           return;
 
         default:
-          Miscellanea.InternalFail("Invalid control flow");
+          Miscellanea.InternalFail();
           throw new NotImplementedException(); // Control flow cannot get here
       }
     }
@@ -1026,7 +1026,7 @@ namespace CellLang {
           //   break;
 
           default:
-            Miscellanea.InternalFail("Invalid control flow");
+            Miscellanea.InternalFail();
             throw new NotImplementedException(); // Control flow cannot get here
         }
       }
