@@ -101,7 +101,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
       );
     ;
 
-    return (code, (ret_type & " " & meth_name & "();"));
+    return (code, (ret_type & " " & meth_name & ";"));
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -327,7 +327,7 @@ implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : D
 
     docs = (
       "",
-      "bool " & in_method_name & "(" & args_decls & ");",
+      "bool " & in_method_name & "(" & append(args_types, ", ") & ");",
       "Tuple<" & ret_types_str & ">[] " & get_method_name & "();"
     );
 
@@ -448,7 +448,7 @@ implicit typedefs : [TypeName -> NeType] {
       "    return Conversions.ExportAsValue(obj);",
       "  }",
       "",
-      "  public void SetState(String text) {",
+      "  public void SetState(string text) {",
       "    Obj obj = Conversions.ConvertText(text);",
       "    if (!" & native_fn_name(root_block.state_memb_pred) & "(obj))",
       "      throw new Exception(\"Invalid state\");",
@@ -461,7 +461,7 @@ implicit typedefs : [TypeName -> NeType] {
     if has_any_updates:
       class_impl = class_impl & (
         "",
-        "  public void Execute(String text) {",
+        "  public void Execute(string text) {",
         "    Obj msg = Conversions.ConvertText(text);",
         "    if (!" & native_fn_name(value_unsafe(root_block.msg_memb_pred)) & "(msg))",
         "      throw new Exception(\"Invalid message\");",
@@ -481,8 +481,8 @@ implicit typedefs : [TypeName -> NeType] {
       "  " & class_name & "(" & append(ctor_impl_args, ", ") & ");",
       "",
       "  Value ReadState();",
-      "  void SetState(String);",
-      "  void Execute(String);" if has_any_updates
+      "  void SetState(string);",
+      "  void Execute(string);" if has_any_updates
     );
     class_docs = class_docs & accessors_docs if accessors_docs != ();
     class_docs = (class_docs | "}");

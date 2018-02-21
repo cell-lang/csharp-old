@@ -215,7 +215,7 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
     docs = docs & ("", "  // Methods") & indent_lines(methods_wrappers_docs) if methods_wrappers_docs != ();
 
     docs = docs & (
-      "};"
+      "}"
     );
 
     code = enums_decls & (
