@@ -1,0 +1,492 @@
+implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : DBSymbol {
+  String external_name(<MembVar, RelVar, MethodSymbol> member) =
+    append((sentence_case(bare_id(x)) : x <- (db_var_chain | member)), "_");
+
+  String pretty_name(<MembVar, RelVar, MethodSymbol> member) =
+    append((upper_camel_case(bare_id(x)) : x <- (db_var_chain | member)), "_");
+
+  String path_prefix = "automaton." & append((native_var_decl_name(v) & "." : v <- db_var_chain));
+
+  String full_path(<MembVar, RelVar> var) = path_prefix & native_var_decl_name(var);
+
+  String db_class_name = upper_camel_case(bare_id(root_block_name));
+}
+
+
+implicit block_name : DBSymbol, db_var_chain : NestedDBVar*,
+         root_block_name : DBSymbol, duplicate_names : [String, Nat] {
+
+  String get_method_name(MembVar var) =
+    if pretty_name_has_conflicts(var, 0)
+      then get_method_name_fallback(var)
+      else pretty_name(var);
+
+  String in_method_name(RelVar relvar, Nat arity) =
+    if pretty_name_has_conflicts(relvar, arity)
+      then in_method_name_fallback(relvar)
+      else pretty_name(relvar);
+
+  String get_method_name(RelVar relvar) =
+    if pretty_name_has_conflicts(relvar, 0)
+      then get_method_name_fallback(relvar)
+      else pretty_name(relvar);
+
+  String lookup_method_name(RelVar relvar) =
+    if pretty_name_has_conflicts(relvar, 1)
+      then get_method_name_fallback(relvar)
+      else pretty_name(relvar);
+
+  String call_method_name(MethodId method_id) =
+    if pretty_name_has_conflicts(method_id.symbol, method_id.arity)
+      then call_method_name_fallback(method_id)
+      else pretty_name(method_id.symbol);
+
+  String get_method_name_fallback(MembVar var) = "Get_" & external_name(var);
+  String in_method_name_fallback(RelVar relvar) = "In_" & external_name(relvar);
+  String get_method_name_fallback(RelVar relvar) = "Get_" & external_name(relvar);
+  String lookup_method_name_fallback(RelVar relvar) = "Lookup_" & external_name(relvar);
+  String call_method_name_fallback(MethodId method_id) = "Call_" & external_name(method_id.symbol);
+
+
+  Bool pretty_name_has_conflicts(<MembVar, RelVar, MethodSymbol> member, Nat arity) {
+    pretty_name = pretty_name(member);
+    builtin_methods = builtin_methods;
+    return pretty_name == db_class_name or
+           builtin_methods(pretty_name, arity) or
+           duplicate_names(pretty_name, arity);
+
+    [String, Nat] builtin_methods = [
+      // Object class instance methods
+      "Equals",           1;
+      "Finalize",         0;
+      "GetHashCode",      0;
+      "GetType",          0;
+      "MemberwiseClone",  0;
+      "ToString",         0;
+
+      // Static Object class methods
+      "Equals",           2;
+      "ReferenceEquals",  2;
+
+      // Always present methods
+      "ReadState",        0;
+      "SetState",         1;
+      "Execute",          1
+    ];
+  }
+}
+
+
+implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : DBSymbol,
+         duplicate_names : [String, Nat], typedefs : [TypeName -> NeType] {
+
+  (String*, String*) state_var_accessor(MembVar var, NeType var_type) {
+    inter_type = output_interface_type(var_type);
+    meth_name = get_method_name(var);
+    var_name = native_var_decl_name(var);
+    ret_type = return_value_type(inter_type);
+
+    body = export_code(inter_type, full_path(var), "return ");
+
+    if pretty_name_has_conflicts(var, 0):
+      code = ("", "public " & ret_type & " " & meth_name & "() {") & indent_lines(body) & ("}");
+    else
+      code = (
+        "",
+        "public " & ret_type & " " & meth_name & " {",
+        "  get {"
+      ) & indent_lines(indent_lines(body)) & (
+        "  }",
+        "}"
+      );
+    ;
+
+    return (code, (ret_type & " " & meth_name & ";"));
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+
+  (String*, String*) unary_table_accessors(RelVar relvar, ValueStoreId value_store_id, NeType elem_type) {
+    input_type = input_interface_type(elem_type);
+    output_type = output_interface_type(elem_type);
+    in_method_name = in_method_name(relvar, 1);
+    get_method_name = get_method_name(relvar);
+    rel_name = native_var_decl_name(relvar);
+    relvar_path = full_path(relvar);
+    val_store_name = native_var_decl_name(value_store_id);
+    ret_elem_type = return_value_type(output_type);
+    arg_type = input_arg_type(input_type);
+
+    code = (
+      "",
+      "public bool " & in_method_name & "(" & arg_type & " value) {"
+    ) & indent_lines(import_code(input_type, "value", "Obj obj = ")) & (
+      "  int surr = " & relvar_path & ".store.LookupValue(obj);",
+      "  return surr != -1 && " & relvar_path & ".Contains((uint) surr);",
+      "}",
+      "",
+      "public " & ret_elem_type & "[] " & get_method_name & "() {",
+      "  uint size = " & relvar_path & ".Size();",
+      "  " & ret_elem_type & "[] copy = new " & array_new_expr(output_type, "size") & ";",
+      "  UnaryTable.Iter it = " & relvar_path & ".GetIter();",
+      "  int next = 0;",
+      "  while (!it.Done()) {"
+    ) & indent_lines(indent_lines(
+      export_code(output_type, relvar_path & ".store.LookupSurrogate(it.Get())", "copy[next++] = ")
+    )) & (
+      "    it.Next();",
+      "  }",
+      "  Miscellanea.Assert(next == size);",
+      "  return copy;",
+      "}"
+    );
+
+    docs = (
+      "",
+      "bool " & in_method_name & "(" & arg_type & ");",
+      ret_elem_type & "[] " & get_method_name & "();"
+    );
+
+    return (code, docs);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+
+  (T, T) flip_pair_if((T, T) pair, Bool cond) {
+    if cond:
+      a, b = pair;
+      return (b, a);
+    else
+      return pair;
+    ;
+  }
+
+
+  (String*, String*) binary_table_accessors(RelVar relvar, (ValueStoreId, ValueStoreId) value_store_ids,
+    (NeType, NeType) perm_types, Maybe[Nat] maybe_key_col, Bool flipped) {
+    types = flip_pair_if(perm_types, flipped);
+    input_types = (input_interface_type(t) : t <- types);
+    output_types = (output_interface_type(t) : t <- types);
+    in_method_name = in_method_name(relvar, 2);
+    get_method_name = get_method_name(relvar);
+    lookup_method_name = lookup_method_name(relvar);
+    rel_name = native_var_decl_name(relvar);
+    relvar_path = full_path(relvar);
+    ret_types = (return_value_type(t) : t <- output_types);
+    args_types = (input_arg_type(t) : t <- input_types);
+    args_decls = (t & " arg" & printed(i) : t @ i <- args_types);
+    args_import_code = join(
+      (import_code(it, "arg" & printed(i), "Obj argObj" & printed(i) & " = ") : it @ i <- input_types)
+    );
+    imported_args = flip_pair_if(("argObj0", "argObj1"), flipped);
+
+    code = (
+      "",
+      "public bool " & in_method_name & "(" & append(args_decls, ", ") & ") {"
+    ) & indent_lines(args_import_code) & (
+      "  return WrappingUtils.TableContains(" & relvar_path & ", " & append(imported_args, ", ") & ");",
+      "}"
+    );
+    docs = ("", "bool " & in_method_name & "(" & append(args_types, ", ") & ");");
+
+    if maybe_key_col != nothing:
+      key_col = value(maybe_key_col);
+      assert key_col == 0;
+      non_key_col = match (key_col) 0 = 1, 1 = 0;
+      key_col, non_key_col = (non_key_col, key_col) if flipped;
+      in_type = args_types(key_col);
+      out_type = ret_types(non_key_col);
+
+      code = code & (
+        "",
+        "public " & out_type & " " & lookup_method_name & "(" & in_type & " key) {"
+      ) & indent_lines(import_code(input_types(key_col), "key", "Obj keyObj = ")) & (
+        "  int surr1 = " & relvar_path & ".store1.LookupValue(keyObj);",
+        "  if (surr1 == -1)",
+        "    throw new KeyNotFoundException();",
+        "  BinaryTable.Iter it = " & relvar_path & ".GetIter1((uint) surr1);",
+        "  if (it.Done())",
+        "    throw new KeyNotFoundException();",
+        "  Miscellanea.Assert(it.GetField1() == surr1);",
+        "  uint surr2 = it.GetField2();",
+        "  it.Next();",
+        "  Miscellanea.Assert(it.Done());"
+      ) & indent_lines(export_code(
+        output_types(non_key_col),
+        relvar_path & ".store2.LookupSurrogate(surr2)",
+        "return "
+      )) & ("}");
+
+      docs = (docs | out_type & " " & lookup_method_name & "(" & in_type & ");");
+    ;
+
+    phys_idxs = flip_pair_if(("1", "2"), flipped);
+    types_str = append(ret_types, ", ");
+    sgn = "Tuple<" & types_str & ">[] " & get_method_name & "()";
+    body = (
+      "int size = " & relvar_path & ".Size();",
+      "Tuple<" & types_str & ">[] copy = new Tuple<" & types_str & ">[size];",
+      "BinaryTable.Iter it = " & relvar_path & ".GetIter();",
+      "int next = 0;",
+      "while (!it.Done()) {"
+    ) & indent_lines(export_code(
+      output_types(0),
+      relvar_path & ".store" & phys_idxs(0) & ".LookupSurrogate(it.GetField" & phys_idxs(0) & "())",
+      ret_types(0) & " field1 = "
+    )) & indent_lines(export_code(
+      output_types(1),
+      relvar_path & ".store" & phys_idxs(1) & ".LookupSurrogate(it.GetField" & phys_idxs(1) & "())",
+      ret_types(1) & " field2 = "
+    )) & (
+      "  copy[next++] = new Tuple<" & types_str & ">(field1, field2);",
+      "  it.Next();",
+      "}",
+      "Miscellanea.Assert(next == size);",
+      "return copy;"
+    );
+
+    code = (code | "", "public " & sgn & " {") & indent_lines(body) & ("}");
+    docs = (docs | sgn & ";");
+
+    return (code, docs);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+
+  (String*, String*) ternary_table_accessors(RelVar relvar,
+    (ValueStoreId, ValueStoreId, ValueStoreId) value_store_ids,
+    (NeType, NeType, NeType) perm_types, (Nat, Nat, Nat) applied_perm) {
+
+    rev_perm = reverse_perm(applied_perm);
+    types = (perm_types(i) : i <- rev_perm);
+    assert (types(i) : i <- applied_perm) == perm_types;
+
+    input_types = (input_interface_type(t) : t <- types);
+    output_types = (output_interface_type(t) : t <- types);
+
+    ret_types = (return_value_type(t) : t <- output_types);
+    ret_types_str = append(ret_types, ", ");
+
+    args_types = (input_arg_type(t) : t <- input_types);
+    args_import_code = join(
+      (import_code(it, "arg" & printed(i), "Obj argObj" & printed(i) & " = ") : it @ i <- input_types)
+    );
+
+    rel_name = native_var_decl_name(relvar);
+    in_method_name = in_method_name(relvar, 3);
+    get_method_name = get_method_name(relvar);
+    relvar_path = full_path(relvar);
+
+    args_decls = append((t & " arg" & printed(i) : t @ i <- args_types), ", ");
+    cols_perm_args = append((printed(i) : i <- rev_perm), ", ");
+
+    perm_idxs = (printed(i+1) : i <- rev_perm);
+
+    code = (
+      "",
+      "public bool " & in_method_name & "(" & args_decls & ") {"
+    ) & indent_lines(args_import_code) & (
+      "  int surr1 = " & relvar_path & ".store1.LookupValue(argObj" & printed(rev_perm(0)) & ");",
+      "  if (surr1 == -1)",
+      "    return false;",
+      "  int surr2 = " & relvar_path & ".store2.LookupValue(argObj" & printed(rev_perm(1)) & ");",
+      "  if (surr2 == -1)",
+      "    return false;",
+      "  int surr3 = " & relvar_path & ".store3.LookupValue(argObj" & printed(rev_perm(2)) & ");",
+      "  if (surr3 == -1)",
+      "    return false;",
+      "  return " & relvar_path & ".Contains((uint) surr1, (uint) surr2, (uint) surr3);",
+      "}",
+      "",
+      "public Tuple<" & ret_types_str & ">[] " & get_method_name & "() {",
+      "  int size = " & relvar_path & ".Size();",
+      "  Tuple<" & ret_types_str & ">[] copy = new Tuple<" & ret_types_str & ">[size];",
+      "  TernaryTable.Iter it = " & relvar_path & ".GetIter();",
+      "  int next = 0;",
+      "  while (!it.Done()) {"
+      ) & indent_lines(indent_lines(export_code(
+        output_types(0),
+        relvar_path & ".store" & perm_idxs(0) & ".LookupSurrogate(it.GetField" & perm_idxs(0) & "())",
+        ret_types(0) & " field1 = "
+      ))) & indent_lines(indent_lines(export_code(
+        output_types(1),
+        relvar_path & ".store" & perm_idxs(1) & ".LookupSurrogate(it.GetField" & perm_idxs(1) & "())",
+        ret_types(1) & " field2 = "
+      ))) & indent_lines(indent_lines(export_code(
+        output_types(2),
+        relvar_path & ".store" & perm_idxs(2) & ".LookupSurrogate(it.GetField" & perm_idxs(2) & "())",
+        ret_types(2) & " field3 = "
+      ))) & (
+      "    copy[next++] = new Tuple<" & ret_types_str & ">(field1, field2, field3);",
+      "    it.Next();",
+      " }",
+      "  Miscellanea.Assert(next == size);",
+      "  return copy;",
+      "}"
+    );
+
+    docs = (
+      "",
+      "bool " & in_method_name & "(" & append(args_types, ", ") & ");",
+      "Tuple<" & ret_types_str & ">[] " & get_method_name & "();"
+    );
+
+    return (code, docs);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+
+  (String*, String*) table_accessors(RelVar relvar, Table table) {
+    return match (table.value_stores, table.col_types, table.applied_perm)
+      (vs?),     (t?),      (_)       = unary_table_accessors(relvar, vs, t),
+      (_, _),    (_, _),    (_, _)    = binary_table_accessors(relvar, table.value_stores, table.col_types,
+                                          maybe_key_col(table), table.applied_perm != (0, 1)),
+      (_, _, _), (_, _, _), (_, _, _) = ternary_table_accessors(relvar, table.value_stores, table.col_types,
+                                          table.applied_perm);
+
+
+    Maybe[Nat] maybe_key_col(Table table) {
+      keys = table.keys;
+      if |keys| == 1:
+        key = only(keys);
+        return just(only(key)) if |key| == 1;
+      ;
+      return nothing;
+    }
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+
+  (String*, String*) db_method_wrapper(MethodId method_id, CompiledMethod method) {
+    if not method_id.id?:
+      ext_name = call_method_name(method_id);
+      return method_wrapper(method_id, method, block_name, ext_name, db_class_name, path_prefix);
+    else
+      return ((), ());
+    ;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+
+  (String*, String*) static_auto_accessors(StaticBlock block, [DBSymbol -> StaticBlock] blocks) {
+    state_var_accessors = isort([state_var_accessor(v, t) : v, t <- block.state_vars]);
+    state_var_accessors_code, state_var_accessors_docs = (join(ls) : ls <- unzip(state_var_accessors));
+    state_var_accessors_docs = ("") & state_var_accessors_docs if state_var_accessors_docs != ();
+
+    table_accessors = isort([table_accessors(v, t) : v, t <- block.tables]);
+    table_accessors_code, table_accessors_docs = (join(ls) : ls <- unzip(table_accessors));
+
+    methods_wrappers = isort([db_method_wrapper(id, m) : id, m <- block.methods]);
+    methods_wrappers_code, methods_wrappers_docs = (join(ls) : ls <- unzip(methods_wrappers));
+    methods_wrappers_docs = ("") & methods_wrappers_docs if methods_wrappers_docs != ();
+
+    nested_autos_accessors = isort([
+        static_auto_accessors(blocks[t], blocks, block_name = blocks[t].name, db_var_chain = (db_var_chain | v))
+      : v, t <- block.nested_blocks
+    ]);
+    nested_autos_code, nested_autos_docs = (join(ls) : ls <- unzip(nested_autos_accessors));
+
+    code = methods_wrappers_code & state_var_accessors_code & table_accessors_code & nested_autos_code;
+
+    docs_by_type = (state_var_accessors_docs, table_accessors_docs, methods_wrappers_docs);
+    docs = join((indent_lines(d) : d <- docs_by_type)) & nested_autos_docs;
+
+    return (code, docs);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+implicit block_name : DBSymbol, db_var_chain : NestedDBVar*, root_block_name : DBSymbol {
+  (String, Nat)* pretty_names(StaticBlock block, [DBSymbol -> StaticBlock] blocks) {
+    state_vars_names = ((pretty_name(v), 0) : v, unused_var <- isort(block.state_vars));
+    relvars_names = ((pretty_name(v), arity(t)) : v, t <- isort(block.tables));
+    methods_names = (
+      (pretty_name(id.symbol), id.arity) : id, unused_var <- isort(block.methods), not id.id?
+    );
+    nested_names = join((
+      pretty_names(blocks(b, !!), blocks, block_name = b, db_var_chain = (db_var_chain | v))
+      : v, b <- isort(block.nested_blocks))
+    );
+    return state_vars_names & relvars_names & methods_names & nested_names;
+  }
+}
+
+
+implicit typedefs : [TypeName -> NeType] {
+  (String*, String*) static_auto_wrapper(StaticBlock root_block, [DBSymbol -> StaticBlock] blocks) {
+    let block_name = root_block.name, db_var_chain = (), root_block_name = root_block.name:
+      dup_names = [id(0), id(1) : id <- duplicates(pretty_names(root_block, blocks))];
+      let duplicate_names = dup_names:
+        accessors_code, accessors_docs = static_auto_accessors(root_block, blocks);
+        class_name = db_class_name;
+      ;
+    ;
+
+    db_name = native_name(root_block.name);
+    updater_name = aux_struct_c_name(root_block.name);
+    has_any_updates = root_block.msg_memb_pred != nothing;
+
+    links_types = (upper_camel_case(bare_id(l)) : l <- root_block.links);
+
+    ctor_impl_args = (t & " l" & printed(i) : t @ i <- links_types);
+
+    class_impl = (
+      "public class " & class_name & " {",
+      "  Env env;",
+      "  " & db_name & " automaton;",
+      "  " & updater_name & " updater;",
+      "",
+      "  public " & class_name & "(" & append(ctor_impl_args, ", ") & ") {",
+      "    env = new Env();",
+      "    automaton = new " & db_name & "(env);",
+      "    updater = automaton.NewUpdater();",
+      "  }",
+      "",
+      "  public CellLang.Value ReadState() {",
+      "    Obj " & native_method_call("obj", "automaton", copy_state_proc_name(root_block.name), ()),
+      "    return Conversions.ExportAsValue(obj);",
+      "  }",
+      "",
+      "  public void SetState(string text) {",
+      "    Obj obj = Conversions.ConvertText(text);",
+      "    if (!" & native_fn_name(root_block.state_memb_pred) & "(obj))",
+      "      throw new Exception(\"Invalid state\");",
+      "    bool " & native_method_call("ok", "automaton", set_state_entry_point_name(root_block.name), ("obj", "updater")),
+      "    if (!ok)",
+      "      throw new Exception(\"Invalid state\");",
+      "  }"
+    );
+
+    if has_any_updates:
+      class_impl = class_impl & (
+        "",
+        "  public void Execute(string text) {",
+        "    Obj msg = Conversions.ConvertText(text);",
+        "    if (!" & native_fn_name(value_unsafe(root_block.msg_memb_pred)) & "(msg))",
+        "      throw new Exception(\"Invalid message\");",
+        "    bool " & native_method_call("ok", "automaton", update_entry_point_name(root_block.name), ("msg", "updater", "env")),
+        "    if (!ok) {",
+        "      env = new Env();",
+        "      throw new Exception(\"Update failed\");",
+        "    }",
+        "  }"
+      );
+    ;
+
+    class_impl = class_impl & indent_lines(accessors_code) & ("}") ;
+
+    class_docs = (
+      "class CellLang.Generated." & class_name & " {",
+      "  " & class_name & "(" & append(ctor_impl_args, ", ") & ");",
+      "",
+      "  Value ReadState();",
+      "  void SetState(string);",
+      "  void Execute(string);" if has_any_updates
+    );
+    class_docs = class_docs & accessors_docs if accessors_docs != ();
+    class_docs = (class_docs | "}");
+
+    return (class_impl, class_docs);
+  }
+}

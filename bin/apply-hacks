@@ -1,0 +1,24 @@
+sed 's/static Obj attach_F2(/static Obj attach_F2(Obj obj, Obj data, Env env) {\
+      Hacks.Attach(obj, data);\
+      return obj;\
+    }\
+\
+\
+    static Obj attach_F2_(/' | \
+sed 's/static Obj fetch_F1(/static Obj fetch_F1(Obj obj, Env env) {\
+      return Hacks.Fetch(obj);\
+    }\
+\
+\
+    static Obj fetch_F1_(/' | \
+sed 's/static Obj source_file_location_F1(/static Obj source_file_location_F1(Obj ast, Env env) {\
+      Obj cachedVal = Hacks.GetSourceFileLocation(ast);\
+      if (cachedVal == null) {\
+        cachedVal = source_file_location_F1_(ast, env);\
+        Hacks.SetSourceFileLocation(ast, cachedVal);\
+      }\
+      return cachedVal;\
+    }\
+\
+\
+    static Obj source_file_location_F1_(/'

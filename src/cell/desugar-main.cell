@@ -1,0 +1,59 @@
+type EnvVar       = StdVar, FnArg, ImplArg, SignalVar;
+type Context      = Function, Procedure, Automaton, Database;
+
+
+implicit typedefs : [TypeName -> NeType] {
+  Bool are_ptype_disjoint(Type t1, Type t2) =
+    t1 == empty_type or t2 == empty_type or
+    are_disjoint(pseudotype(t1, typedefs), pseudotype(t2, typedefs));
+}
+
+
+Main(String* args) {
+  if args == []:
+    Print("Usage: codegen-dbg <input file>\n");
+    return;
+  ;
+
+  res = ReadValueFromFile(args(0));
+  return if res == nothing;
+  syn_prg = value(res);
+
+  if not syn_prg :: SynPrg:
+    Print("Invalid input!\n");
+    print match (syn_prg)
+      t?(v?) = _print_(t) & "(..)",
+      _      = "???";
+    return;
+  ;
+
+  t0 = _ticks_(:any_value_will_do);
+
+  prg = desugared_prg(syn_prg=syn_prg);
+
+  t1 = _ticks_(:any_value_will_do);
+  Print("Syntax removal: " & printed(t1-t0) & "ms\n");
+
+  text = _print_(prg) & "\n";
+  ok = FileWrite("core-ast.txt", chars(text));
+  fail if not ok;
+}
+
+
+Maybe[Any] ReadValueFromFile(String fname) {
+  read_res = FileRead(fname);
+  if read_res == nothing:
+    Print("Cannot read file " & fname & "\n");
+    return nothing;
+  ;
+
+  parse_res = _parse_(string(value(read_res)));
+  if failed(parse_res):
+    Print("File " & fname & " does not contain a valid Cell value\n");
+    print string(value(read_res));
+    print parse_res;
+    return nothing;
+  ;
+
+  return just(result(parse_res));
+}

@@ -1,0 +1,665 @@
+(String*, String*) native_code(CompiledPrg prg, Bool include_runtime, Bool debug_mode) {
+  symbs = used_symbols(prg);
+  assert |symbs| <= 64 * 1024; ## IMPLEMENT PROPERLY
+
+  c_code = ("const ushort " & symb_idx_name(s) & " = " & printed(i) & ";" : s @ i <- symbs) & 4 * ("");
+
+  symb_strs  = ("  \"" & _str_(bare_obj(s)) & "\"," : s <- symbs);
+  c_code     = c_code & ("public static string[] EmbeddedSymbols = {") & symb_strs & ("};") & 4 * ("");
+
+  cls_defs = cls_defs(prg);
+
+  env_decl = gen_env_decl(prg) & 4 * ("");
+
+  c_code = c_code & env_decl;
+
+  all_cls_arities = [p.arity : pd <- prg.procs, p <~ pd.args, p != :obj]; ## MAYBE HERE IT WOULD BE BETTER TO DO A NORMAL SORT
+
+  cls_obj_typedef = generate_cls_obj_typedef(all_cls_arities);
+  c_code = c_code & cls_obj_typedef & 4 * ("") if cls_obj_typedef != ();
+
+  int_seqs_decls, int_seqs_defs = gen_int_seqs_decl_and_def(prg.int_seqs);
+
+  c_code = c_code & int_seqs_decls & 4 * ("");
+
+  sorted_cls_defs = isort(cls_defs);
+
+  int_seqs_types_and_lengths = ((native_int_type(min(s), max(s)), |s|) : s <- prg.int_seqs);
+
+  // Sorting static blocks in topological order
+  static_blocks_dep_map = [b.name -> values(b.nested_blocks) & set(b.links) : b <- prg.static_blocks];
+  ord_static_block_names = join((isort(bs) : bs <- topological_sort(static_blocks_dep_map)));
+  static_blocks_by_name = [b.name -> b : b <- prg.static_blocks];
+  ord_static_blocks = (static_blocks_by_name(b, !!) : b <- ord_static_block_names);
+
+  // Sorting reactive blocks in topological order
+  react_blocks_dep_map = [b.name -> [t : unused_var, t <- b.nested_auto_vars] : b <- prg.react_blocks];
+  ord_react_blocks_names = join((isort(bs) : bs <- topological_sort(react_blocks_dep_map)));
+  react_blocks_by_name = [b.name -> b : b <- prg.react_blocks];
+  ord_react_blocks = (react_blocks_by_name(b, !!) : b <- ord_react_blocks_names);
+
+  proc_code = native_code(
+    isort(prg.procs),
+    isort(prg.bool_procs),
+    sorted_cls_defs,
+    ord_react_blocks,
+    ord_static_blocks,
+    prg.int_seqs,
+    debug_mode                      = debug_mode,
+    sorted_cls_defs                 = sorted_cls_defs,
+    int_seqs_types_and_lengths      = int_seqs_types_and_lengths,
+    cached_semi_consts_by_impl_arg  = cached_semi_consts_by_impl_arg(prg)
+  );
+
+  let typedefs = prg.typedefs:
+    auto_wrappers, auto_wrappers_docs = unzip(isort([react_auto_wrapper(block=b) : b <- prg.react_blocks]));
+    static_blocks = [b.name -> b : b <- prg.static_blocks];
+    db_wrappers, db_wrappers_docs = unzip((static_auto_wrapper(b, static_blocks) : b <- ord_static_blocks));
+  ;
+  wrappers_docs = join(intermix(auto_wrappers_docs & db_wrappers_docs, ("", "")));
+  wrappers = join(intermix(auto_wrappers & db_wrappers, ("", "")));
+
+  has_automata = prg.react_blocks != [] or prg.static_blocks != [];
+
+  gen_code = join((
+    ( "using System;",
+      "using System.Collections.Generic;",
+      "using System.Text;",
+      "using System.Diagnostics;",
+      "using System.IO;",
+      "",
+      "#pragma warning disable CS0162 CS0168 CS0414",
+      "",
+      ""
+    ),
+
+    ( "namespace CellLang {",
+      "  static class Generated {"
+    ),
+
+    indent_lines(indent_lines(c_code & proc_code & int_seqs_defs & ("", "") & wrappers)),
+
+    indent_lines(indent_lines(c_main_fn)) if (p <- prg.procs : p.name == proc_symbol(:main)),
+
+    ("  }", "}", ""),
+
+    // Runtime support for the functional subset of the language
+    core_runtime if include_runtime,
+    ("") if include_runtime,
+
+    // Runtime support for mutable relation variables
+    table_runtime if include_runtime and has_automata,
+    ("") if include_runtime and has_automata,
+
+    // Runtime support for wrapping code
+    interface_runtime if include_runtime and has_automata,
+    ("") if include_runtime and has_automata
+  ));
+
+  return (gen_code, wrappers_docs);
+
+
+  String* generate_cls_obj_typedef([NzNat] arities) {
+    return () if arities == [];
+    methods = ((
+      "  public virtual Obj Invoke(" & append(("Obj a" & printed(i) : i < a), ", ") & ", Env env) {",
+      "    throw new InvalidOperationException();",
+      "  }"
+      ) : a <- isort(arities)
+    );
+    return ("class Lambda {") & join(intermix(methods, (""))) & ("}");
+  }
+}
+
+
+String* gen_env_decl(CompiledPrg prg) {
+  all_impl_args = union([p.impl_args : p <- prg.procs]);
+
+  env_decl = ("class Env {") & ("  public Obj " & native_var_decl_name(impl_arg(bare_id(a))) & ";" : a <- isort(all_impl_args));
+
+  semi_consts_cache_vars = isort([p.name : p <- prg.procs, p.cached and p.impl_args != []]);
+  semi_consts_cache_vars_decls = ("  public Obj " & memo_var_name(v) & ";" : v <- semi_consts_cache_vars);
+  env_decl = (env_decl | "") & semi_consts_cache_vars_decls if semi_consts_cache_vars_decls != ();
+
+  env_decl = env_decl & ("};");
+
+
+  return env_decl;
+}
+
+
+String native_int_type(Int min_val, Int max_val) {
+  for lb, up, type_name <- type_bounds:
+    return type_name if min_val >= lb and max_val < up;
+  ;
+  return "long";
+}
+
+
+(Int, Int, String)+ type_bounds = (
+  (0,             pow(2, 8),    "byte"),
+  (0,             pow(2, 16),   "ushort"),
+  (0,             pow(2, 32),   "uint"),
+  (-pow(2, 7),    pow(2, 7),    "sbyte"),
+  (-pow(2, 15),   pow(2, 15),   "short"),
+  (-pow(2, 31),   pow(2, 31),   "int")
+);
+
+
+Int pow(Int b, Nat e) {
+  res = 1;
+  for e:
+    res = b * res;
+  ;
+  return res;
+}
+
+
+(String*, String*) gen_int_seqs_decl_and_def(Int+* int_seqs) {
+  decls, defs = unzip((gen_int_seq_decl_and_def(s, i) : s @ i <- int_seqs));
+  return (decls, join(intermix(defs, 2 * (""))));
+}
+
+
+(String, String*) gen_int_seq_decl_and_def(Int+ int_seq, Nat seq_id) {
+  min_elem = min(int_seq);
+  max_elem = max(int_seq);
+
+  type_name = native_int_type(min_elem, max_elem);
+
+  sgn = "static " & type_name & "[] " & const_int_seq_c_name(seq_id);
+
+  // decl = "extern " & sgn & ";";
+
+  strs = (printed(n) : n <- int_seq);
+  total_len = sum((length(s) : s <- strs)) + 2 * |strs|;
+  if total_len < 60:
+    def = (sgn & " = {" & append(strs, ", ") & "};");
+  else
+    max_len = nat(max((length(printed(n)) : n <- (min_elem, max_elem))));
+    last_idx = |int_seq| - 1;
+    strs = (align_text(s, max_len, ascii_space) & if i != last_idx then ", " else "" : s @ i <- strs);
+    cont_lines = ("  " & append(ss) : ss <- split_into_groups(strs, nz_nat(100 / #(max_len + 2))));
+    def = (sgn & " = {") & cont_lines & ("};");
+  ;
+
+  return ("", def); ## NO NEED FOR A HEADER HERE
+
+
+  T+* split_into_groups(T+ items, NzNat max_group_size) {
+    len = |items|;
+    num_of_comp_groups = len / max_group_size;
+    comp_groups_total_size = num_of_comp_groups * max_group_size;
+    last_group_size = len - comp_groups_total_size;
+    groups = (nonempty(subseq(items, i * max_group_size, max_group_size)) : i < num_of_comp_groups);
+    groups = (groups | nonempty(subseq(items, comp_groups_total_size, last_group_size))) if last_group_size > 0;
+    return groups;
+  }
+
+
+  String align_text(String str, Nat len, Nat filler) {
+    str_len = length(str);
+    filling = if len >= str_len then string(nat(len-str_len) * (filler)) else "";
+    return filling & str;
+  }
+}
+
+
+## THIS SHOULD NOT GO HERE
+type FnCallParam  = blank_obj, ObjExpr, ElemVar, PendingInputVar, VecVar, BoolExpr, IntExpr,
+                    ItVar, StreamVar, AnyClsVar, AnyRelVar, AnyValueStoreId, AnyAutoVar, AnyDBVar;
+
+
+implicit sorted_cls_defs : ClsDef* {
+  Nat cls2id(ClsDef cls) = index_first(cls, sorted_cls_defs);
+}
+
+
+implicit {
+  debug_mode                      : Bool,
+  sorted_cls_defs                 : ClsDef*,
+  int_seqs_types_and_lengths      : (String, Nat)*,
+  cached_semi_consts_by_impl_arg  : [ImplArg -> [+FnId]];
+
+
+  String* native_code(ObjProcDef* obj_proc_defs, BoolProcDef* bool_proc_defs, ClsDef* cls_defs, ReactBlock* react_blocks, StaticBlock* static_blocks, Int+* int_seqs) {
+    type_checking_fns = join((native_code(d) & ("", "") : d <- bool_proc_defs)) & 4 * ("");
+    closures = join((gen_lambda(d, i) & ("", "") : d @ i <- cls_defs)) & 4 * ("");
+    functions = join((native_code(d) & ("", "") : d <- obj_proc_defs));
+
+    static_blocks_code = join((("", "") & native_static_block_decl(b) : b <- static_blocks));
+    react_blocks_code = join((("", "") & native_react_block_decl(b) : b <- react_blocks));
+
+    return join((
+      type_checking_fns,
+      closures,
+      functions,
+      static_blocks_code,
+      react_blocks_code
+    ));
+  }
+
+
+  // String gen_c_decl(ObjProcDef pd) {
+  //   args_types = (if p == :obj then "Obj" else "const CLS &" : p <- pd.args);
+  //   args_list = append(args_types & ("ENV &"), ", ");
+  //   return "Obj " & native_fn_name(pd.name) & "(" & args_list & ");";
+  // }
+
+
+  // String gen_c_decl(BoolProcDef pd) {
+  //   par_list = append(pd.arity * ("Obj"), ", ");
+  //   return "bool " & native_fn_name(pd.name) & "(" & par_list & ");";
+  // }
+
+
+  // String gen_c_decl(ClsDef cd, Nat id) {
+  //   par_list = append(cd.arity * ("Obj") & ("const Obj *", "const CLS *", "ENV &"), ", ");
+  //   return "Obj lambda_" & printed(id) & "(" & par_list & ");";
+  // }
+
+
+  String* native_code(ProcDef pd) {
+    cached = pd.cached? and pd.cached;
+
+    fn_name = native_fn_name(pd.name);
+
+    suffix = if cached then "_calculate" else "";
+
+    par_list = gen_fn_pars(pd);
+    par_list_str = append(par_list, ", ");
+
+    signature = "static " & ret_type_str(pd) & fn_name & suffix & "(" & par_list_str & ")";
+
+    body = pd.body;
+    auto_vars_types = if pd.loc_auto_vars? then pd.loc_auto_vars else [];
+    db_vars_types = if pd.loc_db_vars? then pd.loc_db_vars else [];
+
+    var_decls = gen_vars_decls(body);
+
+    auto_vars = isort(keys(auto_vars_types));
+    auto_var_decls = (native_name(auto_vars_types[v]) & " " & native_var_decl_name(v) & ";" : v <- auto_vars);
+
+    db_vars_decls = (native_name(t) & " " & native_var_decl_name(v) & ";" : v, t <- isort(db_vars_types));
+    aux_db_vars_decls = (aux_struct_c_name(t) & " " & aux_struct_var_decl_name(v) & ";" : v, t <- isort(db_vars_types));
+
+    comp_body = native_code(body, nothing);
+
+    has_var_decls = var_decls != () or auto_var_decls != () or db_vars_decls != ();
+    code = (signature & " {") & indent_lines(var_decls) & indent_lines(auto_var_decls) &
+           indent_lines(db_vars_decls) & indent_lines(aux_db_vars_decls) &
+           ("" if has_var_decls) & indent_lines(comp_body) & ("}");
+
+    if cached:
+      is_real_const = pd.cached? and pd.impl_args == [];
+      cache_var_name = if is_real_const then fn_name & "__Cached" else "env." & memo_var_name(pd.name);
+
+      wrapper_code = (
+        "",
+        "",
+        "static Obj " & cache_var_name & ";" if is_real_const,
+        "" if is_real_const,
+        "static " & ret_type_str(pd) & fn_name & "(" & par_list_str & ") {",
+        "  if (" & cache_var_name & " == null)",
+        "    " & cache_var_name & " = " & fn_name & suffix & "(env);",
+        "  return " & cache_var_name & ";",
+        "}"
+      );
+      code = code & wrapper_code;
+    ;
+
+    return code;
+
+
+    Nat arity(ProcDef pd) =
+      obj_proc_def()    = in_arity(pd),
+      bool_proc_def()   = pd.arity;
+
+    String ret_type_str(ProcDef) =
+      obj_proc_def()    = "Obj ",
+      bool_proc_def()   = "bool ";
+
+    String gen_fn_arg(ObjProcPar par, Nat pos) =
+      obj   = "Obj " & native_var_decl_name(fn_arg(pos)),
+      cls() = "Lambda " & native_var_decl_name(if par.name? then par.name else cls_var(pos));
+
+    String* gen_fn_pars(ProcDef pd) =
+      obj_proc_def()  = (gen_fn_arg(p, i) : p @ i <- pd.args) & ("Env env"),
+      bool_proc_def() = ("Obj " & native_var_decl_name(fn_arg(n)) : n < arity(pd));
+  }
+
+
+  String* gen_vars_decls(Instr* body) {
+    vars_to_decl = [v : v <- vars_to_declare(body), not v :: AuxVar];
+
+    vector_vars = [v : v <- vars_to_decl, v :: VecVar];
+    scalar_vars = vars_to_decl - vector_vars;
+
+    vec_vars_by_id = group_by(vector_vars, $.id);
+    new_vec_vars = [vvar(id, nz_nat(max([v.size : v <- vs]))) : id, vs <- vec_vars_by_id];
+
+    assert {
+      vec_var_ids  = [v.id : v <- vector_vars];
+      ref_new_vec_vars = [vvar(id, nz_nat(max(nonempty([v.size : v <- vector_vars, v.id == id])))) : id <- vec_var_ids];
+      return new_vec_vars == ref_new_vec_vars;
+    };
+
+    vars_to_decl = scalar_vars & new_vec_vars;
+    return (var_decl(v) : v <- isort(vars_to_decl));
+  }
+
+
+  // String* native_code(ClsDef cd, Nat id) {
+  String* gen_lambda(ClsDef cd, Nat id) {
+    vars_decls = gen_vars_decls(cd.body);
+    comp_body = native_code(cd.body, nothing);
+    full_body = vars_decls & ("" if vars_decls != ()) & comp_body;
+
+    id_str = printed(id);
+
+    return (
+      "class Lambda" & id_str & " : Lambda {",
+      "  Obj[] captured_vars;",
+      "  Lambda[] captured_cls;",
+      "",
+      "  public Lambda" & id_str & "(Obj[] captured_vars, Lambda[] captured_cls) {",
+      "    this.captured_vars = captured_vars;",
+      "    this.captured_cls = captured_cls;",
+      "  }",
+      "",
+      "  override public Obj Invoke(" & append(("Obj a" & printed(i) & ", " : i < cd.arity)) & "Env env) {"
+    ) & indent_lines(indent_lines(full_body)) &
+    ( "  }",
+      "}"
+    );
+  }
+
+  ## DUPLICATED CODE
+  // String* native_code(ClsDef cd, Nat id) {
+  //   par_list  = ("Obj " & native_var_decl_name(fn_arg(n)) : n < cd.arity) & ("const Obj *captured", "const CLS *captured_cls", "ENV &env"); ## BAD
+  //   signature = "Obj lambda_" & printed(id) & "(" & append(par_list, ", ") & ")";
+
+  //   vars_decls = gen_vars_decls(cd.body);
+  //   comp_body = native_code(cd.body, nothing);
+
+  //   return (signature & " {") & indent_lines(vars_decls) & ("") & indent_lines(comp_body) & ("}");
+  // }
+
+
+  String* native_code(Instr* instrs, Maybe[Nat] block_id) = join((native_code(instr, block_id) : instr <- instrs));
+
+
+  String block_end_label(Int id) = "Block" & printed(id) & "End";
+
+  String* native_code(Instr instr, Maybe[Nat] block_id) =
+    init_stream(v?)       = (native_new_call(v, "List<Obj>", ())),
+    append()              = (native_method_call(instr.stream, "Add", (instr.obj))),
+    set_at()              = (native_method_call(instr.var, "InitAt", (instr.idx, instr.value))),
+    get_seq_iter()        |
+    get_set_iter()        = (native_method_call(instr.var, instr.src, "GetSeqOrSetIter", ())),
+    get_bin_rel_iter()    = (native_get_bin_rel_iter_code(instr.var, instr.src, instr.args)),
+    get_tern_rel_iter()   = (native_get_tern_rel_iter_code(instr.var, instr.src, instr.args)),
+    move_forward(v?)      = (native_method_call(v, "Next", ())),
+    set_var()             = native_set_var_code(instr.var, instr.value),
+    set_bvar()            |
+    set_ivar()            = (native_assignment_code(instr.var, instr.value)),
+    set_rc_var()          = (native_code(instr.value, instr.var)),
+    init_memb_var()       = (native_var_ref_name(instr.var) & " = " & native_const(instr.new_state) & ";"),
+    reset_memb_var()      = (native_var_ref_name(instr.var) & " = " & native_const(instr.new_state) & ";"),
+    clear_loc_var(v?)     = (native_var_ref_name(v) & " = NullObj.Singleton();"),
+    terminate             = ("Miscellanea.SoftFail();", "throw new Exception();"),
+    add_ref(v?)           = undefined,
+    release(v?)           = undefined,
+    print_obj()           = (native_method_call(instr.obj, "Print", ())),
+    ret_val(e?)           = ("return " & native_expr(e) & ";"),
+    no_op                 = (),
+    repeat(body?)         = native_repeat_code(body, block_id),
+    break_loop            = ("break;"),
+    execute_block(body?)  = { new_block_id = _counter_(:any_value_will_do);
+                              body_code = native_code(body, just(new_block_id));
+                              return body_code & (block_end_label(new_block_id) & ":;");
+                            },
+    exit_block            = ("goto " & block_end_label(value_unsafe(block_id)) & ";"),
+    switch_on_nat()       = native_nat_switch_code(instr.value, instr.cases, block_id),
+    symb_switch()         = native_symb_switch_code(instr.value, instr.cases, instr.else, block_id),
+    call_proc()           = native_call_proc_code(if instr.var? then just(instr.var) else nothing, instr.name, instr.args, block_id),
+    call_cls()            = (native_cls_call_code(instr.cls_var, instr.var, instr.args)),
+    push_call_info()      = (native_push_call_info_code(instr.fn_name, instr.params) if debug_mode),
+    pop_call_info         = (native_static_call("Miscellanea.PopCallInfo", ()) if debug_mode),
+    runtime_check()       = native_runtime_check_code(instr.cond, instr.file, instr.line, instr.text, instr.vars),
+    branch()              = native_branch_code(instr.cond, instr.when_true, instr.when_false, block_id),
+    _                     = auto_instr_native_code(instr, block_id);
+
+
+  String native_cls_call_code(AnyClsVar cls_var, WriteObjVar var, AtomicExpr+ args) =
+    ## NO NEED FOR NOW TO HANDLE THE CASE cls_var(Nat), AS THOSE VARIABLES ARE NEVER "CALLED", ONLY PASSED ON
+    cls_var(<+> symb?) | capt_cls_var(symb?) = native_method_call(var, cls_var, "Invoke", (args | "env"));
+
+
+  String native_push_call_info_code(ObjFnName fn_name, Maybe[FnArg]* args) {
+    fn_name_str = printed(user_repr(fn_name));
+    args_strs = (if a != nothing then native_var_ref_name(value(a)) else "NullObj.Singleton()" : a <- args);
+    argv_str = if args != () then "new Obj[] {" & append(args_strs, ", ") & "}" else "null";
+    return native_static_call("Miscellanea.PushCallInfo", (fn_name_str, argv_str));
+  }
+
+
+  String native_get_bin_rel_iter_code(BinRelItVar var, AtomicExpr src, (Maybe[AtomicExpr], Maybe[AtomicExpr]) args) =
+    match (args)
+      (nothing,   nothing)    = native_method_call(var, src, "GetBinRelIter", ()),
+      (just(a0?), nothing)    = native_method_call(var, src, "GetBinRelIterByCol1", (a0)),
+      (nothing,   just(a1?))  = native_method_call(var, src, "GetBinRelIterByCol2", (a1));
+
+
+  String native_get_tern_rel_iter_code(TernRelItVar var, AtomicExpr src, (Maybe[AtomicExpr], Maybe[AtomicExpr], Maybe[AtomicExpr]) args) =
+    match (args)
+      (nothing,   nothing,   nothing)     = native_method_call(var, src, "GetTernRelIter", ()),
+      (just(a0?), nothing,   nothing)     = native_method_call(var, src, "GetTernRelIterByCol1",  (a0)),
+      (nothing,   just(a1?), nothing)     = native_method_call(var, src, "GetTernRelIterByCol2",  (a1)),
+      (nothing,   nothing,   just(a2?))   = native_method_call(var, src, "GetTernRelIterByCol3",  (a2)),
+      (just(a0?), just(a1?), nothing)     = native_method_call(var, src, "GetTernRelIterByCol12", (a0, a1)),
+      (just(a0?), nothing,   just(a2?))   = native_method_call(var, src, "GetTernRelIterByCol13", (a0, a2)),
+      (nothing,   just(a1?), just(a2?))   = native_method_call(var, src, "GetTernRelIterByCol23", (a1, a2));
+
+
+  String* native_repeat_code(Instr+ body, Maybe[Nat] block_id) {
+    head = body(0);
+    if head :: <branch(cond: BoolExpr, when_true: (<break_loop>), when_false: ())>:
+      cond_str = native_expr(neg(head.cond));
+      body_text = indent_lines(native_code(tail(body), block_id)) & ("}");
+      return ("while (" & cond_str & ") {") & body_text;
+    else
+      body_text = indent_lines(native_code(body, block_id)) & ("}");
+      return ("for ( ; ; ) {") & body_text;
+    ;
+  }
+
+
+  String* gen_cache_clearing_code(ImplArg arg) {
+    code = ();
+    for fn_id <- isort(lookup(cached_semi_consts_by_impl_arg, arg, [])):
+      cache_var_name = memo_var_name(fn_id);
+      code = (code | "env." & cache_var_name & " = null;");
+    ;
+    return code;
+  }
+
+
+  String* native_set_var_code(WriteObjVar var, ObjExpr value) = (native_assignment_code(var, value));
+
+  String* native_set_var_code(ImplArg var, ObjExpr value) =
+    (native_assignment_code(var, value)) & gen_cache_clearing_code(var);
+
+
+  ## BUG BUG BUG: IF THERE IS INSIDE ONE OF THE CASES A BREAK STATEMENT MEANT TO
+  ## TERMINATE AN OUTER LOOP, THAT BREAK WILL TERMINATE THE SWITCH/CASE INSTEAD.
+  String* native_nat_switch_code(IntExpr value, Instr*+ cases, Maybe[Nat] block_id) {
+    cases_code = (
+      ("case " & printed(i) & ":") & indent_lines((native_code(c, block_id) | "break;", ""))
+      : c @ i <- cases
+    );
+    return ("switch (" & native_expr(value) & ") {") & indent_lines(join(cases_code)) & ("}");
+  }
+
+
+  ## BUG BUG BUG: IF THERE IS INSIDE ONE OF THE CASES A BREAK STATEMENT MEANT TO
+  ## TERMIMATE AN OUTER LOOP, THAT BREAK WILL TERMINATE THE SWITCH/CASE INSTEAD.
+  String* native_symb_switch_code(ObjExpr value, [+([+SymbObj], Instr+)] cases, Instr* else, Maybe[Nat] block_id) {
+    value_str = match (value)
+      get_tag(tag_obj?)   = native_expr(tag_obj) & ".GetTagId()",
+      _                   = native_expr(value) & ".GetSymbId()";
+
+    body_code = (
+      ("" if i > 0) &
+      ("case " & symb_idx_name(a) & ":" : a <- isort(as)) &
+      indent_lines((native_code(is, block_id) | "break;"))
+      : as, is @ i <- isort(cases)
+    );
+    body_code = (body_code | ("", "default:") & indent_lines(native_code(else, block_id))) if else != ();
+
+    return ("switch (" & value_str & ") {") & indent_lines(join(body_code)) & ("}");
+  }
+
+
+  String native_code(RefObjExpr expr, WriteObjVar var) =
+    mk_set_from_stream()        = native_static_call(var, "Builder.CreateSet",        (expr.stream)),
+    mk_set()                    = native_static_call(var, "Builder.CreateSet",        (expr.elems, expr.size)),
+    mk_seq_from_stream()        = native_static_call(var, "Builder.CreateSeq",        (expr.stream)),
+    mk_seq()                    = native_static_call(var, "Builder.CreateSeq",        (expr.elems, expr.size)),
+    build_const_int_seq()       = native_build_const_int_seq_code(expr.seq_id, var),
+    mk_map_from_streams()       = native_static_call(var, "Builder.CreateMap",        (expr.key_stream, expr.value_stream)),
+    mk_map()                    = native_static_call(var, "Builder.CreateMap",        (expr.keys, expr.values, expr.size)),
+    mk_bin_rel_from_streams()   = native_static_call(var, "Builder.CreateBinRel",     expr.streams),
+    mk_bin_rel()                = native_static_call(var, "Builder.CreateBinRel",     (expr.cols | expr.size)),
+    mk_tern_rel_from_streams()  = native_static_call(var, "Builder.CreateTernRel",    expr.streams),
+    mk_tern_rel()               = native_static_call(var, "Builder.CreateTernRel",    (expr.cols | expr.size)),
+    mk_tagged_obj()             = native_new_call(var, "TaggedObj",                   (expr.tag, expr.obj)),
+    mk_array()                  = native_new_call(var, "MasterSeqObj",                (expr.size)),
+    get_seq_slice()             = native_method_call(var, expr.seq,  "GetSlice",      (expr.idx_first, expr.len)),
+    append_to_seq()             = native_method_call(var, expr.seq,  "Append",        (expr.new_elem)),
+    update_seq_at()             = native_method_call(var, expr.seq,  "UpdatedAt",     (get_int_val(expr.idx), expr.value)),
+    join_seqs()                 = native_method_call(var, expr.left, "Concat",        (expr.right)),
+    // join_mult_seqs()            = native_method_call(var, expr.seqs, "ConcatMany",    ()),
+    rev_seq()                   = native_method_call(var, expr.seq,  "Reverse",       ()),
+    internal_sort()             = native_method_call(var, expr.set,  "InternalSort",  ()),
+    symb_to_str(e?)             = native_method_call(var, e,         "Printed",       ()),
+    parse_value()               = native_static_call(var, "Parser.Parse",             (expr.value)),
+    print_value()               = native_method_call(var, expr.value,"Printed",       ()),
+    _                           = auto_expr_native_code(expr, var);
+
+
+  String native_build_const_int_seq_code(Nat seq_id, ObjVar var) {
+    type, len = int_seqs_types_and_lengths(seq_id);
+    seq_name = const_int_seq_c_name(seq_id);
+    return native_var_ref_name(var) & " = Builder.BuildConstIntSeq(" & seq_name & ");";
+  }
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+  String* native_call_proc_code(Maybe[ObjVar] var, ObjFnName name, <ObjExpr, BoundCls>* params, Maybe[Nat] block_id) {
+    pars_info = (gen_par_info(p) : p <- params);
+    code_frags, args = unzip(pars_info);
+    call_code = if var != nothing
+      then native_static_call(value(var), native_fn_name(name), (args | "env"))
+      else native_static_call(native_fn_name(name), (args | "env"));
+    return (join(code_frags) | call_code);
+
+    (String*, FnCallParam) gen_par_info(ObjExpr p) = ((), p);
+
+    (String*, FnCallParam) gen_par_info(BoundCls p) =
+      cls_var()       |
+      capt_cls_var()  = ((), p),
+      bound_cls()     = {
+        par_id = _counter_(:any_value_will_do);
+        par_var = cls_var(par_id);
+        par_name = native_expr(par_var);
+
+        capt_var_array = if p.capt_vars != ()
+          then "new Obj[] {" & append((native_expr(v) : v <- p.capt_vars), ", ") & "}"
+          else "null";
+
+        capt_cls_var_array = if p.capt_cls_vars != ()
+          then "new Lambda[] {" & append((native_expr(v) : v <- p.capt_cls_vars), ", ") & "}"
+          else "null";
+
+        instr = "Lambda " & par_name & " = new Lambda" & printed(cls2id(p.cls)) &
+                "(" & capt_var_array & ", " & capt_cls_var_array & ");";
+
+        return ((instr), par_var);
+      };
+  }
+
+
+  String* native_branch_code(BoolExpr cond, Instr* when_true, Instr* when_false, Maybe[Nat] block_id) {
+    assert when_true != ();
+    code = ("if (" & native_expr(cond) & ") {") &
+           indent_lines(native_code(when_true, block_id)) &
+           ("}");
+    if when_false != ():
+      code = code & ("else {") & indent_lines(native_code(when_false, block_id)) & ("}");
+    ;
+    return code;
+  }
+
+
+  String* native_runtime_check_code(AtomicExpr cond, String file, NzNat line, Maybe[String] text, <StdVar, ImplArg>* vars) {
+    text_arg = if text != nothing then _print_(value(text)) else "null";
+    header = (
+      "if (" & native_expr(cond) & ".IsSymb(" & symb_idx_name(false) & ")) {",
+      "  Miscellanea.PrintAssertionFailedMsg(" & _print_(file) & ", " & printed(line) & ", " & text_arg & ");"
+    );
+
+    vars_content = ("  Miscellanea.DumpVar(" & printed(_str_(bare_id(v))) & ", " & native_var_ref_name(v) & ");" : v <- vars);
+    footer = (
+      "  return Miscellanea.HardFail();",
+      "}"
+    );
+    return header & vars_content & footer;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+String native_code(FnCallParam arg) = native_expr(arg);
+String native_code(String str)      = str;
+
+protocol Encodable:
+  native_code : Encodable -> String;
+
+
+String native_method_call_expr(Encodable target, String method_name, Encodable* args) =
+  native_code(target) & "." & method_name & "(" & append((native_code(a) : a <- args), ", ") & ")";
+
+String native_method_call(Encodable target, String method_name, Encodable* args) =
+  native_method_call_expr(target, method_name, args) & ";";
+
+String native_method_call(Encodable res, Encodable target, String method_name, Encodable* args) =
+  native_code(res) & " = " & native_method_call(target, method_name, args);
+
+String native_static_call(String static_name, Encodable* args) =
+  static_name & "(" & append((native_code(a) : a <- args), ", ") & ");";
+
+String native_static_call(Encodable res, String static_name, Encodable* args) =
+  native_code(res) & " = " & native_static_call(static_name, args);
+
+String native_new_call(Encodable res, String obj_type, Encodable* args) =
+  native_code(res) & " = new " & obj_type & "(" & append((native_code(a) : a <- args), ", ") & ");";
+
+String native_assignment_code(AnyVar var, Encodable value) =
+  native_var_ref_name(var) & " = " & native_code(value) & ";";
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+String* c_main_fn = (
+  "",
+  "",
+  "static int Main(string[] args) {",
+  "  Obj[] cell_args = new Obj[args.Length];",
+  "  for (int i=0 ; i < args.Length ; i++)",
+  "    cell_args[i] = Miscellanea.StrToObj(args[i]);",
+  "  Env env = new Env();",
+  "  Obj res = Main_P(new MasterSeqObj(cell_args), env);",
+  "  return res.IsInt() ? (int) res.GetLong() : 0;",
+  "}"
+);

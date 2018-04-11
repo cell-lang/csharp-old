@@ -1,0 +1,178 @@
+implicit {
+  debug_mode                      : Bool,
+  sorted_cls_defs                 : ClsDef*,
+  int_seqs_types_and_lengths      : (String, Nat)*,
+  cached_semi_consts_by_impl_arg  : [ImplArg -> [+FnId]];
+
+
+  String auto_expr_native_code(RefObjExpr expr, WriteObjVar var) =
+    copy_state()              = native_method_call(var, expr.var, copy_state_proc_name(expr.type), ()),
+    copy_table()              = native_copy_table_code(var, expr.relvar, expr.table, expr.perm),
+    copy_persistent_state()   = native_method_call(var, expr.var, copy_state_proc_name(expr.type), ()),
+    lookup_surrogate()        = native_method_call(var, expr.store, "LookupSurrogate", (expr.surrogate)),
+    read_pending_var(v?)      = native_var_ref_name(var) & " = " & native_var_ref_name(v) & ";";
+
+
+  String native_copy_table_code(WriteObjVar res_var, RelVar relvar, Table table, Nat+ perm) {
+    perm_args = match (perm)
+      (_)       = (),
+      (0, 1)    = (false),
+      (1, 0)    = (true),
+      (_, _, _) = perm;
+    return native_method_call(res_var, relvar, "Copy", perm_args);
+  }
+
+
+  String* auto_instr_native_code(Instr instr, Maybe[Nat] block_id) =
+    try_block()           = native_try_block_code(instr.var, instr.body, block_id),
+
+    queue_update()        = (native_method_call("this", queue_update_method_name(instr.type, instr.id), instr.args)),
+
+    insert_timer()        = (native_method_call("this", insert_timer_method_name(instr.type), (instr.idx, instr.time))),
+    clear_timer()         = (native_method_call("this", clear_timer_method_name(instr.type), (instr.idx))),
+
+    auto_pre_init()       = (native_new_call(instr.var, native_name(instr.type), ("env"))),
+    auto_cleanup()        = (), //(native_method_call(instr.var, cleanup_method_name(instr.type), ())),
+    clear_input()         = (native_method_call(if instr.var? then instr.var else "this", input_set_method_name(instr.type, instr.input), ("NullObj.Singleton()"))),
+    auto_update_node()    = (native_method_call("this", node_update_method_name(instr.type, instr.node), (instr.time_var if instr.time_var?, "env"))),
+
+    set_input()           = (native_method_call(instr.var, input_set_method_name(instr.type, instr.input), (instr.value))),
+    auto_apply()          = (native_method_call(if instr.var? then instr.var else "this", apply_method_name(instr.type), ("env"))),
+
+    set_persistent_state()  = (native_method_call(instr.auto_var, set_state_proc_name(instr.type), (instr.state))),
+
+    init_db()             = native_init_db_code(instr.db_var, instr.links, instr.type),
+    cleanup_db()          = (), //(native_method_call(instr.db_var, cleanup_method_name(instr.type), ())),
+
+    send_msg()            = (native_send_msg_code(instr.db_var, instr.type, instr.msg, instr.is_root, if instr.res_var? then just(instr.res_var) else nothing)),
+    try_update()          = (native_method_call("this", update_name(instr.type, instr.update_id), (instr.args | "updater", "env"))),
+    set_state()           = (native_set_state_code(instr.state, instr.db_var, instr.type, if instr.res_var? then just(instr.res_var) else nothing)),
+    invoke_auto_method()  = (native_method_call(instr.res_var, if instr.auto_var? then instr.auto_var else "this", user_def_method_name(instr.type, instr.method_id), (instr.args | "env"))),
+    invoke_db_method()    = (native_method_call(instr.res_var, if instr.db_var? then instr.db_var else "this", user_def_method_name(instr.type, instr.method_id), (instr.args | "env"))),
+
+    init_value_store()    = (), //(native_method_call(instr.store,   "Init",    ())),
+    cleanup_value_store() = (), //(native_method_call(instr.store,   "Cleanup", ())),
+    init_table()          = (), //(native_method_call(instr.rel_var, "Init",    ())),
+    cleanup_table()       = (), //(native_method_call(instr.rel_var, "Cleanup", ())),
+
+    get_table_iter()      = (native_get_table_iter_code(instr.it_var, instr.table, instr.args)),
+    set_table()           = (native_set_table_code(instr.relvar, instr.table, instr.state, instr.perm)),
+    queue_deletes()       = (native_queue_deletes_code(instr.rel_var, instr.args)),
+    queue_insert_value()  = (native_method_call(instr.res_var, aux_struct_var_ref_name(instr.store), "Insert", (instr.value))),
+    queue_insert_tuple()  = (native_method_call(pending_updates_var_ref_name(instr.rel_var), "Insert", instr.tuple));
+
+
+  String* native_init_db_code(AnyDBVar db_var, LocDBVar* links, DBSymbol type) = (
+    native_new_call(db_var, native_name(type), (links | "env")),
+    native_method_call(aux_struct_var_ref_name(db_var), db_var, updater_creation_proc_name(type), ())
+      if db_var :: LocDBVar
+  );
+
+
+  String* native_try_block_code(LocVar var, Instr+ body, Maybe[Nat] block_id) = (
+    "try {"
+  ) & indent_lines(native_code(body, block_id)) & (
+    "}",
+    "catch {",
+    "  " & native_var_ref_name(var) & " = NullObj.Singleton();",
+    "}"
+  );
+
+
+  String native_set_table_code(RelVar relvar, Table table, AtomicExpr state, Nat+ perm) {
+    perm_args = match (perm)
+      (_)       = (),
+      (0, 1)    = (false),
+      (1, 0)    = (true),
+      (_, _, _) = perm;
+    // args = (pending_updates_var_ref_name(relvar)) & table.value_stores &
+    //        (aux_struct_var_ref_name(vs) : vs <- table.value_stores) & perm_args;
+    return native_method_call(pending_updates_var_ref_name(relvar), "Set", (state) & perm_args);
+  }
+
+
+  String native_queue_deletes_code(RelVar relvar, Maybe[IntVar]+ args) {
+    fn_name = fn_names_by_args[(a != nothing : a <- args)];
+    target = pending_updates_var_ref_name(relvar);
+    return native_method_call(target, fn_name, (value(a) : a <- args, a != nothing));
+
+    [Bool+ -> String] fn_names_by_args = [
+      (true)                  -> "Delete",
+      (false)                 -> "Clear",
+      (true,  true)           -> "Delete",
+      (true,  false)          -> "Delete1",
+      (false, true)           -> "Delete2",
+      (false, false)          -> "Clear",
+      (true,  true,  true)    -> "Delete",
+      (true,  true,  false)   -> "Delete12",
+      (true,  false, true)    -> "Delete13",
+      (false, true,  true)    -> "Delete23",
+      (true,  false, false)   -> "Delete1",
+      (false, true,  false)   -> "Delete2",
+      (false, false, true)    -> "Delete3",
+      (false, false, false)   -> "Clear"
+    ];
+  }
+
+
+  String native_get_table_iter_code(TableItVar it_var, AnyRelVar table, Maybe[IntVar]+ args) {
+    fn_name = fn_names_by_args[(a != nothing : a <- args)];
+    return native_method_call(it_var, table, fn_name, (value(a) : a <- args, a != nothing));
+
+    [Bool+ -> String] fn_names_by_args = [
+      (false)                 -> "GetIter",
+      (true,  false)          -> "GetIter1",
+      (false, true)           -> "GetIter2",
+      (false, false)          -> "GetIter",
+      (true,  true,  false)   -> "GetIter12",
+      (true,  false, true)    -> "GetIter13",
+      (false, true,  true)    -> "GetIter23",
+      (true,  false, false)   -> "GetIter1",
+      (false, true,  false)   -> "GetIter2",
+      (false, false, true)    -> "GetIter3",
+      (false, false, false)   -> "GetIter"
+    ];
+  }
+
+
+  String native_send_msg_code(AnyDBVar db_var, DBSymbol type, AtomicExpr msg, Bool is_root, Maybe[BoolVar] maybe_res_var) {
+    if is_root:
+      method_name = update_entry_point_name(type);
+      // updater_name = if db_var :: LocDBVar then aux_struct_var_ref_name(db_var) else "updater";
+      fail if not db_var :: <LocDBVar, NestedDBVar>;
+
+      //## IF db_var IS A LocDBVar THEN NO PREFIX IS NEDEED
+      //## IF IT'S A NestedDBVar THEN IT'S NESTED INSIDE A REACTIVE AUTOMATON AND THE "this." PREFIX CAN BE USED
+      //## THIS IS A REALLY BAD WAY TO DO IT TOUGHT
+      aux_struct_name = aux_struct_var_decl_name(db_var);
+      aux_struct_name = "this." & aux_struct_name if db_var :: NestedDBVar;
+
+      args = (msg, aux_struct_name, "env");
+      return if maybe_res_var == nothing
+        then native_method_call(db_var, method_name, args)
+        else native_method_call(value(maybe_res_var), db_var, method_name, args);
+    else
+      assert db_var :: NestedDBVar;
+      fail if not db_var :: NestedDBVar;
+      method_name = update_name(type, main_handler);
+      aux_db_var_name = aux_struct_var_ref_name(db_var);
+      return native_method_call(db_var, update_name(type, main_handler), (msg, aux_db_var_name, "env"));
+    ;
+  }
+
+
+  String native_set_state_code(AtomicExpr state, AnyDBVar db_var, DBSymbol type, Maybe[BoolVar] maybe_res_var) {
+    if maybe_res_var != nothing:
+      fail if not db_var :: <NestedDBVar, LocDBVar>; ## NOT SURE HERE. BAD, ANYWAY
+      //## IF db_var IS A LocDBVar THEN NO PREFIX IS NEDEED
+      //## IF IT'S A NestedDBVar THEN IT'S NESTED INSIDE A REACTIVE AUTOMATON AND THE "this." PREFIX CAN BE USED
+      //## THIS IS A REALLY BAD WAY TO DO IT TOUGHT
+      aux_struct_name = aux_struct_var_decl_name(db_var);
+      aux_struct_name = "this." & aux_struct_name if db_var :: NestedDBVar;
+      return native_method_call(value(maybe_res_var), db_var, set_state_entry_point_name(type), (state, aux_struct_name));
+    else
+      fail if not db_var :: NestedDBVar; ## BAD BAD BAD: CHANGE THE DEFINITION OF set_state()
+      return native_method_call(db_var, set_state_proc_name(type), (state, aux_struct_var_ref_name(db_var)));
+    ;
+  }
+}

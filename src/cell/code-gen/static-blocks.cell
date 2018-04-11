@@ -1,0 +1,424 @@
+implicit {
+  debug_mode                      : Bool,
+  sorted_cls_defs                 : ClsDef*,
+  int_seqs_types_and_lengths      : (String, Nat)*,
+  cached_semi_consts_by_impl_arg  : [ImplArg -> [+FnId]];
+
+
+  String* native_static_block_decl(StaticBlock block) {
+    links_decls = (native_name(l) & " *linkedAuto" & printed(i) & ";" : l @ i <- block.links);
+    state_vars_decls = ["public Obj " & native_var_decl_name(v) & ";" : v, unused_var <- block.state_vars];
+    value_store_decls = ["public ValueStore " & native_var_decl_name(v) & " = new ValueStore();" : v <- block.value_stores];
+    table_decls = ["public " & native_table_type(t) & " " & native_var_decl_name(v) & ";" : v, t <- block.tables];
+    nested_blocks_decls = ["public " & native_name(t) & " " & native_var_decl_name(v) & ";" : v, t <- block.nested_blocks];
+
+    memb_decls = links_decls & isort(state_vars_decls) & isort(value_store_decls) & isort(table_decls) & isort(nested_blocks_decls);
+
+    ctor_code = native_ctor_code(block.name, block.links, block.tables, block.init_code);
+    // cleanup_code = native_cleanup_code(block.name, block.cleanup_code);
+
+    copy_state_code = native_copy_state_code(block.name, block.copy_state_code);
+    set_state_code = native_set_state_code(block.name, block.set_state_code);
+
+    set_state_entry_point_code = set_state_entry_point(block.name);
+
+    update_entry_point_code = if block.updates_code(main_handler, *)
+      then update_entry_point(block.name)
+      else ();
+
+    update_check_code = updates_check_code(block);
+    update_apply_code = updates_apply_code(block);
+    update_finish_code = updates_finish_code(block);
+
+    //copy_decl, copy_impl = updates_copy_code(block);
+
+    // aux_cleanup_decl, aux_cleanup_impl = aux_struct_cleanup_code(block);
+
+    methods_code = [native_user_def_method_code(block.name, id, m.code) : id, m <- block.methods];
+    updates_code = [native_update_code(block.name, id, b) : id, b <- block.updates_code];
+
+    class_name = native_name(block.name);
+
+    return join((
+      aux_struct_decl(block),
+      ("", "", "class " & class_name & " {"),
+      indent_lines(memb_decls),
+      (""), indent_lines(ctor_code),
+      (""), indent_lines(copy_state_code),
+      (""), indent_lines(set_state_code),
+      (""), indent_lines(set_state_entry_point_code),
+      (""), indent_lines(update_entry_point_code),
+      (""), indent_lines(update_check_code),
+      (""), indent_lines(update_apply_code),
+      (""), indent_lines(update_finish_code),
+      join((("") & indent_lines(c) : c <- isort(methods_code))),
+      join((("") & indent_lines(c) : c <- isort(updates_code))),
+      ("", ""), indent_lines(updater_creation_code(block)),
+      (""), indent_lines(updater_reset_code(block)),
+      ("}")
+    ));
+
+//      indent_lines(join((("", c) : c <- isort(const_data)))),
+//      ("") & indent_lines(ctor_code),
+//      join((("") & indent_lines(m) : m <- input_setters_code)),
+//      ("") & indent_lines(apply_method_code),
+//      join((("") & indent_lines(m) : m <- isort(node_update_methods_code))),
+//      join((("") & indent_lines(m) : m <- isort(queue_update_methods_code))),
+//      ("") & indent_lines(copy_state_code),
+//      ("") & indent_lines(set_state_code),
+//      join((("") & indent_lines(m) : m <- isort(user_def_methods_code))),
+//      ("") & indent_lines(insert_timer_method_code) if has_time_rules,
+//      ("") & indent_lines(clear_timer_method_code) if has_time_rules,
+
+//    struct_decl = ("struct " & native_name(block.name) & " {") & indent_lines(memb_decls) & ("};");
+//
+//    return join(intermix((
+//        (""), struct_decl, aux_struct_decl,
+//        init_impl, cleanup_impl, copy_state_impl, set_state_impl, aux_init_impl, aux_cleanup_impl, check_impl,
+//        copy_impl, apply_impl, finish_impl, entry_point_impl, set_state_entry_point_impl, methods_impls, updates_impls
+//      ),
+//      ("")
+//    ));
+  }
+
+
+  String* native_ctor_code(DBSymbol name, DBSymbol* links, [RelVar -> Table] tables, Instr* init_code) {
+    links_init_code = ("this.linkedAuto" & printed(i) & " = linkedAuto" & printed(i) & ";" : i < |links|);
+    tables_init_code = ({
+        arg_list = append((native_var_decl_name(vs) : vs <- t.value_stores), ", ");
+        return native_var_ref_name(v) & " = new " & native_table_type(t) & "(" & arg_list & ");";
+      } : v, t <- isort(tables)
+    );
+    vars_decl = gen_vars_decls(init_code);
+    vars_decl = vars_decl & ("") if vars_decl != ();
+    body = vars_decl & links_init_code & tables_init_code & native_code(init_code, nothing);
+    link_args = append((native_name(l) & " linkedAuto" & printed(i) & ", " : l @ i <- links));
+    signature = "public " & native_name(name) & "(" & link_args & "Env env) {";
+    return (signature) & indent_lines(body) & ("}");
+  }
+
+
+  // (String, String*) native_cleanup_code(DBSymbol name, Instr* cleanup_code) {
+  //   cleanup_body = native_code(cleanup_code, nothing);
+  //   cleanup_sgn = "void " & cleanup_method_name(name) & "(" & native_name(name) & " *self)";
+  //   cleanup_decl = cleanup_sgn & ";";
+  //   cleanup_proc = (cleanup_sgn & " {") & indent_lines(cleanup_body) & ("}");
+  //   return (cleanup_decl, cleanup_proc);
+  // }
+
+
+  String* native_copy_state_code(DBSymbol name, Instr* code) {
+    vars_decls = gen_vars_decls(code);
+    body = vars_decls & ("" if vars_decls != ()) & native_code(code, nothing);
+    sgn = "public Obj " & copy_state_proc_name(name) & "() {";
+    return (sgn) & indent_lines(body) & ("}");
+  }
+
+
+  String* native_set_state_code(DBSymbol name, Instr* code) {
+    //aux_struct_init_call = native_method_call("this", aux_struct_init_proc_name(name), ());
+    vars_decls = gen_vars_decls(code);
+    //body = vars_decls & ("" if vars_decls != (), aux_struct_init_call) & native_code(code, nothing);
+    body = vars_decls & native_code(code, nothing);
+    sgn = "public void " & set_state_proc_name(name) & "(Obj a0, " & aux_struct_c_name(name) & " updater) {";
+    return (sgn) & indent_lines(body) & ("}");
+  }
+
+
+  String* update_entry_point(DBSymbol block_name) {
+    handler_call = native_method_call("this", update_name(block_name, main_handler), (fn_arg(0), "updater", "env"));
+    updates_check_call = native_method_call("this", updates_check_proc_name(block_name), ("updater"));
+    updates_apply_call = native_method_call("this", updates_apply_proc_name(block_name), ("updater"));
+    updates_finish_code = native_method_call("this", updates_finish_proc_name(block_name), ("updater"));
+    updater_reset_call = native_method_call("this", updater_reset_proc_name(block_name), ("updater"));
+
+    body = (
+      "bool ok = false;",
+      // "int depth = get_call_stack_depth();",
+      "try {",
+      "  " & handler_call,
+      "  ok = " & updates_check_call,
+      "  if (ok) {",
+      "    " & updates_apply_call,
+      "    " & updates_finish_code,
+      "  }",
+      "}",
+      "catch {",
+      // "  pop_try_mode_call_info(depth);",
+      "}",
+      updater_reset_call,
+      "return ok;"
+    );
+
+    name = update_entry_point_name(block_name);
+    updater_type = aux_struct_c_name(block_name);
+    sgn = "public bool " & name & "(Obj a0, " & updater_type & " updater, Env env) {";
+    return (sgn) & indent_lines(body) & ("}");
+  }
+
+
+  String* set_state_entry_point(DBSymbol block_name) {
+    set_state_call = native_method_call("this", set_state_proc_name(block_name), (fn_arg(0), "updater"));
+    updates_check_call = native_method_call("this", updates_check_proc_name(block_name), ("updater"));
+    updates_apply_call = native_method_call("this", updates_apply_proc_name(block_name), ("updater"));
+    updates_finish_call = native_method_call("this", updates_finish_proc_name(block_name), ("updater"));
+    updater_reset_call = native_method_call("this", updater_reset_proc_name(block_name), ("updater"));
+
+    body = (
+      //aux_var_decl,
+      //aux_struct_init_call,
+      set_state_call,
+      "bool ok = " & updates_check_call,
+      "if (ok) {",
+      //"  " & updates_copy_call,
+      "  " & updates_apply_call,
+      "  " & updates_finish_call,
+      "}",
+      updater_reset_call,
+      "return ok;"
+    );
+
+    name = set_state_entry_point_name(block_name);
+    updater_type = aux_struct_c_name(block_name);
+    sgn = "public bool " & name & "(Obj a0, " & updater_type & " updater) {";
+    return (sgn) & indent_lines(body) & ("}");
+  }
+
+
+  String* updates_check_code(StaticBlock block) {
+    tables_check_code = isort([
+      "ok &= " & native_method_call(pending_updates_var_ref_name(v), fn_names[arity(t)][t.keys], ())
+      : v, t <- block.tables, t.keys != []
+    ]);
+
+    nested_blocks_check_code = isort([
+      "ok &= " & native_method_call(v, updates_check_proc_name(t), (aux_struct_var_ref_name(v)))
+      : v, t <- block.nested_blocks
+    ]);
+
+    body = ("bool ok = true;") & tables_check_code & nested_blocks_check_code & ("return ok;");
+
+    sgn = "public bool " & updates_check_proc_name(block.name) &  "(" & aux_struct_c_name(block.name) & " updater) {";
+    return (sgn) & indent_lines(body) & ("}");
+
+
+    [NzNat -> [[[+Nat]] -> String]] fn_names = [
+      // 1 -> [[] -> "unary_table_updates_check"],
+      2 -> [
+        // []                        -> "binary_table_updates_check",
+        [[0]]                     -> "CheckUpdates_1",
+        [[1]]                     -> "CheckUpdates_2",
+        [[0], [1]]                -> "CheckUpdates_1_2"
+      ],
+      3 -> [
+        // []                        -> "ternary_table_updates_check",
+        [[0, 1]]                  -> "CheckUpdates_12",
+        [[0, 1], [2]]             -> "CheckUpdates_12_3",
+        [[0, 1], [1, 2]]          -> "CheckUpdates_12_23",
+        [[0, 1], [1, 2], [2, 0]]  -> "CheckUpdates_12_23_31"
+      ]
+    ];
+  }
+
+
+  // (String, String*) updates_copy_code(StaticBlock block) {
+  //   var_ids = (bare_id(v) : v <- isort(keys(block.state_vars)));
+  //   vars_copy_code = join((var_copy_code(id) : id <- var_ids));
+
+  //   value_stores_copy_code = (
+  //     mk_gen_call("value_store_copy", (), (vs), (aux_struct_var_ref_name(vs)))
+  //     : vs <- isort(block.value_stores)
+  //   );
+
+  //   nested_blocks_copy_code = [
+  //     mk_gen_call(updates_copy_proc_name(t), ("&" & native_var_ref_name(v), aux_struct_var_ref_name(v)), (), ())
+  //     : v, t <- block.nested_blocks
+  //   ];
+
+  //   body = vars_copy_code & value_stores_copy_code & isort(nested_blocks_copy_code);
+
+  //   sgn = "void " & updates_copy_proc_name(block.name) & "(" & native_name(block.name) &
+  //         " *self, " & aux_struct_c_name(block.name) & " *self_aux)";
+
+  //   return (sgn & ";", (sgn & " {") & indent_lines(body) & ("}"));
+  // }
+
+
+  String* updates_apply_code(StaticBlock block) {
+    value_stores_apply_code = (
+      native_method_call(aux_struct_var_ref_name(vs), "Apply", ())
+      : vs <- isort(block.value_stores)
+    );
+
+    tables_apply_code = [
+      native_method_call(pending_updates_var_ref_name(v), "Apply", ())
+      : v, t <- block.tables
+    ];
+
+    nested_blocks_apply_code = [
+      native_method_call(v, updates_apply_proc_name(t), (aux_struct_var_ref_name(v)))
+      : v, t <- block.nested_blocks
+    ];
+
+    body = value_stores_apply_code & isort(tables_apply_code) & isort(nested_blocks_apply_code);
+
+    sgn = "public void " & updates_apply_proc_name(block.name) & "(" & aux_struct_c_name(block.name) & " updater) {";
+    return (sgn) & indent_lines(body) & ("}");
+  }
+
+
+  String* updates_finish_code(StaticBlock block) {
+    var_ids = (bare_id(v) : v <- isort(keys(block.state_vars)));
+    vars_copy_code = join((var_apply_code(id) : id <- var_ids));
+
+    tables_finish_code = [
+      native_method_call(pending_updates_var_ref_name(v), "Finish", ()) : v, t <- block.tables
+    ];
+
+    nested_blocks_finish_code = [
+      native_method_call(v, updates_finish_proc_name(t), (aux_struct_var_ref_name(v)))
+      : v, t <- block.nested_blocks
+    ];
+
+    body = vars_copy_code & isort(tables_finish_code) & isort(nested_blocks_finish_code);
+
+    sgn = "public void " & updates_finish_proc_name(block.name) & "(" & aux_struct_c_name(block.name) & " updater) {";
+    return (sgn) & indent_lines(body) & ("}");
+  }
+
+
+  String* aux_struct_decl(StaticBlock block) {
+    aux_vars_decls = (
+      "public Obj " & native_var_decl_name(pending_state_var(bare_id(v))) & ";"
+      : v, unused_var <- isort(block.state_vars)
+    );
+
+    aux_bool_vars_decls = (
+      "public bool " & native_var_decl_name(nested_db_spent(v)) & ";"
+      : v, unused_var <- isort(block.nested_blocks)
+    );
+
+    aux_stores_decls = (
+      "public ValueStoreUpdater " & aux_struct_var_decl_name(vs) & ";" : vs <- isort(block.value_stores)
+    );
+
+    aux_tables_decls = (
+      "public " & pending_updates_var_type(t) & " " & pending_updates_var_decl_name(v) & ";"
+      : v, t <- isort(block.tables)
+    );
+
+    nested_aux_blocks_decls = (
+      "public " & aux_struct_c_name(t) & " " & aux_struct_var_decl_name(v) & ";"
+      : v, t <- isort(block.nested_blocks)
+    );
+
+    aux_memb_decls = aux_vars_decls & aux_bool_vars_decls & aux_stores_decls &
+                     aux_tables_decls & nested_aux_blocks_decls;
+
+    return join((
+      ("public class " & aux_struct_c_name(block.name) & " {"),
+      indent_lines(aux_memb_decls),
+      ("};")
+    ));
+  }
+
+
+  String* updater_creation_code(StaticBlock block) {
+    var_ids = (bare_id(v) : v <- isort(keys(block.state_vars)));
+    init_vars_code = (native_var_ref_name(pending_state_var(id)) & " = BlankObj.Singleton();" : id <- var_ids);
+
+    bool_vars_ids = isort(keys(block.nested_blocks));
+    bool_vars_init_code = (native_var_ref_name(nested_db_spent(v)) & " = false;" : v <- bool_vars_ids);
+
+    value_stores_init_code = (
+      native_new_call(aux_struct_var_ref_name(vs), "ValueStoreUpdater", (vs))
+      : vs <- isort(block.value_stores)
+    );
+
+    tables_init_code = (
+      native_new_call(
+        pending_updates_var_ref_name(v),
+        pending_updates_var_type(t),
+        (v) & (aux_struct_var_ref_name(vs) : vs <- t.value_stores)
+      ) : v, t <- isort(block.tables)
+    );
+
+    nested_blocks_init_code = (
+      native_method_call(aux_struct_var_ref_name(v), v, updater_creation_proc_name(t), ())
+      : v, t <- isort(block.nested_blocks)
+    );
+
+    body = init_vars_code & bool_vars_init_code & value_stores_init_code &
+           tables_init_code & nested_blocks_init_code;
+
+    class_name = aux_struct_c_name(block.name);
+    sgn = "public " & class_name & " " & updater_creation_proc_name(block.name) & "() {";
+    return (sgn, "  " & class_name & " updater = new " & class_name & "();") &
+           indent_lines(body) &
+           ("  return updater;", "}");
+  }
+
+
+  String* updater_reset_code(StaticBlock block) {
+    var_ids = (bare_id(v) : v <- isort(keys(block.state_vars)));
+    vars_reset_code = (native_var_ref_name(pending_state_var(id)) & " = BlankObj.Singleton();" : id <- var_ids);
+
+    bool_vars_ids = isort(keys(block.nested_blocks));
+    bool_vars_reset_code = (native_var_ref_name(nested_db_spent(v)) & " = false;" : v <- bool_vars_ids);
+
+    value_stores_reset_code = (
+      native_method_call(aux_struct_var_ref_name(vs), "Reset", ()) : vs <- isort(block.value_stores)
+    );
+
+    tables_reset_code = (
+      native_method_call(pending_updates_var_ref_name(v), "Reset", ())
+      : v, t <- isort(block.tables)
+    );
+
+    nested_blocks_reset_code = (
+      native_method_call(v, updater_reset_proc_name(block.name), (aux_struct_var_ref_name(v)))
+      : v, t <- isort(block.nested_blocks)
+    );
+
+    body = vars_reset_code & bool_vars_reset_code & value_stores_reset_code &
+           tables_reset_code & nested_blocks_reset_code;
+
+    sgn = "public void " & updater_reset_proc_name(block.name) & "(" & aux_struct_c_name(block.name) & " updater) {";
+    return (sgn) & indent_lines(body) & ("}");
+  }
+
+
+//  String* var_copy_code(Atom var_id) {
+//    psv_str = native_var_ref_name(pending_state_var(var_id));
+//    return (psv_str & " = copy_obj(" & psv_str & ");");
+//  }
+
+
+  String* var_apply_code(Atom var_id) {
+    psv_str = native_var_ref_name(pending_state_var(var_id));
+    mv_str = native_var_ref_name(memb_var(var_id));
+    return (
+      "if (!" & psv_str & ".IsBlankObj()) {",
+      "  " & mv_str & " = " & psv_str & ";",
+      "}"
+    );
+  }
+
+
+  String* native_user_def_method_code(DBSymbol block_name, MethodId method_id, Instr* body) {
+    args_str = append(("Obj " & native_var_decl_name(fn_arg(i)) & ", " : i < method_id.arity));
+    sgn = "public Obj " & user_def_method_name(block_name, method_id) & "(" & args_str & "Env env) {";
+    vars_decls = gen_vars_decls(body);
+    body_text = vars_decls & ("" if vars_decls != ()) & native_code(body, nothing);
+    return (sgn) & indent_lines(body_text) & ("}");
+  }
+
+
+  String* native_update_code(DBSymbol block_name, UpdateId update_id, Instr* body) {
+    args_strs = ("Obj " & native_var_decl_name(fn_arg(i)) & ", " : i < arity(update_id));
+    sgn = "public void " & update_name(block_name, update_id) & "(" & append(args_strs) & aux_struct_c_name(block_name) & " updater, Env env) {";
+    vars_decls = gen_vars_decls(body);
+    body_text = vars_decls & ("" if vars_decls != ()) & native_code(body, nothing);
+    return (sgn) & indent_lines(body_text) & ("}");
+  }
+}
