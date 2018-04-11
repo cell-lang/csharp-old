@@ -201,6 +201,7 @@ namespace CellLang {
         index123.Reset();
         index12.Reset();
         index13.Reset();
+        index23.Reset();
         index1.Reset();
         index2.Reset();
         index3.Reset();
