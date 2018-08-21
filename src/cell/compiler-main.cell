@@ -28,7 +28,7 @@ String* create_error_msg(ParserError err, String filename) =
 
 
 Maybe[(String*, String*)] Compile(
-  [String -> Nat*] src_files, Bool include_runtime, Bool run_typechecking, Bool ignore_assertions,
+  [String -> Byte*] src_files, Bool include_runtime, Bool run_typechecking, Bool ignore_assertions,
   Bool debug_mode, Bool print_intermediate, Bool print_times, Bool wait_for_key
 ) {
   t0 = _ticks_(:any_value_will_do);
@@ -207,7 +207,7 @@ Int Main(String* args) {
   argc = |args|;
 
   if args == ():
-    Print("Usage: amberc <project file>\n");
+    Print("Usage: cellc-cs.exe <project file>\n");
     return 1;
   ;
 

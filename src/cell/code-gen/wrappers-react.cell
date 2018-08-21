@@ -192,7 +192,7 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
                   (if i == 0 then "public " & l else l : l @ i <- output_enum_docs);
 
     docs = (
-      "class CellLang.Generated." & auto_class_name & " {"
+      "class CellLang.Generated." & auto_class_name & " {",
     ) & indent_lines(enums_docs) & (
       "",
       "  " & auto_class_name & "();",
@@ -323,7 +323,7 @@ implicit block : ReactBlock, typedefs : [TypeName -> NeType] {
     ;
 
     code = code & input_setters & output_getters & methods_wrappers;
-    code = ("public class " & auto_class_name & " {") & indent_lines(code) & ("}");
+    code = ("public class " & auto_class_name & " {",) & indent_lines(code) & ("}");
 
     return (code, docs);
   }

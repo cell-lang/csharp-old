@@ -123,7 +123,7 @@ implicit {
     vars_decls = gen_vars_decls(code);
     body = vars_decls & ("" if vars_decls != ()) & native_code(code, nothing);
     sng = "public bool " & state_is_def_proc_name(name) & "()";
-    return (sng & " {") & indent_lines(body) & ("}");
+    return (sng & " {",) & indent_lines(body) & ("}");
   }
 
 
@@ -131,7 +131,7 @@ implicit {
     vars_decls = gen_vars_decls(code);
     body = vars_decls & ("" if vars_decls != ()) & native_code(code, nothing);
     sgn = "public Obj " & copy_state_proc_name(name) & "()";
-    return (sgn & " {") & indent_lines(body) & ("}");
+    return (sgn & " {",) & indent_lines(body) & ("}");
   }
 
 
@@ -140,7 +140,7 @@ implicit {
     body = vars_decls & ("" if vars_decls != ()) & native_code(code, nothing);
     ## WHY DOES THIS RETURN AN OBJ?
     sgn = "public void " & set_state_proc_name(name) & "(Obj a0)";
-    return (sgn & " {") & indent_lines(body) & ("}");
+    return (sgn & " {",) & indent_lines(body) & ("}");
   }
 
 
@@ -154,7 +154,7 @@ implicit {
     sgn = "public Obj " & user_def_method_name(block_name, name) & "(" & args_str & "Env env)";
     vars_decls = gen_vars_decls(body);
     body_text = vars_decls & ("" if vars_decls != ()) & native_code(body, nothing);
-    return (sgn & " {") & indent_lines(body_text) & ("}");
+    return (sgn & " {",) & indent_lines(body_text) & ("}");
   }
 
 

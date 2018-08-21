@@ -52,7 +52,7 @@ String* tuple_import_code(InterType+ types, String expr, String action_prefix) {
   tuple_instr = action_prefix & "new MasterSeqObj(new Obj[] {" & append(field_vars, ", ") & "});";
 
   ## BAD, I'M RECONSTRUCTING THE InterType VALUE AFTER DESTROYING IT
-  return (input_arg_type(:tuple(types)) & " " & expr_var & " = " & expr & ";") &
+  return (input_arg_type(:tuple(types)) & " " & expr_var & " = " & expr & ";",) &
          (join(fields_code) | tuple_instr);
 }
 

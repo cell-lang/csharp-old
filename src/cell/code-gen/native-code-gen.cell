@@ -179,8 +179,8 @@ Int pow(Int b, Nat e) {
     max_len = nat(max((length(printed(n)) : n <- (min_elem, max_elem))));
     last_idx = |int_seq| - 1;
     strs = (align_text(s, max_len, ascii_space) & if i != last_idx then ", " else "" : s @ i <- strs);
-    cont_lines = ("  " & append(ss) : ss <- split_into_groups(strs, nz_nat(100 / #(max_len + 2))));
-    def = (sgn & " = {") & cont_lines & ("};");
+    cont_lines = ("  " & append(ss) : ss <- split_into_groups(strs, nz_nat(100 / (max_len + 2))));
+    def = (sgn & " = {",) & cont_lines & ("};");
   ;
 
   return ("", def); ## NO NEED FOR A HEADER HERE
@@ -286,7 +286,7 @@ implicit {
     comp_body = native_code(body, nothing);
 
     has_var_decls = var_decls != () or auto_var_decls != () or db_vars_decls != ();
-    code = (signature & " {") & indent_lines(var_decls) & indent_lines(auto_var_decls) &
+    code = (signature & " {",) & indent_lines(var_decls) & indent_lines(auto_var_decls) &
            indent_lines(db_vars_decls) & indent_lines(aux_db_vars_decls) &
            ("" if has_var_decls) & indent_lines(comp_body) & ("}");
 
@@ -417,7 +417,7 @@ implicit {
     break_loop            = ("break;"),
     execute_block(body?)  = { new_block_id = _counter_(:any_value_will_do);
                               body_code = native_code(body, just(new_block_id));
-                              return body_code & (block_end_label(new_block_id) & ":;");
+                              return body_code & (block_end_label(new_block_id) & ":;",);
                             },
     exit_block            = ("goto " & block_end_label(value_unsafe(block_id)) & ";"),
     switch_on_nat()       = native_nat_switch_code(instr.value, instr.cases, block_id),
@@ -467,7 +467,7 @@ implicit {
     if head :: <branch(cond: BoolExpr, when_true: (<break_loop>), when_false: ())>:
       cond_str = native_expr(neg(head.cond));
       body_text = indent_lines(native_code(tail(body), block_id)) & ("}");
-      return ("while (" & cond_str & ") {") & body_text;
+      return ("while (" & cond_str & ") {",) & body_text;
     else
       body_text = indent_lines(native_code(body, block_id)) & ("}");
       return ("for ( ; ; ) {") & body_text;
@@ -495,10 +495,10 @@ implicit {
   ## TERMINATE AN OUTER LOOP, THAT BREAK WILL TERMINATE THE SWITCH/CASE INSTEAD.
   String* native_nat_switch_code(IntExpr value, Instr*+ cases, Maybe[Nat] block_id) {
     cases_code = (
-      ("case " & printed(i) & ":") & indent_lines((native_code(c, block_id) | "break;", ""))
+      ("case " & printed(i) & ":",) & indent_lines((native_code(c, block_id) | "break;", ""))
       : c @ i <- cases
     );
-    return ("switch (" & native_expr(value) & ") {") & indent_lines(join(cases_code)) & ("}");
+    return ("switch (" & native_expr(value) & ") {",) & indent_lines(join(cases_code)) & ("}");
   }
 
 
@@ -517,7 +517,7 @@ implicit {
     );
     body_code = (body_code | ("", "default:") & indent_lines(native_code(else, block_id))) if else != ();
 
-    return ("switch (" & value_str & ") {") & indent_lines(join(body_code)) & ("}");
+    return ("switch (" & value_str & ") {",) & indent_lines(join(body_code)) & ("}");
   }
 
 
@@ -592,7 +592,7 @@ implicit {
 
   String* native_branch_code(BoolExpr cond, Instr* when_true, Instr* when_false, Maybe[Nat] block_id) {
     assert when_true != ();
-    code = ("if (" & native_expr(cond) & ") {") &
+    code = ("if (" & native_expr(cond) & ") {",) &
            indent_lines(native_code(when_true, block_id)) &
            ("}");
     if when_false != ():
